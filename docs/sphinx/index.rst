@@ -7,11 +7,11 @@
 ..    how
 ..    api
 
-===============================
-Welcome to pydrps's documentation!
-===============================
+==================================
+Welcome to lvmsim's documentation!
+==================================
 
-- :ref:`What's new in 0.1.0? <bmo-changelog>`
+- :ref:`What's new in 0.1.0? <changelog-0.1.0>`
 
 .. .. toctree::
 ..    :maxdepth: 2
@@ -19,6 +19,7 @@ Welcome to pydrps's documentation!
 ..    why
 ..
 .. .. toctree::
+
 ..    :maxdepth: 2
 ..
 ..    how
