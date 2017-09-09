@@ -298,14 +298,17 @@ class IFU(object):
 
         # Pads the xy limits
 
-        full = shapely.geometry.MultiPolygon(
-            [subifu.polygon for subifu in self.subifus] + self.gaps)
+        if not show_gaps:
+            bounds = self.polygon.bounds
+        else:
+            bounds = shapely.geometry.MultiPolygon(
+                [subifu.polygon for subifu in self.subifus] + self.gaps).bounds
 
-        xx_pad = 0.1 * (full.bounds[2] - full.bounds[0])
-        yy_pad = 0.1 * (full.bounds[3] - full.bounds[1])
+        xx_pad = 0.1 * (bounds[2] - bounds[0])
+        yy_pad = 0.1 * (bounds[3] - bounds[1])
 
-        ax.set_xlim(full.bounds[0] - xx_pad, full.bounds[2] + xx_pad)
-        ax.set_ylim(full.bounds[1] - yy_pad, full.bounds[3] + yy_pad)
+        ax.set_xlim(bounds[0] - xx_pad, bounds[2] + xx_pad)
+        ax.set_ylim(bounds[1] - yy_pad, bounds[3] + yy_pad)
 
         return fig
 
