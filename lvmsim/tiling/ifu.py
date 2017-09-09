@@ -181,10 +181,10 @@ class IFU(object):
                  fibre_size=None, gaps=None):
         """A generic class representing a LVM hexagonal IFU.
 
-        This class is intended to be subclassed into real examples of IFU designs
-        that LVM will use. An ``IFU`` is defined by a series of sub-IFU centres
-        (or a single one for a monolithic IFU) and a fibre size, so that the real
-        size of the IFU on the sky can be calculated.
+        This class is intended to be subclassed into real examples of IFU
+        designs that LVM will use. An ``IFU`` is defined by a series of sub-IFU
+        centres (or a single one for a monolithic IFU) and a fibre size, so
+        that the real size of the IFU on the sky can be calculated.
 
         Parameters:
             n_fibres (int):
