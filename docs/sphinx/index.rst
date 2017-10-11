@@ -1,34 +1,24 @@
 
-.. .. toctree::
-..    :hidden:
-..    :maxdepth: 2
-..
-..    why
-..    how
-..    api
-
-==================================
 Welcome to lvmsurveysim's documentation!
-==================================
+========================================
 
-- :ref:`What's new in 0.1.0? <changelog-0.1.0>`
+Contents
+--------
 
-.. .. toctree::
-..    :maxdepth: 2
-..
-..    why
-..
-.. .. toctree::
+.. toctree::
+   :maxdepth: 2
 
-..    :maxdepth: 2
-..
-..    how
-..
-.. .. toctree::
-..    :maxdepth: 1
-..
-..    api
+   whats-new
+   API Reference <reference>
 
+|
+
+.. toctree::
+   :maxdepth: 2
+
+   changelog
+
+|
 
 Indices and tables
 ==================

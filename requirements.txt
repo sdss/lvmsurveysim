@@ -7,3 +7,5 @@ scipy>=0.18.1
 astropy>=1.2.1
 pandas>=0.18.1
 matplotlib>=1.5.3
+Shapely>=1.6.1
+PyYAML>=3.12

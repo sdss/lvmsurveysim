@@ -1,8 +1,8 @@
 
-.. _lvm-reference
+.. _reference:
 
 lvmsurveysim Reference
-================
+======================
 
 IFU
 ---
@@ -11,3 +11,6 @@ IFU
     :members: IFU, SubIFU, MonolithicIFU, AbuttableTriangleIFU
     :show-inheritance:
     :undoc-members:
+
+Test
+----

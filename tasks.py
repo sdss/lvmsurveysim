@@ -48,6 +48,7 @@ def clean(ctx):
     ctx.run("rm -rf htmlcov")
     ctx.run("rm -rf build")
     ctx.run("rm -rf dist")
+    ctx.run("rm -rf lvmsurveysim.egg-info")
 
 
 @task(clean)

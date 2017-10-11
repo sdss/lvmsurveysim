@@ -41,3 +41,8 @@ a.footnote-reference:hover  { border-bottom: 1px solid #7546E3; }
 a:hover code                { background-color: #eeeeee; }
 code.xref, a code           { background-color: #E8EFF0;
                               border-bottom: 1px solid white; }
+
+li.toctree-l1 { padding-bottom: 7px; }
+
+
+li > ul { margin: 0px 0 0px 30px;}
