@@ -25,6 +25,9 @@ sns.set_style('white')
 current_palette = sns.color_palette()
 
 
+__all__ = ('fibres_to_rows', 'SubIFU', 'IFU', 'MonolithicIFU', 'AbuttableTriangleIFU')
+
+
 def fibres_to_rows(fibres):
     """Calculates the number of rows for a set of fibres.
 
