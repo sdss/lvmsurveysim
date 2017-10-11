@@ -1,66 +1,124 @@
-# Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""
-This module defines a logging class based on the built-in logging module.
-The module is heavily based on the astropy logging system.
-"""
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# logger.py
+#
+# Created by José Sánchez-Gallego on 17 Sep 2017.
 
+
+from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 
+import click
+import datetime
+import json
 import logging
-from logging import FileHandler
-from logging.handlers import TimedRotatingFileHandler
-
 import os
+import pathlib
 import re
 import shutil
+import traceback
 import sys
 import warnings
 
-from textwrap import TextWrapper
+from logging.handlers import TimedRotatingFileHandler
+# from textwrap import TextWrapper
 
-from .colour_print import colour_print
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name
+from pygments.formatters import TerminalFormatter
 
+from twisted.logger import formatEvent, globalLogPublisher
 
-# Initialize by calling initLog()
-log = None
-
-# Adds custom log level for important messages
-IMPORTANT = 25
-logging.addLevelName(IMPORTANT, 'IMPORTANT')
-
-ansi_escape = re.compile(r'\x1b[^m]*m')
+from . import config
 
 
-def important(self, message, *args, **kws):
-    self._log(IMPORTANT, message, args, **kws)
+# Adds custom log level for print and twisted messages
+PRINT = 15
+logging.addLevelName(PRINT, 'PRINT')
+
+TWISTED = 12
+logging.addLevelName(TWISTED, 'TWISTED')
 
 
-logging.Logger.important = important
+def print_log_level(self, message, *args, **kws):
+    self._log(PRINT, message, args, **kws)
 
 
-def get_log(logger_name, log_file_path=None, log_level='INFO',
-            log_file_level='DEBUG', log_file_mode='a'):
+def twisted_log_level(self, message, *args, **kws):
+    self._log(TWISTED, message, args, **kws)
 
-    log_file_path = log_file_path or f'~/.{logger_name}/{logger_name}.log'
-    logging.setLoggerClass(Logger)
 
-    log = logging.getLogger(logger_name)
-    log._set_defaults(
-        logLevel=log_level,
-        logFileLevel=log_file_level,
-        logFilePath=log_file_path,
-        logFileMode=log_file_mode)
+logging.Logger._print = print_log_level
+logging.Logger._twisted = twisted_log_level
 
-    return log
+
+def print_exception_formatted(type, value, tb):
+    """A custom hook for printing tracebacks with colours."""
+
+    tbtext = ''.join(traceback.format_exception(type, value, tb))
+    lexer = get_lexer_by_name('pytb', stripall=True)
+    formatter = TerminalFormatter()
+    sys.stderr.write(highlight(tbtext, lexer, formatter))
+
+
+def colored_formatter(record):
+    """Prints log messages with colours."""
+
+    colours = {'info': ('blue', 'normal'),
+               'debug': ('magenta', 'normal'),
+               'warning': ('yellow', 'normal'),
+               'print': ('green', 'normal'),
+               'twisted': ('white', 'bold'),
+               'error': ('red', 'bold')}
+
+    levelname = record.levelname.lower()
+
+    if levelname == 'error':
+        return
+
+    if levelname.lower() in colours:
+        levelname_color = colours[levelname][0]
+        bold = True if colours[levelname][1] == 'bold' else False
+        header = click.style('[{}]: '.format(levelname.upper()), levelname_color, bold=bold)
+
+    message = '{0}'.format(record.msg)
+
+    warning_category = re.match('^(\w+Warning\:).*', message)
+    if warning_category is not None:
+        warning_category_colour = click.style(warning_category.groups()[0], 'cyan')
+        message = message.replace(warning_category.groups()[0], warning_category_colour)
+
+    sub_level = re.match('(\[.+\]:)(.*)', message)
+    if sub_level is not None:
+        sub_level_name = click.style(sub_level.groups()[0], 'red')
+        message = '{}{}'.format(sub_level_name, ''.join(sub_level.groups()[1:]))
+
+    # if len(message) > 79:
+    #     tw = TextWrapper()
+    #     tw.width = 79
+    #     tw.subsequent_indent = ' ' * (len(record.levelname) + 2)
+    #     tw.break_on_hyphens = False
+    #     message = '\n'.join(tw.wrap(message))
+
+    sys.__stdout__.write('{}{}\n'.format(header, message))
+    sys.__stdout__.flush()
+
+    return
 
 
 class MyFormatter(logging.Formatter):
 
     warning_fmp = '%(asctime)s - %(levelname)s: %(message)s [%(origin)s]'
-    info_fmt = '%(asctime)s - %(levelname)s: %(message)s'
+    info_fmt = '%(asctime)s - %(levelname)s - %(message)s [%(funcName)s @ ' + \
+        '%(filename)s]'
 
-    def __init__(self, fmt='%(levelno)s: %(msg)s'):
-        logging.Formatter.__init__(self, fmt)
+    ansi_escape = re.compile(r'\x1b[^m]*m')
+
+    def __init__(self, fmt='%(levelname)s - %(message)s [%(funcName)s @ ' +
+                 '%(filename)s]'):
+        logging.Formatter.__init__(self, fmt, datefmt='%Y-%m-%d %H:%M:%S')
 
     def format(self, record):
 
@@ -72,6 +130,12 @@ class MyFormatter(logging.Formatter):
         if record.levelno == logging.DEBUG:
             self._fmt = MyFormatter.info_fmt
 
+        elif record.levelno == logging.getLevelName('PRINT'):
+            self._fmt = MyFormatter.info_fmt
+
+        elif record.levelno == logging.getLevelName('TWISTED'):
+            self._fmt = MyFormatter.info_fmt
+
         elif record.levelno == logging.INFO:
             self._fmt = MyFormatter.info_fmt
 
@@ -81,8 +145,7 @@ class MyFormatter(logging.Formatter):
         elif record.levelno == logging.WARNING:
             self._fmt = MyFormatter.warning_fmp
 
-        elif record.levelno == IMPORTANT:
-            self._fmt = MyFormatter.info_fmt
+        record.msg = self.ansi_escape.sub('', record.msg)
 
         # Call the original formatter class to do the grunt work
         result = logging.Formatter.format(self, record)
@@ -97,7 +160,22 @@ Logger = logging.getLoggerClass()
 fmt = MyFormatter()
 
 
-class Logger(Logger):
+class LoggerStdout(object):
+    """A pipe for stdout to a logger."""
+
+    def __init__(self, level):
+        self.level = level
+
+    def write(self, message):
+
+        if message != '\n':
+            self.level(message)
+
+    def flush(self):
+        pass
+
+
+class MyLogger(Logger):
     """This class is used to set up the logging system.
 
     The main functionality added by this class over the built-in
@@ -108,10 +186,15 @@ class Logger(Logger):
 
     """
 
-    def saveLog(self, path):
-        shutil.copyfile(self.logFilename, os.path.expanduser(path))
+    INFO = 15
 
-    def _showwarning(self, *args, **kwargs):
+    # The default actor to log to. It is set by the set_actor() method.
+    _actor = None
+
+    def save_log(self, path):
+        shutil.copyfile(self.log_filename, os.path.expanduser(path))
+
+    def _show_warning(self, *args, **kwargs):
 
         warning = args[0]
         message = '{0}: {1}'.format(warning.__class__.__name__, args[0])
@@ -130,48 +213,16 @@ class Logger(Logger):
         else:
             self.warning(message)
 
-    def _stream_formatter(self, record, wrap=False):
-        """The formatter for standard output."""
-        if record.levelno < logging.DEBUG:
-            print(record.levelname, end='')
-        elif(record.levelno < logging.INFO):
-            colour_print(record.levelname, 'green', end='')
-        elif(record.levelno < IMPORTANT):
-            colour_print(record.levelname, 'magenta', end='')
-        elif(record.levelno < logging.WARNING):
-            colour_print(record.levelname, 'lightblue', end='')
-        elif(record.levelno < logging.ERROR):
-            colour_print(record.levelname, 'brown', end='')
-        else:
-            colour_print(record.levelname, 'red', end='')
+    def _catch_exceptions(self, exctype, value, tb):
+        """Catches all exceptions and logs them."""
 
-        record.msg = ansi_escape.sub('', record.msg)
+        # Now we log it.
+        self.error('Uncaught exception', exc_info=(exctype, value, tb))
 
-        record.message = '{0}'.format(record.msg)
-        if record.levelno == logging.WARN:
-            record.message = '{0}'.format(record.msg[record.msg.find(':') + 2:])
+        # First, we print to stdout with some colouring.
+        print_exception_formatted(exctype, value, tb)
 
-        # if not hasattr(record, 'origin') or record.origin == '':
-        #     record.message = '{0}'.format(record.msg)
-        # else:
-        #     record.message = '{0} [{1:s}]'.format(record.msg, record.origin)
-
-        if self.wrap is True and len(record.message) > 80:
-            tw = TextWrapper()
-            tw.width = 100
-            tw.subsequent_indent = ' ' * (len(record.levelname) + 2)
-            tw.break_on_hyphens = False
-            msg = '\n'.join(tw.wrap(record.message))
-            print(': ' + msg)
-        else:
-            print(': ' + record.message)
-
-    def _set_defaults(self,
-                      logLevel='WARNING',
-                      logFileLevel='INFO',
-                      logFilePath='~/.platedesign/platedesign.log',
-                      logFileMode='w',
-                      wrap=False):
+    def _set_defaults(self, log_level=logging.INFO, redirect_stdout=False):
         """Reset logger to its initial state."""
 
         # Remove all previous handlers
@@ -179,48 +230,115 @@ class Logger(Logger):
             self.removeHandler(handler)
 
         # Set levels
-        self.setLevel('DEBUG')
+        self.setLevel(logging.DEBUG)
 
         # Set up the stdout handler
-        sh = logging.StreamHandler()
-        sh.emit = self._stream_formatter
-        self.wrap = wrap
-        self.addHandler(sh)
-        sh.setLevel(logLevel)
+        self.fh = None
+        self.sh = logging.StreamHandler()
+        self.sh.emit = colored_formatter
+        self.addHandler(self.sh)
 
-        # Set up the main log file handler if requested (but this might fail if
-        # configuration directory or log file is not writeable).
+        self.sh.setLevel(log_level)
 
-        logFilePath = os.path.expanduser(logFilePath)
-        logDir = os.path.dirname(logFilePath)
-        if not os.path.exists(logDir):
-            os.mkdir(logDir)
+        warnings.showwarning = self._show_warning
+
+        # Redirects all stdout to the logger
+        if redirect_stdout:
+            sys.stdout = LoggerStdout(self._print)
+
+        # Catches exceptions
+        sys.excepthook = self._catch_exceptions
+
+    def start_file_logger(self, name='guider', log_file_level=logging.DEBUG,
+                          log_file_path=config['logging']['logdir']):
+        """Start file logging."""
+
+        log_file_path = pathlib.Path(log_file_path).expanduser() / '{}.log'.format(name)
+        logdir = log_file_path.parent
 
         try:
-            if logFileMode.lower() == 'w':
-                self.fh = FileHandler(logFilePath, mode='w')
-            elif logFileMode.lower() == 'a':
-                self.fh = TimedRotatingFileHandler(
-                    logFilePath, when='midnight', utc=True)
-            else:
-                raise ValueError('logger mode {0} not recognised'.format(logFileMode))
+            logdir.mkdir(parents=True, exist_ok=True)
+
+            # If the log file exists, backs it up before creating a new file handler
+            if log_file_path.exists():
+                strtime = datetime.datetime.utcnow().strftime('%Y-%m-%d_%H:%M:%S')
+                shutil.move(str(log_file_path), str(log_file_path) + '.' + strtime)
+
+            self.fh = TimedRotatingFileHandler(str(log_file_path), when='midnight', utc=True)
+            self.fh.suffix = '%Y-%m-%d_%H:%M:%S'
         except (IOError, OSError) as ee:
             warnings.warn('log file {0!r} could not be opened for writing: '
-                          '{1}'.format(logFilePath, ee, RuntimeWarning))
+                          '{1}'.format(log_file_path, ee), RuntimeWarning)
         else:
             self.fh.setFormatter(fmt)
             self.addHandler(self.fh)
+            self.fh.setLevel(log_file_level)
 
-        self.logFilename = logFilePath
-        warnings.showwarning = self._showwarning
+        self.log_filename = log_file_path
 
-    def setVerbose(self, verbose):
+    def set_actor(self, value):
+        """Sets the default actor to which to log."""
 
-        # If verbose is set to None or False, changes the logging level of the
-        # stdout handler.
-        if verbose is False:
-            self.handlers[0].setLevel('WARNING')
-        elif verbose is None:
-            self.handlers[0].setLevel('ERROR')
-        else:
-            self.handlers[0].setLevel('INFO')
+        self._actor = value
+
+    def debug(self, record, actor=None, **kwargs):
+        """Logs a debug message, and writes to the actor users."""
+
+        # If actor=False, does not write to the actor. Otherwise, chooses
+        # between the actor argument an the default actor for the logger
+        actor = (actor or self._actor) if actor is not False else False
+
+        super(MyLogger, self).debug(record, **kwargs)
+
+        if actor:
+            actor.writeToUsers('d', 'text={}'.format(json.dumps(str(record))))
+
+    def info(self, record, actor=None, **kwargs):
+        """Logs a info message, and writes to the actor users."""
+
+        actor = (actor or self._actor) if actor is not False else False
+
+        super(MyLogger, self).info(record, **kwargs)
+
+        if actor:
+            actor.writeToUsers('i', 'text={}'.format(json.dumps(str(record))))
+
+    def warning(self, record, actor=None, **kwargs):
+        """Logs a warning message, and writes to the actor users."""
+
+        actor = (actor or self._actor) if actor is not False else False
+
+        kwargs['extra'] = {'origin': 'actor warning'}
+        super(MyLogger, self).warning(record, **kwargs)
+
+        if actor:
+            actor.writeToUsers('w', 'text={}'.format(json.dumps(str(record))))
+
+
+logging.setLoggerClass(MyLogger)
+log = logging.getLogger(__name__)
+log._set_defaults()  # Inits sh handler
+
+
+# Creates a twisted observer to redirect messages and failures
+def twisted_analyze_event(event):
+
+    text = formatEvent(event)
+
+    if text is None:
+        text = ''
+
+    if 'log_failure' in event:
+        try:
+            traceback = event['log_failure'].getTraceback()
+        except Exception:
+            traceback = '(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n'
+        text = '\n'.join((text, traceback))
+        sys.__stdout__.write(text)
+        sys.__stdout__.flush()
+        log.exception(text)
+    else:
+        log._twisted(text)
+
+
+globalLogPublisher.addObserver(twisted_analyze_event)
