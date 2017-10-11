@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 import os
 import warnings
@@ -36,13 +36,13 @@ requirements_file = os.path.join(os.path.dirname(__file__), 'requirements.txt')
 install_requires = [line.strip().replace('==', '>=') for line in open(requirements_file)
                     if not line.strip().startswith('#') and line.strip() != '']
 
-NAME = 'lvm-surveysim'
+NAME = 'lvmsurveysim'
 # do not use x.x.x-dev.  things complain.  instead use x.x.xdev
 VERSION = '0.1.0dev'
 RELEASE = 'dev' not in VERSION
 
 
-def run(data_files, packages):
+def run():
 
     setup(name=NAME,
           version=VERSION,
@@ -54,6 +54,9 @@ def run(data_files, packages):
           keywords='LVM simulation survey scheduling',
           url='https://github.com/sdss/lvmsurveysim',
           install_requires=install_requires,
+          include_package_data=True,
+          packages=find_packages(),
+          # package_dir={'': './'},
           scripts=[],
           classifiers=[
               'Development Status :: 4 - Beta',
