@@ -1,13 +1,13 @@
 
 .. _lvm-reference
 
-LVMsim Reference
+lvmsurveysim Reference
 ================
 
 IFU
 ---
 
-.. automodule:: lvmsim.tiling.ifu
+.. automodule:: lvmsurveysim.tiling.ifu
     :members: IFU, SubIFU, MonolithicIFU, AbuttableTriangleIFU
     :show-inheritance:
     :undoc-members:

@@ -36,7 +36,7 @@ requirements_file = os.path.join(os.path.dirname(__file__), 'requirements.txt')
 install_requires = [line.strip().replace('==', '>=') for line in open(requirements_file)
                     if not line.strip().startswith('#') and line.strip() != '']
 
-NAME = 'sdss-pydrp'
+NAME = 'lvm-surveysim'
 # do not use x.x.x-dev.  things complain.  instead use x.x.xdev
 VERSION = '0.1.0dev'
 RELEASE = 'dev' not in VERSION
@@ -47,12 +47,12 @@ def run(data_files, packages):
     setup(name=NAME,
           version=VERSION,
           license='BSD3',
-          description='A data reduction pipeline for MaNGA data, in Python.',
+          description='Survey simulations and tiling for LVM',
           long_description=convert_md_to_rst('README.md'),
           author='José Sánchez-Gallego',
           author_email='gallegoj@uw.edu',
-          keywords='MaNGA DRP pipeline',
-          url='https://github.com/albireox/pydrp',
+          keywords='LVM simulation survey scheduling',
+          url='https://github.com/sdss/lvmsurveysim',
           install_requires=install_requires,
           scripts=[],
           classifiers=[

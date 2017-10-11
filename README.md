@@ -1,2 +1,2 @@
-# lvmsim
-Simulations and tiling for LVM
+# lvmsurveysim
+Survey simulations and tiling for LVM

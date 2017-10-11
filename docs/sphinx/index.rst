@@ -8,7 +8,7 @@
 ..    api
 
 ==================================
-Welcome to lvmsim's documentation!
+Welcome to lvmsurveysim's documentation!
 ==================================
 
 - :ref:`What's new in 0.1.0? <changelog-0.1.0>`
