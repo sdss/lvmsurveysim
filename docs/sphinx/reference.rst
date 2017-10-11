@@ -11,6 +11,3 @@ IFU
     :members: IFU, SubIFU, MonolithicIFU, AbuttableTriangleIFU
     :show-inheritance:
     :undoc-members:
-
-Test
-----
