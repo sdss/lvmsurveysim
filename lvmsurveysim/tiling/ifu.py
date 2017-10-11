@@ -152,7 +152,7 @@ class SubIFU(object):
         return fibres
 
     def get_patch(self, filled=False):
-        """"Returns a matplotlib patch for the sub-IFU."""
+        """Returns a matplotlib patch for the sub-IFU."""
 
         colour = current_palette[self.id_subifu - 1]
         colour_alpha = tuple(list(colour) + [0.3])
