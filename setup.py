@@ -1,15 +1,16 @@
-# !usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
+# encoding: utf-8
 #
-# Licensed under a 3-clause BSD license.
-#
-# @Author: Brian Cherinka
-# @Date:   2016-10-19 17:36:00
-# @Last modified by:   Brian Cherinka
-# @Last Modified time: 2017-08-11 15:35:55
-#
-# This is the Marvin setup
-#
+# @Author: José Sánchez-Gallego
+# @Date: Aug 15, 2017
+# @Filename: setup.py
+# @License: BSD 3-Clause
+# @Copyright: José Sánchez-Gallego
+
+
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 from setuptools import setup
 

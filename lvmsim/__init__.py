@@ -6,3 +6,6 @@ from .utils.config import get_config
 
 # log = get_log('lvmsim', log_file_path='~/.lvm/lvmsim.log')
 config = get_config('~/.lvm/lvmsim.yaml')
+
+
+__version__ = '0.1.0dev'
