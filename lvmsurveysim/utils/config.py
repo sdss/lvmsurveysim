@@ -36,7 +36,7 @@ def get_config(user_path):
     user_path = pathlib.Path(user_path).expanduser()
     user = user_path.exists() and yaml.load(open(str(user_path), 'r'))
 
-    default_path = pathlib.Path(__file__).parents[0] / '../etc/lvmsim_defaults.yaml'
+    default_path = pathlib.Path(__file__).parents[0] / '../etc/lvmsurveysim_defaults.yaml'
     default = yaml.load(open(str(default_path), 'r'))
 
     return merge(user, default)
