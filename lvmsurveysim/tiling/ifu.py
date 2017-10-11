@@ -179,35 +179,35 @@ class SubIFU(object):
 
 
 class IFU(object):
+    """A generic class representing a LVM hexagonal IFU.
+
+    This class is intended to be subclassed into real examples of IFU
+    designs that LVM will use. An ``IFU`` is defined by a series of sub-IFU
+    centres (or a single one for a monolithic IFU) and a fibre size, so
+    that the real size of the IFU on the sky can be calculated.
+
+    Parameters:
+        n_fibres (int):
+            Number of fibres in each of the sub-IFUs.
+        n_ifus (int):
+            Number of sub-IFUs that compose the IFU.
+        centres (list):
+            A list of 2D tuples describing the centres of each of the
+            sub-IFUs. It asumes the diameter of the sub-IFU hexagon is 1.
+        padding (int):
+            Number of fibres the IFU should overlap when tiling. This will
+            be used to slightly modify the distance between sub-IFUs.
+        fibre_size (float):
+            The real size, in microns, of each fibre including buffer.
+        gaps (list):
+            If the IFU is composed of multiple sub-IFUs and gaps exist
+            between them, a list with the same format of ``centres`` must
+            be provided, with the list of the hexagonal gap centres.
+
+    """
 
     def __init__(self, n_fibres=None, n_ifus=None, centres=None, padding=0,
                  fibre_size=None, gaps=None):
-        """A generic class representing a LVM hexagonal IFU.
-
-        This class is intended to be subclassed into real examples of IFU
-        designs that LVM will use. An ``IFU`` is defined by a series of sub-IFU
-        centres (or a single one for a monolithic IFU) and a fibre size, so
-        that the real size of the IFU on the sky can be calculated.
-
-        Parameters:
-            n_fibres (int):
-                Number of fibres in each of the sub-IFUs.
-            n_ifus (int):
-                Number of sub-IFUs that compose the IFU.
-            centres (list):
-                A list of 2D tuples describing the centres of each of the
-                sub-IFUs. It asumes the diameter of the sub-IFU hexagon is 1.
-            padding (int):
-                Number of fibres the IFU should overlap when tiling. This will
-                be used to slightly modify the distance between sub-IFUs.
-            fibre_size (float):
-                The real size, in microns, of each fibre including buffer.
-            gaps (list):
-                If the IFU is composed of multiple sub-IFUs and gaps exist
-                between them, a list with the same format of ``centres`` must
-                be provided, with the list of the hexagonal gap centres.
-
-        """
 
         assert isinstance(centres, (list, tuple, np.ndarray)), 'centres is not a list'
         assert len(centres) > 0, 'centres must be a non-zero length list.'
