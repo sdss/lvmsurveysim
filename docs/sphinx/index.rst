@@ -1,4 +1,7 @@
 
+.. title:: lvmsurveysim documentation
+
+
 Welcome to lvmsurveysim's documentation!
 ========================================
 
