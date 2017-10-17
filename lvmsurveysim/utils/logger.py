@@ -12,7 +12,7 @@ from __future__ import absolute_import
 
 import click
 import datetime
-import json
+
 import logging
 import os
 import pathlib
@@ -29,29 +29,17 @@ from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import TerminalFormatter
 
-from twisted.logger import formatEvent, globalLogPublisher
-
-from . import config
-
 
 # Adds custom log level for print and twisted messages
 PRINT = 15
 logging.addLevelName(PRINT, 'PRINT')
-
-TWISTED = 12
-logging.addLevelName(TWISTED, 'TWISTED')
 
 
 def print_log_level(self, message, *args, **kws):
     self._log(PRINT, message, args, **kws)
 
 
-def twisted_log_level(self, message, *args, **kws):
-    self._log(TWISTED, message, args, **kws)
-
-
 logging.Logger._print = print_log_level
-logging.Logger._twisted = twisted_log_level
 
 
 def print_exception_formatted(type, value, tb):
@@ -70,7 +58,6 @@ def colored_formatter(record):
                'debug': ('magenta', 'normal'),
                'warning': ('yellow', 'normal'),
                'print': ('green', 'normal'),
-               'twisted': ('white', 'bold'),
                'error': ('red', 'bold')}
 
     levelname = record.levelname.lower()
@@ -90,10 +77,10 @@ def colored_formatter(record):
         warning_category_colour = click.style(warning_category.groups()[0], 'cyan')
         message = message.replace(warning_category.groups()[0], warning_category_colour)
 
-    sub_level = re.match('(\[.+\]:)(.*)', message)
-    if sub_level is not None:
-        sub_level_name = click.style(sub_level.groups()[0], 'red')
-        message = '{}{}'.format(sub_level_name, ''.join(sub_level.groups()[1:]))
+    # sub_level = re.match('(\[.+\]:)(.*)', message)
+    # if sub_level is not None:
+    #     sub_level_name = click.style(sub_level.groups()[0], 'red')
+    #     message = '{}{}'.format(sub_level_name, ''.join(sub_level.groups()[1:]))
 
     # if len(message) > 79:
     #     tw = TextWrapper()
@@ -131,9 +118,6 @@ class MyFormatter(logging.Formatter):
             self._fmt = MyFormatter.info_fmt
 
         elif record.levelno == logging.getLevelName('PRINT'):
-            self._fmt = MyFormatter.info_fmt
-
-        elif record.levelno == logging.getLevelName('TWISTED'):
             self._fmt = MyFormatter.info_fmt
 
         elif record.levelno == logging.INFO:
@@ -249,8 +233,7 @@ class MyLogger(Logger):
         # Catches exceptions
         sys.excepthook = self._catch_exceptions
 
-    def start_file_logger(self, name='guider', log_file_level=logging.DEBUG,
-                          log_file_path=config['logging']['logdir']):
+    def start_file_logger(self, name, log_file_level=logging.DEBUG, log_file_path='~/'):
         """Start file logging."""
 
         log_file_path = pathlib.Path(log_file_path).expanduser() / '{}.log'.format(name)
@@ -276,69 +259,7 @@ class MyLogger(Logger):
 
         self.log_filename = log_file_path
 
-    def set_actor(self, value):
-        """Sets the default actor to which to log."""
-
-        self._actor = value
-
-    def debug(self, record, actor=None, **kwargs):
-        """Logs a debug message, and writes to the actor users."""
-
-        # If actor=False, does not write to the actor. Otherwise, chooses
-        # between the actor argument an the default actor for the logger
-        actor = (actor or self._actor) if actor is not False else False
-
-        super(MyLogger, self).debug(record, **kwargs)
-
-        if actor:
-            actor.writeToUsers('d', 'text={}'.format(json.dumps(str(record))))
-
-    def info(self, record, actor=None, **kwargs):
-        """Logs a info message, and writes to the actor users."""
-
-        actor = (actor or self._actor) if actor is not False else False
-
-        super(MyLogger, self).info(record, **kwargs)
-
-        if actor:
-            actor.writeToUsers('i', 'text={}'.format(json.dumps(str(record))))
-
-    def warning(self, record, actor=None, **kwargs):
-        """Logs a warning message, and writes to the actor users."""
-
-        actor = (actor or self._actor) if actor is not False else False
-
-        kwargs['extra'] = {'origin': 'actor warning'}
-        super(MyLogger, self).warning(record, **kwargs)
-
-        if actor:
-            actor.writeToUsers('w', 'text={}'.format(json.dumps(str(record))))
-
 
 logging.setLoggerClass(MyLogger)
 log = logging.getLogger(__name__)
 log._set_defaults()  # Inits sh handler
-
-
-# Creates a twisted observer to redirect messages and failures
-def twisted_analyze_event(event):
-
-    text = formatEvent(event)
-
-    if text is None:
-        text = ''
-
-    if 'log_failure' in event:
-        try:
-            traceback = event['log_failure'].getTraceback()
-        except Exception:
-            traceback = '(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n'
-        text = '\n'.join((text, traceback))
-        sys.__stdout__.write(text)
-        sys.__stdout__.flush()
-        log.exception(text)
-    else:
-        log._twisted(text)
-
-
-globalLogPublisher.addObserver(twisted_analyze_event)
