@@ -18,3 +18,4 @@ dependencies:
   - matplotlib
   - Shapely
   - PyYAML
+  - m2r
