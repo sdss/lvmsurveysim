@@ -15,21 +15,10 @@ from __future__ import absolute_import
 from setuptools import setup, find_packages
 
 import os
-import warnings
 
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
-
-def convert_md_to_rst(fp):
-    try:
-        import pypandoc
-        output = pypandoc.convert_file(fp, 'rst')
-        return output
-    except ImportError:
-        warnings.warn('cannot import pypandoc.', UserWarning)
-        return open(fp).read()
 
 
 requirements_file = os.path.join(os.path.dirname(__file__), 'requirements.txt')
@@ -48,7 +37,7 @@ def run():
           version=VERSION,
           license='BSD3',
           description='Survey simulations and tiling for LVM',
-          long_description=convert_md_to_rst('README.md'),
+          long_description=open('README.rst').read(),
           author='José Sánchez-Gallego',
           author_email='gallegoj@uw.edu',
           keywords='LVM simulation survey scheduling',
