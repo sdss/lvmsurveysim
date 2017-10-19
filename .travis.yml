@@ -22,6 +22,12 @@ notifications:
 branches:
 - master
 
+install:
+- pip install -U pip wheel --quiet
+- pip install --upgrade setuptools --quiet
+- pip install -r requirements.txt --quiet
+- python setup.py install
+
 # branches:
 #   except:
 #     - new_datamodel
