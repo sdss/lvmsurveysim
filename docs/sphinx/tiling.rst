@@ -1,10 +1,10 @@
 
-.. _reference:
+.. _api-tiling:
 
-lvmsurveysim Reference
-======================
+lvmsurveysim.tiling
+===================
 
-IFU
+ifu
 ---
 
 .. automodule:: lvmsurveysim.tiling.ifu
