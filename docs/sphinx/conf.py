@@ -108,7 +108,9 @@ todo_include_todos = False
 # Intersphinx mappings
 intersphinx_mapping = {'python': ('https://docs.python.org/3.6', None),
                        'astropy': ('http://docs.astropy.org/en/latest', None),
-                       'numpy': ('http://docs.scipy.org/doc/numpy/', None)}
+                       'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+                       'shapely': ('https://shapely.readthedocs.io/en/latest', None),
+                       'matplotlib': ('https://matplotlib.org/', None)}
 
 autodoc_mock_imports = ['_tkinter']
 autodoc_member_order = 'groupwise'
@@ -123,6 +125,7 @@ rst_epilog = """
 .. |numpy_array| replace:: Numpy array
 .. _numpy_array: http://example.com/
 .. |HDUList| replace:: :class:`~astropy.io.fits.HDUList`
+.. _Shapely: https://shapely.readthedocs.io/en/latest
 """
 
 
