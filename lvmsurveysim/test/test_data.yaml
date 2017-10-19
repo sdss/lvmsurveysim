@@ -1,0 +1,11 @@
+regions:
+    circle:
+        coords: [150, 69]
+        params:
+            r: 0.2
+    ellipse:
+        coords: [150, 69]
+        params:
+            a: 0.2
+            b: 0.1
+            pa: 30
