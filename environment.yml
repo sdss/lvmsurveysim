@@ -8,4 +8,13 @@ dependencies:
 - wheel
 - zlib
 - pip:
-  - -r requirements_doc.txt
+  - ipython>=6.2.0
+  - click
+  - seaborn
+  - numpy
+  - scipy
+  - astropy
+  - pandas
+  - matplotlib
+  - Shapely
+  - PyYAML
