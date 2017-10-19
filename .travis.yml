@@ -1,0 +1,31 @@
+language: python
+
+cache:
+  pip: true
+  timeout: 1000
+
+sudo: false
+
+python:
+- '3.6'
+
+os:
+- linux
+
+matrix:
+  fast_finish: true
+
+notifications:
+  email: false
+
+# repo branches to test
+branches:
+- master
+
+# branches:
+#   except:
+#     - new_datamodel
+#     - mpl6_clean_tools
+
+# after_success:
+# - coveralls
