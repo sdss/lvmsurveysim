@@ -11,3 +11,5 @@ ifus:
         gaps: [[0, 0], [-0.75, -0.433012702], [0.75, -0.433012702], [0, 0.866025404]]
         n_fibres: 1657
         n_ifus: 1
+
+target_list: $LVMCORE_DIR/surveydesign/targets.yaml
