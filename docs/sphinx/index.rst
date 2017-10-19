@@ -5,14 +5,14 @@
 Welcome to lvmsurveysim's documentation!
 ========================================
 
-Contents
---------
+Reference
+---------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   whats-new
-   API Reference <reference>
+   tiling
+   target
 
 |
 
