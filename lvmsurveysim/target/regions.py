@@ -97,7 +97,7 @@ class Region(object, metaclass=RegionABC):
 
     def __init__(self, *args, **kwargs):
 
-        self._shapely = self._create_shapely()
+        self._shapely = None
 
     @abc.abstractmethod
     def _create_shapely(self):
@@ -112,6 +112,9 @@ class Region(object, metaclass=RegionABC):
     @property
     def shapely(self):
         """Returns the `Shapely`_ representation of the ellipse."""
+
+        if self._shapely is None:
+            self._shapely = self._create_shapely()
 
         return self._shapely
 
@@ -151,6 +154,22 @@ class Region(object, metaclass=RegionABC):
             point = shapely.geometry.Point((coords[0], coords[1]))
 
         return self.shapely.contains(point)
+
+    def overlap(self, other):
+        """Returns the `.OverlapRegion` between this and other sky region.
+
+        Uses shapely to determine the intersection between two regions and
+        creates an overlap region. Returns ``False`` if there is no
+        intersection.
+
+        """
+
+        assert isinstance(other, Region), 'other must be a subclass of Region.'
+
+        if self.shapely.intersects(other.shapely) is False:
+            return False
+
+        return OverlapRegion(self.shapely.intersection(other.shapely))
 
 
 class EllipticalRegion(Region):
@@ -306,3 +325,34 @@ class CircularRegion(EllipticalRegion):
         ax.autoscale()
 
         return fig, ax
+
+
+class OverlapRegion(Region):
+    """Defines the region resulting from the overlap of two regions.
+
+    Not intended for direct instantiation.
+
+    Parameters:
+        shapely_region (`shapely.geometry.base.BaseGeometry`):
+            The shapely object describing the overlap region.
+
+    """
+
+    def __init__(self, shapely_region):
+
+        super(OverlapRegion, self).__init__()
+
+        self._shapely = shapely_region
+
+    def _create_shapely(self):
+        pass
+
+    def _create_patch(self, **kwargs):
+        """Returns an `~matplotlib.patches.Ellipse` for this region."""
+
+        raise NotImplemented()
+
+    @add_doc(Region.plot)
+    def plot(self, projection='rectangular', **kwargs):
+
+        raise NotImplemented
