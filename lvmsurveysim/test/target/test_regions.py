@@ -20,9 +20,28 @@ import numpy as np
 import shapely.geometry
 
 from lvmsurveysim.target.regions import CircularRegion
+from lvmsurveysim.utils.spherical import great_circle_distance
 
 
+# Sets a fixed seed for the random numbers, so that results are reproducible.
 np.random.seed(12346)
+
+
+def plot_inside_outside(region, inside_points, outside_points, plot_fn):
+    """Plots the region and the inside and outside points."""
+
+    image_path = str(pathlib.Path(__file__).parents[1] / 'plots' / plot_fn)
+
+    fig, ax = region.plot(fill=False, edgecolor='k', linewidth=1.5)
+    ax.scatter(inside_points[:, 0], inside_points[:, 1], marker='o', edgecolor='None')
+    ax.scatter(outside_points[:, 0], outside_points[:, 1], marker='o', edgecolor='None')
+    plt.savefig(str(image_path))
+
+
+def get_random_points(low, high, nn=150):
+    """Returns points from the uniform distribution between low and high."""
+
+    return (high - low) * np.random.random(nn) + low
 
 
 def test_shapely(region):
@@ -35,6 +54,18 @@ class TestCircularRegion(object):
 
     _region_types = ['circle']
 
+    def _get_bounds(self, test_region):
+        """Manually calculates the bounds of the region."""
+
+        ra0 = test_region.coords.ra.deg
+        dec0 = test_region.coords.dec.deg
+
+        ra_size = test_region.r.deg / np.cos(np.deg2rad(dec0))
+        dec_size = test_region.r.deg
+
+        return (np.array([ra0 - ra_size, ra0 + ra_size]),
+                np.array([dec0 - dec_size, dec0 + dec_size]))
+
     def _create_points(self, test_region, n_points=150, plot=False):
         """Creates a list of points within the bounds of the test region.
 
@@ -46,29 +77,20 @@ class TestCircularRegion(object):
         ra0 = test_region.coords.ra.deg
         dec0 = test_region.coords.dec.deg
 
-        ra_bounds = test_region.r.deg / np.cos(np.deg2rad(dec0))
-        dec_bounds = test_region.r.deg
+        ra_bounds, dec_bounds = self._get_bounds(test_region)
 
-        test_points_ra = ra0 + 2 * ra_bounds * np.random.sample(n_points) - ra_bounds
-        test_points_dec = dec0 + 2 * dec_bounds * np.random.sample(n_points) - dec_bounds
+        test_points_ra = get_random_points(ra_bounds[0], ra_bounds[1], nn=n_points)
+        test_points_dec = get_random_points(dec_bounds[0], dec_bounds[1], nn=n_points)
+
+        sph_distance = great_circle_distance(test_points_ra, test_points_dec, ra0, dec0)
 
         test_points = np.array([test_points_ra, test_points_dec]).T
-
-        sph_distance = np.arccos(np.cos(np.deg2rad(dec0)) *
-                                 np.cos(np.deg2rad(test_points_dec)) *
-                                 np.cos(np.deg2rad(test_points_ra - ra0)) +
-                                 np.sin(np.deg2rad(dec0)) * np.sin(np.deg2rad(test_points_dec)))
-        sph_distance = np.rad2deg(sph_distance)
-
         inside_points = test_points[np.where(sph_distance < test_region.r.deg)]
         outside_points = test_points[np.where(sph_distance >= test_region.r.deg)]
 
         if plot:
-            fig, ax = test_region.plot(fill=False, edgecolor='k', linewidth=1.5)
-            ax.scatter(inside_points[:, 0], inside_points[:, 1], marker='o', edgecolor='None')
-            ax.scatter(outside_points[:, 0], outside_points[:, 1], marker='o', edgecolor='None')
-            image_path = str(pathlib.Path(__file__).parents[1] / 'plots/test_circular_region.png')
-            plt.savefig(str(image_path))
+            plot_inside_outside(test_region, inside_points, outside_points,
+                                'test_circular_region.png')
 
         return inside_points, outside_points
 
@@ -81,15 +103,8 @@ class TestCircularRegion(object):
         shapely_outside = np.array(list(filter(lambda xx: not region.contains(xx),
                                                shapely_points)))
 
-        fig, ax = region.plot(fill=False, edgecolor='k', linewidth=1.5)
-
-        ax.scatter(shapely_inside[:, 0], shapely_inside[:, 1], marker='o', edgecolor='None')
-        ax.scatter(shapely_outside[:, 0], shapely_outside[:, 1], marker='o', edgecolor='None')
-
-        image_path = str(pathlib.Path(__file__).parents[1] /
-                         'plots/test_circular_region_shapely.png')
-
-        plt.savefig(str(image_path))
+        plot_inside_outside(region, shapely_inside, shapely_outside,
+                            'test_circular_region_shapely.png')
 
     def test_point_inside_ellipse(self, region, plot):
 
@@ -104,3 +119,7 @@ class TestCircularRegion(object):
 
         for point in outside_points:
             assert not region.contains(point)
+
+    def test_bases(self, region):
+
+        assert isinstance(region, CircularRegion)
