@@ -164,31 +164,34 @@ class EllipticalRegion(Region):
             A tuple of ``(ra, dec)`` in degrees or a
             `~astropy.coordinates.SkyCoord` describing the centre of the
             ellipse.
-        a (float):
+        a (float or `~astropy.coordinates.Angle`):
             The length of the semi-major axis of the ellipse, in degrees.
-        b (float):
-            The length of the semi-minor axis of the ellipse, in degrees.
+            Gets converted to an `~astropy.coordinates.Angle`.
+        b (float or `~astropy.coordinates.Angle`):
+            The length of the semi-minor axis of the ellipse, in degrees. Gets
+            converted to an `~astropy.coordinates.Angle`.
         ba (float):
             The ratio of the semi-minor to semi-major axis. Either ``b`` or
             ``ba`` must be defined.
-        pa (float):
+        pa (float or `~astropy.coordinates.Angle`):
             The position angle (from North to East) of the ellipse, in degrees.
+            Gets converted to an `~astropy.coordinates.Angle`.
 
     """
 
     def __init__(self, coords, a, b=None, pa=None, ba=None):
 
-        self.a = a
+        self.a = astropy.coordinates.Angle(a, 'deg')
 
         assert pa is not None, 'position angle is missing.'
 
-        self.pa = pa
+        self.pa = astropy.coordinates.Angle(pa, 'deg')
 
         if b is None:
             assert ba is not None, 'either b or ba need to be defined.'
-            self.b = ba * a
+            self.b = astropy.coordinates.Angle(ba * a, 'deg')
         else:
-            self.b = b
+            self.b = astropy.coordinates.Angle(b, 'deg')
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
@@ -205,15 +208,19 @@ class EllipticalRegion(Region):
         b = b if b is not None else self.b
         pa = pa if pa is not None else self.pa
 
+        a = astropy.coordinates.Angle(a, 'deg')
+        b = astropy.coordinates.Angle(b, 'deg')
+        pa = astropy.coordinates.Angle(pa, 'deg')
+
         # See https://gis.stackexchange.com/questions/243459/drawing-ellipse-with-shapely/243462
 
         circ = shapely.geometry.Point((self.coords.ra.deg, self.coords.dec.deg)).buffer(1)
 
         # Create the ellipse along x and y.
-        ell = shapely.affinity.scale(circ, a / np.cos(np.deg2rad(self.coords.dec.deg)), b)
+        ell = shapely.affinity.scale(circ, a.deg / np.cos(np.deg2rad(self.coords.dec)), b.deg)
 
         # Rotate the ellipse (positive values mean anticlockwise)
-        ellr = shapely.affinity.rotate(ell, pa)
+        ellr = shapely.affinity.rotate(ell, pa.deg)
 
         return ellr
 
@@ -224,14 +231,18 @@ class EllipticalRegion(Region):
         b = b if b is not None else self.b
         pa = pa if pa is not None else self.pa
 
+        a = astropy.coordinates.Angle(a, 'deg')
+        b = astropy.coordinates.Angle(b, 'deg')
+        pa = astropy.coordinates.Angle(pa, 'deg')
+
         # Note that Ellipse uses the full length (diameter) of the axes.
 
         ra = self.coords.ra.deg
         dec = self.coords.dec.deg
         ell = matplotlib.patches.Ellipse((ra, dec),
-                                         width=a / np.cos(np.deg2rad(dec)) * 2.,
-                                         height=b * 2.,
-                                         angle=pa, **kwargs)
+                                         width=a.deg / np.cos(np.deg2rad(dec)) * 2.,
+                                         height=b.deg * 2.,
+                                         angle=pa.deg, **kwargs)
 
         return ell
 
@@ -264,7 +275,7 @@ class CircularRegion(EllipticalRegion):
 
     def __init__(self, coords, r):
 
-        self.r = r
+        self.r = astropy.coordinates.Angle(r, 'deg')
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
@@ -275,14 +286,14 @@ class CircularRegion(EllipticalRegion):
     def _create_shapely(self):
         """Creates a `Shapely`_ object representing the ellipse."""
 
-        circ = super(CircularRegion, self)._create_shapely(a=self.r, b=self.r, pa=0)
+        circ = super(CircularRegion, self)._create_shapely(a=self.r.deg, b=self.r.deg, pa=0)
 
         return circ
 
     def _create_patch(self, **kwargs):
         """Returns an `~matplotlib.patches.Ellipse` for this region."""
 
-        ell = super(CircularRegion, self)._create_patch(a=self.r, b=self.r, pa=0, **kwargs)
+        ell = super(CircularRegion, self)._create_patch(a=self.r.deg, b=self.r.deg, pa=0, **kwargs)
 
         return ell
 

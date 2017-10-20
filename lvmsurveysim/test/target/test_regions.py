@@ -46,8 +46,8 @@ class TestCircularRegion(object):
         ra0 = test_region.coords.ra.deg
         dec0 = test_region.coords.dec.deg
 
-        ra_bounds = test_region.r / np.cos(np.deg2rad(dec0))
-        dec_bounds = test_region.r
+        ra_bounds = test_region.r.deg / np.cos(np.deg2rad(dec0))
+        dec_bounds = test_region.r.deg
 
         test_points_ra = ra0 + 2 * ra_bounds * np.random.sample(n_points) - ra_bounds
         test_points_dec = dec0 + 2 * dec_bounds * np.random.sample(n_points) - dec_bounds
@@ -60,8 +60,8 @@ class TestCircularRegion(object):
                                  np.sin(np.deg2rad(dec0)) * np.sin(np.deg2rad(test_points_dec)))
         sph_distance = np.rad2deg(sph_distance)
 
-        inside_points = test_points[np.where(sph_distance < test_region.r)]
-        outside_points = test_points[np.where(sph_distance >= test_region.r)]
+        inside_points = test_points[np.where(sph_distance < test_region.r.deg)]
+        outside_points = test_points[np.where(sph_distance >= test_region.r.deg)]
 
         if plot:
             fig, ax = test_region.plot(fill=False, edgecolor='k', linewidth=1.5)
