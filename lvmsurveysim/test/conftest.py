@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import pytest
 
 import os
+import pathlib
 import yaml
 
 from ..target.regions import Region
@@ -22,6 +23,19 @@ from ..target.regions import Region
 
 def pytest_addoption(parser):
     parser.addoption('--plot', action='store_true', default=False, help='outputs test plots')
+
+
+def pytest_configure(config):
+    """Runs during configuration of conftest."""
+
+    do_plot = config.getoption('--plot')
+
+    if do_plot:
+        plots_path = (pathlib.Path(__file__).parent / 'plots')
+        if plots_path.exists():
+            for fn in plots_path.glob('*'):
+                print(fn)
+                fn.unlink()
 
 
 @pytest.fixture
