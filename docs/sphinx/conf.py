@@ -139,7 +139,7 @@ html_theme = 'alabaster'
 html_sidebars = {
     '**': [
         'about.html',
-        'navigation.html',
+        'localtoc.html',
         'relations.html',
         'searchbox.html',
     ]
@@ -157,6 +157,7 @@ html_theme_options = {
     'github_type': 'star',
     # 'code_font_family': 'Menlo',
     # 'font_family': 'Hiragino Mincho Pro'
+    'sidebar_width': '240px'
 }
 
 html_favicon = './_static/favicon.ico'
