@@ -22,6 +22,7 @@ import shapely.affinity
 import numpy as np
 
 import matplotlib.patches
+import matplotlib.transforms
 
 from . import plot as lvm_plot
 from ..utils import add_doc
@@ -126,13 +127,18 @@ class Region(object, metaclass=RegionABC):
             projection (str):
                 The projection to use. At this time, only ``rectangular`` and
                 ``mollweide`` are accepted.
+            return_patch (bool):
+                If True, returns the
+                `matplotlib patch <https://matplotlib.org/api/patches_api.html>`_
+                for the region.
             kwargs (dict):
                 Options to be passed to matplotlib when creating the patch.
 
         Returns:
             Returns the matplotlib `~matplotlib.figure.Figure` and
             `~matplotlib.axes.Axes` objects for this plot. If not specified,
-            the default plotting styles will be used.
+            the default plotting styles will be used. If ``return_patch=True``,
+            returns the patch as well.
 
         """
 
@@ -193,8 +199,9 @@ class EllipticalRegion(Region):
             The ratio of the semi-minor to semi-major axis. Either ``b`` or
             ``ba`` must be defined.
         pa (float or `~astropy.coordinates.Angle`):
-            The position angle (from North to East) of the ellipse, in degrees.
-            Gets converted to an `~astropy.coordinates.Angle`.
+            The position angle (from North to East) of the major axis of the
+            ellipse, in degrees. Gets converted to an
+            `~astropy.coordinates.Angle`.
 
     """
 
@@ -211,6 +218,8 @@ class EllipticalRegion(Region):
             self.b = astropy.coordinates.Angle(ba * a, 'deg')
         else:
             self.b = astropy.coordinates.Angle(b, 'deg')
+
+        assert self.a > self.b, 'a must be greater than b.'
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
@@ -235,16 +244,20 @@ class EllipticalRegion(Region):
 
         circ = shapely.geometry.Point((self.coords.ra.deg, self.coords.dec.deg)).buffer(1)
 
-        # Create the ellipse along x and y.
-        ell = shapely.affinity.scale(circ, a.deg / np.cos(np.deg2rad(self.coords.dec)), b.deg)
+        ell = shapely.affinity.scale(circ, b.deg, a.deg)
 
-        # Rotate the ellipse (positive values mean anticlockwise)
-        ellr = shapely.affinity.rotate(ell, pa.deg)
+        # Rotate the ellipse.
+        ellr = shapely.affinity.rotate(ell, -pa.deg)
 
-        return ellr
+        # Applies the RA axis scaling
 
-    def _create_patch(self, a=None, b=None, pa=None, **kwargs):
-        """Returns an `~matplotlib.patches.Ellipse` for this region."""
+        ell_ra = shapely.affinity.scale(ellr, 1 / np.cos(np.radians(self.coords.dec.deg)), 1)
+
+        return ell_ra
+
+    @add_doc(Region.plot)
+    def plot(self, projection='rectangular', return_patch=False,
+             a=None, b=None, pa=None, **kwargs):
 
         a = a if a is not None else self.a
         b = b if b is not None else self.b
@@ -254,26 +267,41 @@ class EllipticalRegion(Region):
         b = astropy.coordinates.Angle(b, 'deg')
         pa = astropy.coordinates.Angle(pa, 'deg')
 
-        # Note that Ellipse uses the full length (diameter) of the axes.
-
-        ra = self.coords.ra.deg
-        dec = self.coords.dec.deg
-        ell = matplotlib.patches.Ellipse((ra, dec),
-                                         width=a.deg / np.cos(np.deg2rad(dec)) * 2.,
-                                         height=b.deg * 2.,
-                                         angle=pa.deg, **kwargs)
-
-        return ell
-
-    @add_doc(Region.plot)
-    def plot(self, projection='rectangular', **kwargs):
-
         fig, ax = lvm_plot.get_axes(projection=projection)
-        patch = self._create_patch()
-        ax.add_patch(patch)
-        ax.autoscale()
 
-        return fig, ax
+        # Creates the ellipse in (0, 0) so that the scaling doesn't move the
+        # centre. We will translate it after scaling in the RA direction.
+        ell = matplotlib.patches.Ellipse((0, 0),
+                                         width=b.deg * 2,
+                                         height=a.deg * 2,
+                                         angle=-pa.deg, **kwargs)
+
+        ell = ax.add_patch(ell)
+
+        # Scales the RA direction by the cos(dec) factor. We want to do this
+        # AFTER the rotation has happened, so that all the elements in the RA
+        # direction are scaled properly.
+        ra_transform = matplotlib.transforms.Affine2D().scale(
+            1. / np.cos(np.radians(self.coords.dec.deg)), 1)
+
+        # Moves the ellipse to the correct position.
+        coords_transform = matplotlib.transforms.Affine2D().translate(self.coords.ra.deg,
+                                                                      self.coords.dec.deg)
+
+        # This way of applying the transformation makes sure ra_transform
+        # is applied in data units befor ax.transData converts to pixels.
+        ell.set_transform(ra_transform + coords_transform + ax.transData)
+
+        padding_x = 0.1 * (self.shapely.bounds[2] - self.shapely.bounds[0])
+        padding_y = 0.1 * (self.shapely.bounds[3] - self.shapely.bounds[1])
+
+        ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
+        ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
+
+        if return_patch:
+            return fig, ax, ell
+        else:
+            return fig, ax
 
 
 class CircularRegion(EllipticalRegion):
@@ -298,33 +326,27 @@ class CircularRegion(EllipticalRegion):
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
-            self.coords = astropy.coordinates.SkyCoord(ra=coords[0], dec=coords[1], unit='deg')
+            self.coords = astropy.coordinates.SkyCoord(ra=coords[0],
+                                                       dec=coords[1],
+                                                       unit='deg')
 
         Region.__init__(self)
 
     def _create_shapely(self):
         """Creates a `Shapely`_ object representing the ellipse."""
 
-        circ = super(CircularRegion, self)._create_shapely(a=self.r.deg, b=self.r.deg, pa=0)
+        circ = super(CircularRegion, self)._create_shapely(a=self.r.deg,
+                                                           b=self.r.deg,
+                                                           pa=0)
 
         return circ
 
-    def _create_patch(self, **kwargs):
-        """Returns an `~matplotlib.patches.Ellipse` for this region."""
-
-        ell = super(CircularRegion, self)._create_patch(a=self.r.deg, b=self.r.deg, pa=0, **kwargs)
-
-        return ell
-
     @add_doc(Region.plot)
-    def plot(self, projection='rectangular', **kwargs):
+    def plot(self, projection='rectangular', return_patch=False, **kwargs):
 
-        fig, ax = lvm_plot.get_axes(projection=projection)
-        patch = self._create_patch(**kwargs)
-        ax.add_patch(patch)
-        ax.autoscale()
-
-        return fig, ax
+        return super(CircularRegion, self).plot(projection=projection,
+                                                return_patch=return_patch,
+                                                a=self.r, b=self.r, pa=0, **kwargs)
 
 
 class OverlapRegion(Region):
