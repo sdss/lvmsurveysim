@@ -1,11 +1,29 @@
 regions:
     circle:
+        type: 'circle'
         coords: [150, 69]
         params:
             r: 0.2
     ellipse:
+        type: 'ellipse'
         coords: [150, 69]
         params:
-            a: 0.2
+            a: 0.3
+            b: 0.15
+            pa: 45
+
+    ellipse_2:
+        type: 'ellipse'
+        coords: [150, 69]
+        params:
+            a: 0.6
             b: 0.1
-            pa: 30
+            pa: -10
+
+    ellipse_3:
+        type: 'ellipse'
+        coords: [150, 69]
+        params:
+            a: 4
+            b: 1
+            pa: -60
