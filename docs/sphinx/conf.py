@@ -137,6 +137,12 @@ rst_epilog = """
 html_theme = 'alabaster'
 
 html_sidebars = {
+    'index': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+    ],
     '**': [
         'about.html',
         'localtoc.html',
