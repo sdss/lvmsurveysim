@@ -38,5 +38,5 @@ script:
 #     - new_datamodel
 #     - mpl6_clean_tools
 
-# after_success:
-# - coveralls
+after_success:
+- coveralls
