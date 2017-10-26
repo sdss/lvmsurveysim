@@ -28,10 +28,11 @@ install:
 - pip install -r requirements.txt --quiet
 - pip install pytest
 - pip install pytest-coverage
+- pip install coverage
 - python setup.py install
 
 script:
-- pytest lvmsurveysim/test
+- pytest lvmsurveysim/test --cov lvmsurveysim --cov-report html
 
 # branches:
 #   except:
