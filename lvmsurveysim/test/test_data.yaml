@@ -27,3 +27,7 @@ regions:
             a: 4
             b: 1
             pa: -60
+
+    polygon:
+        type: 'polygon'
+        coords: [[169, 65], [180, 65], [170, 70]]

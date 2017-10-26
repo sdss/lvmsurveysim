@@ -219,3 +219,49 @@ class TestEllipticalRegion(RegionBaseTester):
         outside_points = test_points[np.where(dist >= 1)]
 
         return inside_points, outside_points
+
+
+class TestPolygonalRegion(RegionBaseTester):
+
+    _region_type = 'polygon'
+    _region_class = lvmsurveysim.target.regions.PolygonalRegion
+    _plot_fn_base = 'test_polygon'
+
+    _max_failures = 1
+
+    def _get_bounds(self, test_region, padding=0):
+        """Manually calculates the bounds of the region."""
+
+        bounds = test_region.shapely.bounds
+
+        return (np.array([bounds[0] - padding, bounds[2] + padding]),
+                np.array([bounds[1] - padding, bounds[3] + padding]))
+
+    def _create_points(self, test_region, n_points=150, plot=False):
+        """Creates a list of points within the bounds of the test region."""
+
+        ra_bounds, dec_bounds = self._get_bounds(test_region, padding=0.02)
+
+        test_points_ra = get_random_points(ra_bounds[0], ra_bounds[1], nn=n_points)
+        test_points_dec = get_random_points(dec_bounds[0], dec_bounds[1], nn=n_points)
+
+        test_points = np.array([test_points_ra, test_points_dec]).T
+
+        return test_points
+
+    def test_point_inside(self, region, plot):
+
+        # TODO: we actually don't test anything here, just plot the points
+        # according to Shapely. At some point it'd be good to have some
+        # independent check of the inside-outside of these points using the
+        # ray algorightm.
+
+        points = self._create_points(region)
+
+        if plot:
+
+            self._plot_points_shapely(region, points)
+
+        n_failures = 0
+
+        assert n_failures <= self._max_failures, f'shapely failed to classify {n_failures} points.'

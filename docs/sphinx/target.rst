@@ -19,7 +19,7 @@ regions
 -------
 
 .. automodule:: lvmsurveysim.target.regions
-    :members: Region, EllipticalRegion, CircularRegion, region_factory
+    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, OverlapRegion, region_factory
     :show-inheritance:
     :undoc-members:
 

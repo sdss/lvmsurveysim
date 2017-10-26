@@ -69,7 +69,9 @@ def region(region_name):
 
     region_data = test_regions[region_name]
 
-    region = Region(region_data['type'], region_data['coords'], **region_data['params'])
+    params = region_data['params'] if 'params' in region_data else {}
+
+    region = Region(region_data['type'], region_data['coords'], **params)
     region.name = region_name  # this can be useful to differentiate multiple regions of same type.
 
     yield region

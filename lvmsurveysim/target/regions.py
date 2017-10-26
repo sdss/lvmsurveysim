@@ -62,6 +62,8 @@ def region_factory(cls, *args, **kwargs):
             return EllipticalRegion(*args[1:], **kwargs)
         elif args[0] == 'circle':
             return CircularRegion(*args[1:], **kwargs)
+        elif args[0] == 'polygon':
+            return PolygonalRegion(*args[1:], **kwargs)
         else:
             raise ValueError('invalid region type.')
 
@@ -347,6 +349,66 @@ class CircularRegion(EllipticalRegion):
         return super(CircularRegion, self).plot(projection=projection,
                                                 return_patch=return_patch,
                                                 a=self.r, b=self.r, pa=0, **kwargs)
+
+
+class PolygonalRegion(Region):
+    """Defines a polygonal (multipoint) region on the sky.
+
+    Represents a polygon on the sky Internally it is powered by a shapely
+    `Polygon <https://shapely.readthedocs.io/en/latest/manual.html#polygons>`_
+    object.
+
+    Parameters:
+        vertices (list):
+            A list or `~numpy.ndarray` of the vertices of the polygon, each
+            one of them a tuple ``(RA, Dec)``. If the last element is not
+            identical to the first one, the polygon is closed using the first
+            vertex.
+
+    Example:
+
+        >>> poly = PolygonalRegion([(169, 65), (180, 65), (170, 70), (169, 65)])
+
+    """
+
+    def __init__(self, vertices):
+
+        self.vertices = np.atleast_2d(vertices)
+
+        assert self.vertices.ndim == 2, 'invalid number of dimensions.'
+        assert self.vertices.shape[0] > 2, 'need at least three points for a polygon.'
+
+        if np.any(self.vertices[-1, :] != self.vertices[0, :]):
+            self.vertices = np.vstack((self.vertices, self.vertices[0, :]))
+
+        Region.__init__(self)
+
+    def _create_shapely(self):
+        """Creates a `Shapely`_ object representing the ellipse."""
+
+        poly = shapely.geometry.Polygon(self.vertices.tolist())
+
+        return poly
+
+    @add_doc(Region.plot)
+    def plot(self, projection='rectangular', return_patch=False, **kwargs):
+
+        fig, ax = lvm_plot.get_axes(projection=projection)
+
+        poly = matplotlib.patches.Polygon(self.vertices.tolist(), **kwargs)
+
+        poly = ax.add_patch(poly)
+
+        padding_x = 0.1 * (self.shapely.bounds[2] - self.shapely.bounds[0])
+        padding_y = 0.1 * (self.shapely.bounds[3] - self.shapely.bounds[1])
+
+        ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
+        ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
+
+        if return_patch:
+            return fig, ax, poly
+        else:
+            return fig, ax
 
 
 class OverlapRegion(Region):
