@@ -1,0 +1,14 @@
+[run]
+branch = true
+
+omit =
+    # exclude things in test
+    lvmsurveysim/test/*
+    lvmsurveysim/bin/*
+    lvmsurveysim/etc/*
+
+[report]
+omit =
+    lvmsurveysim/test/*
+    lvmsurveysim/bin/*
+    lvmsurveysim/etc/*

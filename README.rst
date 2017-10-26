@@ -3,7 +3,7 @@ lvmsurveysim
 
 Survey simulations and tiling for LVM
 
-|travis| |docs| |py36|
+|travis| |coveralls| |docs| |py36|
 
 .. |docs| image:: https://readthedocs.org/projects/docs/badge/?version=latest
     :alt: Documentation Status
@@ -14,3 +14,6 @@ Survey simulations and tiling for LVM
 
 .. |travis| image:: https://travis-ci.org/albireox/lvmsurveysim.svg?branch=master
     :target: https://travis-ci.org/albireox/lvmsurveysim
+
+.. |coveralls| image:: https://coveralls.io/repos/github/albireox/lvmsurveysim/badge.svg
+    :target: https://coveralls.io/github/albireox/lvmsurveysim
