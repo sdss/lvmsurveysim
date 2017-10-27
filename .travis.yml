@@ -7,10 +7,10 @@ cache:
 sudo: false
 
 python:
-- '3.6'
+  - '3.6'
 
 os:
-- linux
+  - linux
 
 matrix:
   fast_finish: true
@@ -24,25 +24,28 @@ env:
 
 # repo branches to test
 branches:
-- master
+  - master
 
 install:
-- pip install -U pip wheel --quiet
-- pip install --upgrade setuptools --quiet
-- pip install -r requirements.txt --quiet
-- pip install pytest
-- pip install pytest-coverage
-- pip install coverage
-- pip install coveralls
-- python setup.py install
+  - pip install -U pip wheel --quiet
+  - pip install --upgrade setuptools --quiet
+  - pip install -r requirements.txt --quiet
+  - pip install pytest
+  - pip install pytest-coverage
+  - pip install coverage
+  - pip install coveralls
+  - python setup.py install
 
 before_script:
 # Needed to handle GUI or QT based tests (e.g. matplotlib.pyplot import)
-- sh -e /etc/init.d/xvfb start
-- sleep 3
+  - sh -e /etc/init.d/xvfb start
+  - sleep 3
+  - mkdir ~/.matplotlib
+  - echo \"backend: tkagg\" > ~/.matplotlib/matplotlibrc
+
 
 script:
-- pytest lvmsurveysim/test --cov lvmsurveysim --cov-report html
+  - pytest lvmsurveysim/test --cov lvmsurveysim --cov-report html
 
 # branches:
 #   except:
@@ -50,4 +53,4 @@ script:
 #     - mpl6_clean_tools
 
 after_success:
-- coveralls
+  - coveralls
