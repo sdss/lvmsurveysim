@@ -1,0 +1,7 @@
+Target1:
+    coords: [148.888333, 69.0652778]
+    region_type: 'ellipse'
+    region_params:
+        a: 0.209722
+        b: 0.106958333
+        pa: 149
