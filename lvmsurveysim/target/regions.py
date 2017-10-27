@@ -102,6 +102,10 @@ class Region(object, metaclass=RegionABC):
 
         self._shapely = None
 
+    def __repr__(self):
+
+        return f'<{self.__class__.__name__}>'
+
     @abc.abstractmethod
     def _create_shapely(self):
         """Creates the `Shapely`_ object representing this region.
@@ -231,6 +235,11 @@ class EllipticalRegion(Region):
 
         super(EllipticalRegion, self).__init__()
 
+    def __repr__(self):
+
+        return (f'<{self.__class__.__name__} (coords={self.coords!r}, '
+                f'a={self.a:.3f}, b={self.b:.3f}, pa={self.pa:.1f})>')
+
     def _create_shapely(self, a=None, b=None, pa=None):
         """Creates a `Shapely`_ object representing the ellipse."""
 
@@ -334,6 +343,10 @@ class CircularRegion(EllipticalRegion):
 
         Region.__init__(self)
 
+    def __repr__(self):
+
+        return f'<{self.__class__.__name__} (coords={self.coords!r}, r={self.r:.3f})>'
+
     def _create_shapely(self):
         """Creates a `Shapely`_ object representing the ellipse."""
 
@@ -382,6 +395,10 @@ class PolygonalRegion(Region):
             self.vertices = np.vstack((self.vertices, self.vertices[0, :]))
 
         Region.__init__(self)
+
+    def __repr__(self):
+
+        return f'<{self.__class__.__name__} (vertices={self.vertices!r})>'
 
     def _create_shapely(self):
         """Creates a `Shapely`_ object representing the ellipse."""
