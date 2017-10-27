@@ -42,7 +42,8 @@ class Target(object):
 
     Example:
 
-        >>> target = Target('MyTarget', coords=(169, 65), region_type='circle', region_params={'r': 0.1})
+        >>> target = Target('MyTarget', coords=(169, 65), region_type='circle',
+        >>>                 region_params={'r': 0.1})
         >>> target
         <Region 'MyTarget'>
         >>> target.region
