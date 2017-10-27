@@ -41,7 +41,7 @@ def test_mollweide(name, patch, patch_centre, plot):
     lvmsurveysim.target.plot.transform_patch_mollweide(ax, patch, patch_centre=patch_centre)
 
     if plot:
-        plot_path = pathlib.Path(__file__).parents[1] / f'plots/test_plot_{name}_mollweide.pdf'
+        plot_path = pathlib.Path(__file__).parents[1] / f'plots/test_{name}_mollweide.pdf'
         plt.savefig(str(plot_path))
 
 
@@ -54,5 +54,5 @@ def test_mollweide_no_patch_centre(plot):
     lvmsurveysim.target.plot.transform_patch_mollweide(ax, patch, patch_centre=None)
 
     if plot:
-        plot_path = pathlib.Path(__file__).parents[1] / f'plots/test_plot_no_patch_centre.pdf'
+        plot_path = pathlib.Path(__file__).parents[1] / f'plots/test_no_patch_centre.pdf'
         plt.savefig(str(plot_path))
