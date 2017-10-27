@@ -14,12 +14,6 @@ Reference
 
    tiling
    target
-
-|
-
-.. toctree::
-   :maxdepth: 2
-
    changelog
 
 |
