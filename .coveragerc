@@ -8,3 +8,4 @@ omit =
     lvmsurveysim/etc/*
     lvmsurveysim/utils/logger.py
     lvmsurveysim/utils/colour_print.py
+    lvmsurveysim/utils/config.py
