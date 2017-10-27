@@ -38,11 +38,13 @@ install:
 
 before_script:
 # Needed to handle GUI or QT based tests (e.g. matplotlib.pyplot import)
-  - sh -e /etc/init.d/xvfb start
-  - sleep 3
-  - mkdir ~/.matplotlib
-  - echo 'backend: agg' > ~/.matplotlib/matplotlibrc
-
+  - |
+    if [[ $TRAVIS_OS_NAME != 'osx' ]]; then
+      export DISPLAY=:99.0
+      sh -e /etc/init.d/xvfb start
+      mkdir -p ~/.matplotlib/
+      echo "backend: agg" > ~/.matplotlib/matplotlibrc
+    fi
 
 script:
   - pytest lvmsurveysim/test --cov lvmsurveysim --cov-report html
