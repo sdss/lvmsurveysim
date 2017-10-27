@@ -19,8 +19,27 @@ import numpy as np
 import seaborn as sns
 
 
+__all__ = ['get_axes', 'transform_patch_mollweide']
+
+
+__MOLLWEIDE_ORIGIN__ = 120
+
+
 def get_axes(projection='rectangular'):
-    """Returns axes for a particular projection."""
+    """Returns axes for a particular projection.
+
+    Parameters:
+        projection ({'rectangular', 'mollweide'}):
+            The type of projection of the axes returned. Either `rectangular`
+            for a normal, cartesian, projection, or
+            `mollweide <https://en.wikipedia.org/wiki/Mollweide_projection>`_.
+
+    Returns:
+        fig, ax:
+            The new matplotlib `~matplotlib.figure.Figure` and
+            `~matplotlig.axes.Axes` objects for the selected projection.
+
+    """
 
     with sns.axes_style('whitegrid'):
 
@@ -37,7 +56,7 @@ def get_axes(projection='rectangular'):
         elif projection == 'mollweide':
             fig = plt.figure(figsize=(10, 5))
             ax = fig.add_subplot(111, projection='mollweide')
-            org = 120
+            org = __MOLLWEIDE_ORIGIN__
 
             tick_labels = np.array([150., 120, 90, 60, 30, 0,
                                     330, 300, 270, 240, 210])
