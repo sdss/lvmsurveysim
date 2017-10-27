@@ -84,4 +84,4 @@ def test_plot_target_mollweide(plot):
         plt.savefig(str(plot_path))
 
     assert isinstance(fig, plt.Figure)
-    assert isinstance(plt, Axes)
+    assert isinstance(ax, Axes)
