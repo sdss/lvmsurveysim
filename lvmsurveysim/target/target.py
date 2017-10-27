@@ -116,3 +116,14 @@ class Target(object):
 
         return cls(name, target['coords'], region_type=target['region_type'],
                    region_params=target['region_params'])
+
+    def plot(self, **kwargs):
+        """Plots the target.
+
+        Parameters:
+            kwargs (dict):
+                Keyword arguments to be pased to `.regions.Region.plot`.
+
+        """
+
+        return self.region.plot(**kwargs)
