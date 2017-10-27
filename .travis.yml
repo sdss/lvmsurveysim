@@ -41,7 +41,7 @@ before_script:
   - sh -e /etc/init.d/xvfb start
   - sleep 3
   - mkdir ~/.matplotlib
-  - echo "backend: agg" > ~/.matplotlib/matplotlibrc
+  - echo 'backend: agg' > ~/.matplotlib/matplotlibrc
 
 
 script:
