@@ -18,6 +18,10 @@ matrix:
 notifications:
   email: false
 
+env:
+  globals:
+    - DISPLAY=:99.0
+
 # repo branches to test
 branches:
 - master
@@ -31,6 +35,11 @@ install:
 - pip install coverage
 - pip install coveralls
 - python setup.py install
+
+before_script:
+# Needed to handle GUI or QT based tests (e.g. matplotlib.pyplot import)
+- sh -e /etc/init.d/xvfb start
+- sleep 3
 
 script:
 - pytest lvmsurveysim/test --cov lvmsurveysim --cov-report html
