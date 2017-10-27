@@ -43,7 +43,7 @@ def plot(request):
     return request.config.getoption('--plot')
 
 
-test_data = yaml.load(open(os.path.dirname(__file__) + '/test_data.yaml'))
+test_data = yaml.load(open(os.path.dirname(__file__) + '/test_data/test_data.yaml'))
 test_regions = test_data['regions']
 
 
