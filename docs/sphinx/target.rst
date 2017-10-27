@@ -15,16 +15,6 @@ Here we explain how to define a target.
 
 |
 
-regions
--------
-
-.. automodule:: lvmsurveysim.target.regions
-    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, OverlapRegion, region_factory
-    :show-inheritance:
-    :undoc-members:
-
-|
-
 target
 ------
 
@@ -33,3 +23,13 @@ target
     :show-inheritance:
     :undoc-members:
     :private-members:
+
+|
+
+regions
+-------
+
+.. automodule:: lvmsurveysim.target.regions
+    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, OverlapRegion, region_factory
+    :show-inheritance:
+    :undoc-members:
