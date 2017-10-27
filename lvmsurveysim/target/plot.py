@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import matplotlib.pyplot as plt
+import matplotlib.transforms
 
 import numpy as np
 
@@ -78,3 +79,68 @@ def get_axes(projection='rectangular'):
             raise ValueError('invalid projection')
 
     return fig, ax
+
+
+def transform_patch_mollweide(ax, patch, patch_centre=None):
+    """Applies a transformation to the patch for the Mollweide projection.
+
+    The Mollweide projection assumes the plotted values are in radians. In
+    addition, the axes returned by `.get_axes` for a Mollweide projection have
+    the tick labels modified to place the centre at a different position from
+    the default 0 rad. This function applies a series of affine transformations
+    to the input `~matplotlib.patches.Patch` to make the plot match the axes
+    labels.
+
+    Note that the Mollweide projection doesn't provide wrapping. Large regions
+    that cross the edge of the projection will not be displayed completely.
+
+    Parameters:
+        ax (~matplotlib.axes.Axes):
+            The axes on which the ``patch`` has been plotted.
+        patch (`~matplotlib.patches.Patch`):
+            The patch to be transformed.
+        patch_centre (float):
+            The RA value that will be used to determine the direction of the
+            translation applied. If not defined, the best possible translation
+            will be automatically determined.
+
+    Returns:
+        patch (`~matplotlib.patches.Patch`):
+            The transformed patch.
+
+    Example:
+
+        Before calling `transform_patch_mollweide` the patch must have been
+        added to the axes to ensure that the conversion between data and pixels
+        is known ::
+
+        >>> fig, ax = get_axes(projection='mollweide')
+        >>> poly = Polygon([(0,0), (15,0), (15,15), (0,0)])
+        >>> poly = ax.add_patch(poly)
+        >>> poly_transformed = transform_patch_mollweide(ax, poly)
+
+    """
+
+    trans_to_rads = matplotlib.transforms.Affine2D().scale(np.pi / 180, np.pi / 180)
+    trans_reflect = matplotlib.transforms.Affine2D(np.array([[-1, 0, 0],
+                                                             [0, 1, 0],
+                                                             [0, 0, 1]]))
+
+    # If patch_centre is not defined, tries to figure out the centre from
+    # the patch itself
+    if patch_centre is None and hasattr(patch, 'center'):
+        patch_centre = patch.center[0]
+
+    # Calculates the best possible translation to match the tick labels.
+    if patch_centre is None:
+        translation = __MOLLWEIDE_ORIGIN__
+    elif patch_centre < (-180 + __MOLLWEIDE_ORIGIN__) % 360:
+        translation = __MOLLWEIDE_ORIGIN__
+    else:
+        translation = __MOLLWEIDE_ORIGIN__ + 360
+
+    trans_origin = matplotlib.transforms.Affine2D().translate(np.radians(translation), 0)
+
+    patch.set_transform(trans_to_rads + trans_reflect + trans_origin + ax.transData)
+
+    return patch
