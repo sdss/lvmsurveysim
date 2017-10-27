@@ -75,3 +75,8 @@ def region(region_name):
     region.name = region_name  # this can be useful to differentiate multiple regions of same type.
 
     yield region
+
+
+@pytest.fixture()
+def test_target_file():
+    yield pathlib.Path(__file__).parent / 'test_data/test_targets.yaml'
