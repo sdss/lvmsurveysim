@@ -16,9 +16,7 @@ import os
 import pathlib
 import yaml
 
-import astropy.coordinates
-
-from .regions import EllipticalRegion
+from . import regions
 from .. import config
 
 
@@ -35,40 +33,25 @@ class Target(object):
         coords (tuple or `~astropy.coordinates.SkyCoord`):
             A tuple of ``(ra, dec)`` in degrees or a
             `~astropy.coordinates.SkyCoord` describing the centre of the
-            target.
-        region_mode ({'ellipse', 'rectangle', 'polygon'}):
-            The type of area that ``region_params`` specify.
-        region_params:
-            A list of parameters that define the area on the sky of the
-            target. See :ref:`target-defining`.
+            target. If the region is of type ``polygon``, ``coords`` must
+            be a list of vertices as indicated in `~regions.PolygonalRegion`.
+        region_type (str):
+            One of the valid region types for `~regions.Region`.
+        region_params (dict):
+            A dictionary of parameters to be passed to `~regions.Region`.
 
     """
 
-    def __init__(self, name, coords, region_mode=None, region_params=None):
+    def __init__(self, name, coords, region_type, region_params={}):
 
         self.coords = coords
-
-        if not isinstance(coords, astropy.coordinates.SkyCoord):
-            assert len(coords) == 2, 'invalid number of coordinates.'
-            self.coords = astropy.coordinates.SkyCoord(ra=coords[0], dec=coords[1], unit='deg')
-
-        if region_mode is not None:
-            assert region_params is not None, \
-                'region_mode and region_params must be both None or not None.'
-            self.region = self._create_area(coords, region_mode, region_params)
+        self.region = self._create_region(coords, region_type, region_params)
 
     @staticmethod
-    def _create_area(coords, region_mode, region_params):
-        """Returns a `Shapely`_ object with the region on the sky."""
+    def _create_region(coords, region_type, region_params):
+        """Returns a `regions.Region` with the target on the sky."""
 
-        if region_mode == 'ellipse':
-            region = EllipticalRegion(coords, region_params[0] / 2.,
-                                      b=region_params[1] / 2.,
-                                      pa=region_params[2])
-        else:
-            raise ValueError(f'invalid region_mode={region_mode!r}.')
-
-        return region
+        return regions.Region(region_type, coords, **region_params)
 
     @classmethod
     def from_target_list(cls, name, target_list=None):
@@ -76,15 +59,18 @@ class Target(object):
 
         Initialises a new target whose parameters have been previously defined
         in a target list. Target lists must be YAML files in which each
-        target has attributes ``coords``, ``region_mode``, and
-        ``region_params``, defined as in :ref:`target-defining` For example:
+        target has attributes ``coords``, ``region_params``, and
+        ``region_params``, defined as in :ref:`target-defining`. For example:
 
         .. code-block:: yaml
 
             M81:
                 coords: [148.888333, 69.0652778]
-                region_mode: 'ellipse'
-                region_params: [0.209722, 0.106958333, 149]
+                region_type: 'ellipse'
+                region_params:
+                    a: 0.209722
+                    b: 0.106958333
+                    pa: 149
 
         Parameters:
             name (str):
@@ -114,5 +100,5 @@ class Target(object):
 
         target = targets[name]
 
-        return cls(name, target['coords'], region_mode=target['region_mode'],
+        return cls(name, target['coords'], region_type=target['region_type'],
                    region_params=target['region_params'])
