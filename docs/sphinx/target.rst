@@ -33,3 +33,13 @@ regions
     :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, OverlapRegion, region_factory
     :show-inheritance:
     :undoc-members:
+
+|
+
+plot
+----
+
+.. automodule:: lvmsurveysim.target.plot
+    :members:
+    :show-inheritance:
+    :undoc-members:
