@@ -22,6 +22,7 @@ import shapely.affinity
 import numpy as np
 
 import matplotlib.patches
+import matplotlib.path
 import matplotlib.transforms
 
 from . import plot as lvm_plot
@@ -303,11 +304,13 @@ class EllipticalRegion(Region):
         # is applied in data units befor ax.transData converts to pixels.
         ell.set_transform(ra_transform + coords_transform + ax.transData)
 
-        padding_x = 0.1 * (self.shapely.bounds[2] - self.shapely.bounds[0])
-        padding_y = 0.1 * (self.shapely.bounds[3] - self.shapely.bounds[1])
+        if projection == 'rectangular':
 
-        ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
-        ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
+            padding_x = 0.1 * (self.shapely.bounds[2] - self.shapely.bounds[0])
+            padding_y = 0.1 * (self.shapely.bounds[3] - self.shapely.bounds[1])
+
+            ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
+            ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
 
         if return_patch:
             return fig, ax, ell
@@ -386,7 +389,7 @@ class PolygonalRegion(Region):
 
     def __init__(self, vertices):
 
-        self.vertices = np.atleast_2d(vertices)
+        self.vertices = np.atleast_2d(vertices).astype(np.float)
 
         assert self.vertices.ndim == 2, 'invalid number of dimensions.'
         assert self.vertices.shape[0] > 2, 'need at least three points for a polygon.'
@@ -412,18 +415,21 @@ class PolygonalRegion(Region):
 
         fig, ax = lvm_plot.get_axes(projection=projection)
 
-        poly = matplotlib.patches.Polygon(self.vertices.tolist(), **kwargs)
+        poly = matplotlib.path.Path(self.vertices, closed=True)
+        poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
 
-        poly = ax.add_patch(poly)
+        poly_patch = ax.add_patch(poly_patch)
 
-        padding_x = 0.1 * (self.shapely.bounds[2] - self.shapely.bounds[0])
-        padding_y = 0.1 * (self.shapely.bounds[3] - self.shapely.bounds[1])
+        if projection == 'rectangular':
 
-        ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
-        ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
+            padding_x = 0.1 * (self.shapely.bounds[2] - self.shapely.bounds[0])
+            padding_y = 0.1 * (self.shapely.bounds[3] - self.shapely.bounds[1])
+
+            ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
+            ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
 
         if return_patch:
-            return fig, ax, poly
+            return fig, ax, poly_patch
         else:
             return fig, ax
 
