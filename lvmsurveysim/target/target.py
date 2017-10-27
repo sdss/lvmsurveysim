@@ -44,8 +44,13 @@ class Target(object):
 
     def __init__(self, name, coords, region_type, region_params={}):
 
+        self.name = name
         self.coords = coords
         self.region = self._create_region(coords, region_type, region_params)
+
+    def __repr__(self):
+
+        return f'<Region {self.name!r}>'
 
     @staticmethod
     def _create_region(coords, region_type, region_params):
