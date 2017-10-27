@@ -34,11 +34,20 @@ class Target(object):
             A tuple of ``(ra, dec)`` in degrees or a
             `~astropy.coordinates.SkyCoord` describing the centre of the
             target. If the region is of type ``polygon``, ``coords`` must
-            be a list of vertices as indicated in `~regions.PolygonalRegion`.
+            be a list of vertices as indicated in `~.regions.PolygonalRegion`.
         region_type (str):
-            One of the valid region types for `~regions.Region`.
+            One of the valid region types for `~.regions.Region`.
         region_params (dict):
-            A dictionary of parameters to be passed to `~regions.Region`.
+            A dictionary of parameters to be passed to `~.regions.Region`.
+
+    Example:
+
+        >>> target = Target('MyTarget', coords=(169, 65), region_type='circle', region_params={'r': 0.1})
+        >>> target
+        <Region 'MyTarget'>
+        >>> target.region
+        <CircularRegion (coords=<SkyCoord (ICRS): (ra, dec) in deg
+              ( 169.,  65.)>, r=0.100 deg)>
 
     """
 
@@ -54,7 +63,7 @@ class Target(object):
 
     @staticmethod
     def _create_region(coords, region_type, region_params):
-        """Returns a `regions.Region` with the target on the sky."""
+        """Returns a `.regions.Region` with the target on the sky."""
 
         return regions.Region(region_type, coords, **region_params)
 
