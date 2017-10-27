@@ -312,6 +312,11 @@ class EllipticalRegion(Region):
             ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
             ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
 
+        elif projection == 'mollweide':
+
+            centre = ell.center[0]
+            ell = lvm_plot.transform_patch_mollweide(ax, ell, patch_centre=centre)
+
         if return_patch:
             return fig, ax, ell
         else:
@@ -427,6 +432,11 @@ class PolygonalRegion(Region):
 
             ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
             ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
+
+        elif projection == 'mollweide':
+
+            centre = self.shapely.centroid.x
+            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=centre)
 
         if return_patch:
             return fig, ax, poly_patch
