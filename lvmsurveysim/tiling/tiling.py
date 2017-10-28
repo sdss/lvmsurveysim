@@ -12,6 +12,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import copy
+
 from astropy import coordinates as coo
 
 from .ifu import IFU
@@ -142,6 +144,14 @@ class Tiling(object):
         """Runs the tiling process using ``ifu`` as the tiling unit."""
 
         self._ifu = ifu
+
+        # First pass. We overtile target.
+        target_shapely = copy.deepcopy(self.target.region.shapely)
+        while not target_shapely.is_empty:
+            repr_point = target_shapely.representative_point()
+            new_tile = Tile(self.ifu, (repr_point.x, repr_point.y))
+            self.tiles.append(new_tile)
+            target_shapely = target_shapely.difference(new_tile.ifu.polygon)
 
     def plot(self, **kwargs):
         """Plots the tiles on the target region.

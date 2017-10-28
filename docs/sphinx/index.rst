@@ -14,6 +14,7 @@ Reference
 
    tiling
    target
+   telescope
    changelog
 
 |
