@@ -13,3 +13,8 @@ ifus:
         n_ifus: 1
 
 target_list: $LVMCORE_DIR/surveydesign/targets.yaml
+
+telescopes:
+    APO-1m:
+        diameter: 1.
+        f: 5
