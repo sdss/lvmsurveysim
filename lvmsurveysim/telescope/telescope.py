@@ -29,7 +29,7 @@ class Telescope(object):
 
     Parameters:
         name (str):
-            The name of the telescope. If only the ``name`` is provides, the
+            The name of the telescope. If only the ``name`` is provided, the
             information will be grabbed from the configuration file.
         diameter (float):
             The diameter of the telescope, in meters
@@ -55,6 +55,10 @@ class Telescope(object):
             assert all([diameter, f]), 'both diameter and f must be defined.'
             self.diameter = diameter * uu.meter
             self.f = f
+
+    def __repr__(self):
+
+        return f'<Telescope {self.name!r}>'
 
     @property
     def focal_length(self):
