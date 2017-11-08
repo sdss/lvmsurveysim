@@ -23,8 +23,9 @@ from lvmsurveysim.tiling import ifu
 ifu_data = lvmsurveysim.config['ifus']
 
 
-@pytest.mark.parametrize(('ifu', 'ifu_name'), [(ifu.MonolithicIFU(), 'monolithic'),
-                                               (ifu.AbuttableTriangleIFU(), 'abuttable_triangle')])
+@pytest.mark.parametrize(('ifu', 'ifu_name'),
+                         [(ifu.MonolithicIFU(), 'monolithic'),
+                          (ifu.NonAbuttableTriangleIFU(), 'non_abuttable_triangle')])
 def test_ifus(ifu, ifu_name):
 
     config_data = ifu_data[ifu_name]

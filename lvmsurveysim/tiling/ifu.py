@@ -25,7 +25,7 @@ sns.set_style('white')
 current_palette = sns.color_palette()
 
 
-__all__ = ('fibres_to_rows', 'SubIFU', 'IFU', 'MonolithicIFU', 'AbuttableTriangleIFU')
+__all__ = ('fibres_to_rows', 'SubIFU', 'IFU', 'MonolithicIFU', 'NonAbuttableTriangleIFU')
 
 
 def fibres_to_rows(fibres):
@@ -323,8 +323,8 @@ class MonolithicIFU(IFU):
         super(MonolithicIFU, self).__init__(**config['ifus']['monolithic'])
 
 
-class AbuttableTriangleIFU(IFU):
+class NonAbuttableTriangleIFU(IFU):
 
     def __init__(self, *args, **kwargs):
 
-        super(AbuttableTriangleIFU, self).__init__(**config['ifus']['abuttable_triangle'])
+        super(NonAbuttableTriangleIFU, self).__init__(**config['ifus']['non_abuttable_triangle'])
