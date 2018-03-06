@@ -1,8 +1,12 @@
+build:
+   image: latest
+
 python:
-   version: 3.5
+   version: 3.6
    setup_py_install: true
 
 requirements_file: requirements_doc.txt
 
-conda:
-    file: environment.yml
+# Don't build any extra formats
+formats:
+    - none
