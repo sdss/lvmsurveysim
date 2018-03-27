@@ -20,7 +20,7 @@ import lvmsurveysim
 from lvmsurveysim.tiling import ifu
 
 
-ifu_data = lvmsurveysim.config['ifus']
+ifu_data = lvmsurveysim.config['ifu']
 
 
 @pytest.mark.parametrize(('ifu', 'ifu_name'),
@@ -35,4 +35,4 @@ def test_ifus(ifu, ifu_name):
     numpy.testing.assert_almost_equal(ifu.centres, config_data['centres'])
 
     assert ifu.n_fibres == config_data['n_fibres']
-    assert ifu.n_ifus == config_data['n_ifus']
+    assert ifu.n_subifus == len(config_data['centres'])

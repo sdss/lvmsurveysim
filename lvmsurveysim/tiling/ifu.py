@@ -189,8 +189,6 @@ class IFU(object):
     Parameters:
         n_fibres (int):
             Number of fibres in each of the sub-IFUs.
-        n_ifus (int):
-            Number of sub-IFUs that compose the IFU.
         centres (list):
             A list of 2D tuples describing the centres of each of the
             sub-IFUs. It asumes the diameter of the sub-IFU hexagon is 1.
@@ -203,11 +201,13 @@ class IFU(object):
             If the IFU is composed of multiple sub-IFUs and gaps exist
             between them, a list with the same format of ``centres`` must
             be provided, with the list of the hexagonal gap centres.
+        allow_rotation (bool):
+            Whether this IFU can be rotated.
 
     """
 
-    def __init__(self, n_fibres=None, n_ifus=None, centres=None, padding=0,
-                 fibre_size=None, gaps=None):
+    def __init__(self, n_fibres=None, centres=None, padding=0,
+                 fibre_size=None, gaps=None, allow_rotation=False):
 
         assert isinstance(centres, (list, tuple, np.ndarray)), 'centres is not a list'
         assert len(centres) > 0, 'centres must be a non-zero length list.'
@@ -215,12 +215,18 @@ class IFU(object):
             assert isinstance(ll, (list, tuple, np.ndarray)), 'each centre must be a 2D tuple.'
             assert len(ll) == 2, 'each centre must be a 2D tuple.'
 
-        assert None not in [n_fibres, n_ifus], 'incorrect inputs.'
+        assert n_fibres is not None, 'incorrect n_fibres input.'
 
-        assert n_fibres % n_ifus == 0, 'number of fibres is not a multiple of number of sub-IFUs.'
+        centres = np.atleast_2d(centres)
+        gaps = np.atleast_2d(gaps)
+
+        n_subifus = centres.shape[0]
+
+        assert n_fibres % n_subifus == 0, \
+            'number of fibres is not a multiple of number of sub-IFUs.'
 
         self.n_fibres = n_fibres
-        self.n_ifus = n_ifus
+        self.n_subifus = n_subifus
         self.centres = np.array(centres)
 
         self.fibre_size = fibre_size or config['fibre_size']
@@ -231,13 +237,15 @@ class IFU(object):
         self.polygon = shapely.geometry.MultiPolygon([subifu.polygon for subifu in self.subifus])
         self.gaps = self._create_gaps(gaps)
 
+        self.allow_rotation = allow_rotation
+
     def _create_subifus(self):
         """Creates each one of the individual sub-IFUs in this IFU."""
 
         subifus = []
         n_subifu = 1
         for centre in self.centres:
-            subifus.append(SubIFU(n_subifu, self, centre, self.n_fibres / self.n_ifus,
+            subifus.append(SubIFU(n_subifu, self, centre, self.n_fibres / self.n_subifus,
                                   fibre_size=self.fibre_size))
             n_subifu += 1
 
@@ -320,11 +328,11 @@ class MonolithicIFU(IFU):
 
     def __init__(self, *args, **kwargs):
 
-        super(MonolithicIFU, self).__init__(**config['ifus']['monolithic'])
+        super(MonolithicIFU, self).__init__(**config['ifu']['monolithic'])
 
 
 class NonAbuttableTriangleIFU(IFU):
 
     def __init__(self, *args, **kwargs):
 
-        super(NonAbuttableTriangleIFU, self).__init__(**config['ifus']['non_abuttable_triangle'])
+        super(NonAbuttableTriangleIFU, self).__init__(**config['ifu']['non_abuttable_triangle'])
