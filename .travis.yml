@@ -55,4 +55,4 @@ script:
 #     - mpl6_clean_tools
 
 after_success:
-  - coveralls
+  - codecov
