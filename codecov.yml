@@ -1,0 +1,7 @@
+ignore:
+  - "lvmsurveysim/test/*"
+  - "lvmsurveysim/bin/*"
+  - "lvmsurveysim/etc/*"
+  - "lvmsurveysim/utils/logger.py"
+  - "lvmsurveysim/utils/colour_print.py"
+  - "lvmsurveysim/utils/config.py"
