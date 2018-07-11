@@ -6,24 +6,19 @@
 # Created by José Sánchez-Gallego on 5 Sep 2017.
 
 
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
-import numpy as np
-import shapely.geometry
-
-import matplotlib.pyplot as plt
 import matplotlib.collections
 import matplotlib.patches
+import matplotlib.pyplot as plt
+import numpy
 import seaborn as sns
+import shapely.geometry
 
 from .. import config
 
 
-sns.set_style('white')
 current_palette = sns.color_palette()
-
 
 __all__ = ('fibres_to_rows', 'SubIFU', 'IFU', 'MonolithicIFU', 'NonAbuttableTriangleIFU')
 
@@ -45,13 +40,11 @@ def fibres_to_rows(fibres):
 
         n_central += 2  # Central row needs to be odd
 
-        n_rows = int(1 + 2 * np.floor(n_central / 2.))
-        tmp_fibres = n_central + 2 * np.sum(np.arange(n_central - 1, n_central / 2., -1))
+        n_rows = int(1 + 2 * numpy.floor(n_central / 2.))
+        tmp_fibres = n_central + 2 * numpy.sum(numpy.arange(n_central - 1, n_central / 2., -1))
 
         if tmp_fibres == fibres:
             return n_rows
-
-    return None
 
 
 class Fibre(object):
@@ -62,8 +55,11 @@ class Fibre(object):
         self.y = yy
         self.radius = radius
 
-        self.patch = matplotlib.patches.Circle((self.x, self.y), radius=self.radius,
-                                               edgecolor='k', facecolor='None', lw=1)
+    @property
+    def patch(self):
+
+        return matplotlib.patches.Circle((self.x, self.y), radius=self.radius,
+                                         edgecolor='k', facecolor='None', lw=1)
 
 
 class SubIFU(object):
@@ -91,7 +87,7 @@ class SubIFU(object):
 
     def __init__(self, id_subifu, parent, centre, n_fibres, fibre_size=None):
 
-        assert isinstance(centre, (list, tuple, np.ndarray)), 'centre is not a list'
+        assert isinstance(centre, (list, tuple, numpy.ndarray)), 'centre is not a list'
         assert isinstance(parent, IFU), 'parent must be an IFU object.'
         assert len(centre) == 2, 'centre must be a 2D tuple.'
 
@@ -103,7 +99,7 @@ class SubIFU(object):
         self.n_fibres = n_fibres
         self.n_rows = fibres_to_rows(self.n_fibres)
 
-        self.centre = np.array(centre)
+        self.centre = numpy.array(centre)
 
         self.fibre_size = fibre_size or config['fibre_size']
 
@@ -114,7 +110,7 @@ class SubIFU(object):
         """Creates a Shapely Polygon collection representing the sub-IFU."""
 
         RR = 0.5                   # Assumes unitary diameter
-        rr = np.sqrt(3) / 2. * RR  # Inner radius
+        rr = numpy.sqrt(3) / 2. * RR  # Inner radius
         cos60 = 0.5
 
         xx, yy = self.centre
@@ -139,17 +135,30 @@ class SubIFU(object):
         fibre_width = 1 / n_centre
 
         for row in range(int(-self.n_rows / 2), int(self.n_rows / 2) + 1):
-            n_fibres_row = n_centre - np.abs(row)
-            y_row = row * np.sqrt(3) / 2 / self.n_rows
-            row_length = 1 - 2 * np.abs(y_row) * np.sqrt(3) / 3.
+            n_fibres_row = n_centre - numpy.abs(row)
+            y_row = row * numpy.sqrt(3) / 2 / self.n_rows
+            row_length = 1 - 2 * numpy.abs(y_row) * numpy.sqrt(3) / 3.
 
-            fibres_x = np.arange(n_fibres_row) * fibre_width - row_length / 2. + fibre_width / 2.
+            fibres_x = (numpy.arange(n_fibres_row) * fibre_width -
+                        row_length / 2. + fibre_width / 2.)
 
             fibres += [Fibre(self.centre[0] + fibre_x,
                              self.centre[1] + y_row,
                              fibre_width / 2.) for fibre_x in fibres_x]
 
         return fibres
+
+    def scale(self, hscale, vscale, origin='center'):
+        """Scales the sub-IFU."""
+
+        self.polygon = shapely.affinity.scale(self.polygon, hscale, vscale, origin=origin)
+        self.centre = numpy.array(self.polygon.centroid.coords)[0]
+
+    def translate(self, hor, ver):
+        """Translates the IFU."""
+
+        self.polygon = shapely.affinity.translate(self.polygon, hor, ver)
+        self.centre = numpy.array(self.polygon.centroid.coords)[0]
 
     def get_patch(self, filled=False):
         """Returns a matplotlib patch for the sub-IFU."""
@@ -191,7 +200,7 @@ class IFU(object):
             Number of fibres in each of the sub-IFUs.
         centres (list):
             A list of 2D tuples describing the centres of each of the
-            sub-IFUs. It asumes the diameter of the sub-IFU hexagon is 1.
+            sub-IFUs. It assumes the diameter of the sub-IFU hexagon is 1.
         padding (int):
             Number of fibres the IFU should overlap when tiling. This will
             be used to slightly modify the distance between sub-IFUs.
@@ -207,27 +216,22 @@ class IFU(object):
     """
 
     def __init__(self, n_fibres=None, centres=None, padding=0,
-                 fibre_size=None, gaps=None, allow_rotation=False):
+                 fibre_size=None, allow_rotation=False):
 
-        assert isinstance(centres, (list, tuple, np.ndarray)), 'centres is not a list'
+        assert isinstance(centres, (list, tuple, numpy.ndarray)), 'centres is not a list'
         assert len(centres) > 0, 'centres must be a non-zero length list.'
         for ll in centres:
-            assert isinstance(ll, (list, tuple, np.ndarray)), 'each centre must be a 2D tuple.'
+            assert isinstance(ll, (list, tuple, numpy.ndarray)), 'each centre must be a 2D tuple.'
             assert len(ll) == 2, 'each centre must be a 2D tuple.'
 
         assert n_fibres is not None, 'incorrect n_fibres input.'
 
-        centres = np.atleast_2d(centres)
-        gaps = np.atleast_2d(gaps)
-
-        n_subifus = centres.shape[0]
-
-        assert n_fibres % n_subifus == 0, \
-            'number of fibres is not a multiple of number of sub-IFUs.'
+        self.centres = numpy.atleast_2d(centres)
 
         self.n_fibres = n_fibres
-        self.n_subifus = n_subifus
-        self.centres = np.array(centres)
+        self.n_subifus = self.centres.shape[0]
+        assert self.n_fibres % self.n_subifus == 0, \
+            'number of fibres is not a multiple of number of sub-IFUs.'
 
         self.fibre_size = fibre_size or config['fibre_size']
 
@@ -235,9 +239,20 @@ class IFU(object):
 
         self.subifus = self._create_subifus()
         self.polygon = shapely.geometry.MultiPolygon([subifu.polygon for subifu in self.subifus])
-        self.gaps = self._create_gaps(gaps)
 
         self.allow_rotation = allow_rotation
+
+    def scale(self, hscale, vscale, origin='center'):
+        """Scales the IFU."""
+
+        for subifu in self.subifus:
+            subifu.scale(hscale, vscale, origin=origin)
+
+    def translate(self, hor, ver):
+        """Translates the IFU."""
+
+        for subifu in self.subifus:
+            subifu.translate(hor, ver)
 
     def _create_subifus(self):
         """Creates each one of the individual sub-IFUs in this IFU."""
@@ -251,88 +266,106 @@ class IFU(object):
 
         return subifus
 
-    def _create_gaps(self, gaps):
-        """Creates polygons for the gaps."""
+    def get_tile_grid(self, region, scale):
+        """Returns a grid of positions that tile a region with this IFU.
 
-        if len(self.subifus) == 1:
-            return []
+        Parameters
+        ----------
+        region : ~shapely.geometry.polygon.Polygon
+            The Shapely region to tile. It is assumed that x coordinates are RA
+            and y is Declination, both in degrees.
+        scale : float
+            The scale in degrees per mm.
 
-        areas = [subifu.polygon.area for subifu in self.subifus]
-        if (self.polygon.envelope.area - np.sum(areas)) == 0:
-            return []
+        """
 
-        assert gaps is not None, 'gaps are not defined for this IFU.'
-        assert len(gaps) > 0, 'gapss must be a non-zero length list.'
-        for ll in gaps:
-            assert isinstance(ll, (list, tuple, np.ndarray)), 'each gap must be a 2D tuple.'
-            assert len(ll) == 2, 'each gap must be a 2D tuple.'
+        # Determine the centroid and bounds og the region
+        centroid = numpy.array(region.centroid)
+        ra0, dec0, ra1, dec1 = region.bounds
 
-        gap_polygons = []
+        # The size of the grid in RA and Dec, in degrees.
+        size_ra = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
+        size_dec = numpy.abs(dec1 - dec0)
 
-        RR = 0.5                   # Assumes unitary diameter
-        rr = np.sqrt(3) / 2. * RR  # Inner radius
-        cos60 = 0.5
+        # Calculates the radius and apotheme of each subifu in degrees on the sky
+        n_rows = self.subifus[0].n_rows
+        rr_deg = n_rows * self.fibre_size / 1000 * scale / 2.
+        aa_deg = numpy.sqrt(3) / 2. * rr_deg
 
-        for gap in gaps:
-            xx, yy = gap
-            vertices = [(xx - RR, yy),
-                        (xx - RR * cos60, yy + rr),
-                        (xx + RR * cos60, yy + rr),
-                        (xx + RR, yy),
-                        (xx + RR * cos60, yy - rr),
-                        (xx - RR * cos60, yy - rr)]
-            gap_polygons.append(shapely.geometry.Polygon(vertices))
+        # The separation between grid points in RA and Dec
+        delta_ra = 3 * rr_deg
+        delta_dec = aa_deg
 
-        return gap_polygons
+        # Calculates the initial positions of the grid points in RA and Dec.
+        ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra, delta_ra)
+        dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec, delta_dec)
 
-    def plot(self, show_fibres=False, show_gaps=False, filled=True):
+        points = numpy.zeros((len(dec_pos), len(ra_pos), 2))
+
+        # Offset each other row in RA by 1.5R
+        points[:, :, 0] = ra_pos
+        points[:, :, 0][1::2] += (1.5 * rr_deg)
+
+        # Set declination values
+        points[:, :, 1] = dec_pos[numpy.newaxis].T
+        points[:, :, 1] += centroid[1]
+
+        # The separations in the RA axis must be converted to RA using the
+        # local declination
+        points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
+        points[:, :, 0] += centroid[0]
+
+        # Reshape into a 2D list of points.
+        points = points.reshape((-1, 2))
+
+        # For each grid position create a Shapely circle with the radius of the IFU.
+        points_shapely = list(
+            map(lambda point: shapely.geometry.Point(point[0],
+                                                     point[1]).buffer(2. * rr_deg), points))
+
+        # Check what grid points would overlap with the region if occupied by an IFU.
+        inside = list(map(region.intersects, points_shapely))
+        points_inside = points[inside]
+
+        return points_inside
+
+    def plot(self, show_fibres=False, filled=True):
         """Plots the IFU."""
 
-        fig, ax = plt.subplots()
+        with sns.axes_style('white'):
 
-        if show_gaps:
-            for gap in self.gaps:
-                patch = matplotlib.patches.Polygon(gap.exterior.coords,
-                                                   edgecolor='0.75',
-                                                   facecolor='None', lw=0.5,
-                                                   ls='dashed')
+            fig, ax = plt.subplots()
 
-                ax.add_patch(patch)
+            for subifu in self.subifus:
+                ax.add_patch(subifu.get_patch(filled=filled))
 
-        for subifu in self.subifus:
-            ax.add_patch(subifu.get_patch(filled=filled))
+                if show_fibres:
+                    ax.add_collection(subifu.get_patch_collection(ax))
 
-            if show_fibres:
-                ax.add_collection(subifu.get_patch_collection(ax))
+            ax.autoscale_view()
 
-        ax.autoscale_view()
+            # Pads the xy limits
+            bounds = shapely.geometry.MultiPolygon([subifu.polygon
+                                                    for subifu in self.subifus]).bounds
 
-        # Pads the xy limits
+            xx_pad = 0.1 * (bounds[2] - bounds[0])
+            yy_pad = 0.1 * (bounds[3] - bounds[1])
 
-        if not show_gaps:
-            bounds = self.polygon.bounds
-        else:
-            bounds = shapely.geometry.MultiPolygon(
-                [subifu.polygon for subifu in self.subifus] + self.gaps).bounds
-
-        xx_pad = 0.1 * (bounds[2] - bounds[0])
-        yy_pad = 0.1 * (bounds[3] - bounds[1])
-
-        ax.set_xlim(bounds[0] - xx_pad, bounds[2] + xx_pad)
-        ax.set_ylim(bounds[1] - yy_pad, bounds[3] + yy_pad)
+            ax.set_xlim(bounds[0] - xx_pad, bounds[2] + xx_pad)
+            ax.set_ylim(bounds[1] - yy_pad, bounds[3] + yy_pad)
 
         return fig
 
 
 class MonolithicIFU(IFU):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
 
         super(MonolithicIFU, self).__init__(**config['ifu']['monolithic'])
 
 
 class NonAbuttableTriangleIFU(IFU):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
 
         super(NonAbuttableTriangleIFU, self).__init__(**config['ifu']['non_abuttable_triangle'])
