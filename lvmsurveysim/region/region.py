@@ -360,7 +360,7 @@ class EllipticalRegion(Region):
                                                                       self.coords.dec.deg)
 
         # This way of applying the transformation makes sure ra_transform
-        # is applied in data units befor ax.transData converts to pixels.
+        # is applied in data units before ax.transData converts to pixels.
         ell.set_transform(ra_transform + coords_transform + ax.transData)
 
         if projection == 'rectangular':
