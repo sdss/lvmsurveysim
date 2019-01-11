@@ -14,8 +14,10 @@ import matplotlib.pyplot as plt
 import numpy
 import seaborn as sns
 import shapely.geometry
+from astropy.units import Quantity
 
-from .. import config
+from lvmsurveysim import config
+from lvmsurveysim.target import Region, Target
 
 
 current_palette = sns.color_palette()
@@ -279,9 +281,21 @@ class IFU(object):
 
         """
 
-        # Determine the centroid and bounds og the region
-        centroid = numpy.array(region.centroid)
-        ra0, dec0, ra1, dec1 = region.bounds
+        if isinstance(scale, Quantity):
+            scale = scale.to('degree/mm').value
+
+        if isinstance(region, Target):
+            region_shapely = region.region.shapely
+        elif isinstance(region, Region):
+            region_shapely = region.shapely
+        elif isinstance(region, shapely.geometry.Polygon):
+            region_shapely = region
+        else:
+            raise ValueError(f'invalid region type: {type(region)}.')
+
+        # Determine the centroid and bounds of the region
+        centroid = numpy.array(region_shapely.centroid)
+        ra0, dec0, ra1, dec1 = region_shapely.bounds
 
         # The size of the grid in RA and Dec, in degrees.
         size_ra = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
@@ -321,10 +335,11 @@ class IFU(object):
         # For each grid position create a Shapely circle with the radius of the IFU.
         points_shapely = list(
             map(lambda point: shapely.geometry.Point(point[0],
-                                                     point[1]).buffer(2. * rr_deg), points))
+                                                     point[1]).buffer(2. * rr_deg),
+                points))
 
         # Check what grid points would overlap with the region if occupied by an IFU.
-        inside = list(map(region.intersects, points_shapely))
+        inside = list(map(region_shapely.intersects, points_shapely))
         points_inside = points[inside]
 
         return points_inside

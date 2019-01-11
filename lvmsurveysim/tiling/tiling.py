@@ -6,24 +6,24 @@
 # @Filename: tiling.py
 # @License: BSD 3-Clause
 # @Copyright: José Sánchez-Gallego
+#
+# @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
+# @Last modified time: 2018-11-29 07:54:41
 
 
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 import copy
 
+import astropy.coordinates
+import astropy.units
+import matplotlib
 import numpy as np
-
-from astropy import coordinates as coo
-from astropy import units as uu
-
 import shapely.affinity
 import shapely.geometry
 
-from .ifu import IFU
 from ..target.target import Target
+from .ifu import IFU
 
 
 __all__ = ['Tiling', 'Tile']
@@ -32,7 +32,7 @@ __all__ = ['Tiling', 'Tile']
 class Tile(object):
     """A tiling element.
 
-    A `.Tile` is basically an `.IFU` with a position and a rotation. A
+    A `.Tile` is basically an `.IFU` with a position, scale, and rotation. A
     `.Tiling` is composed of multiple Tiles that optimally cover a region or
     target.
 
@@ -47,26 +47,22 @@ class Tile(object):
             positions and angles. In units of arcsec/mm.
         angle (`~astropy.coordinates.Angle` or float):
             The rotation angle of the `.IFU` measured from North to East.
-        plot_params (dict):
-            A dictionary of matplotlib keywords to be used when plotting the
-            Tile.
 
     """
 
-    def __init__(self, ifu, coords, scale, angle=0, plot_params=None):
+    def __init__(self, ifu, coords, scale, angle=0):
 
         assert isinstance(ifu, IFU), 'ifu is not a valid input type.'
-        self.ifu = ifu
+        self.ifu = copy.deepcopy(ifu)
 
-        if not isinstance(coords, coo.SkyCoord):
-            coords = coo.SkyCoord(*coords, unit='deg')
+        if not isinstance(coords, astropy.coordinates.SkyCoord):
+            coords = astropy.coordinates.SkyCoord(*coords, unit='deg')
 
         self.coords = coords
-        self.angle = coo.Angle(angle, unit='deg')
+        self.angle = astropy.coordinates.Angle(angle, unit='deg')
+        self._scale = scale
 
-        self._plot_params = plot_params
-
-        self.shapely = self._create_shapely(scale)
+        self.transform(self._scale)
 
     def __repr__(self):
 
@@ -74,62 +70,55 @@ class Tile(object):
                 f'Dec={self.coords.dec.deg:.3f}, '
                 f'angle={self.angle.deg:.1f}>')
 
-    def _create_shapely(self, scale):
-        """Creates a shapely region representing the IFU on the sky."""
+    def transform(self, scale=None):
+        """Relocates/rescales the IFU shapely objects and gap centres."""
 
-        if not isinstance(scale, uu.Quantity):
-            scale = scale * uu.arcsec / uu.mm
+        if scale is not None:
+            self._scale = scale
 
-        subifus_polygons = []
+        subifu_size = (self.ifu.subifus[0].n_rows * self.ifu.subifus[0].fibre_size) / 1000. * uu.mm
 
-        for subifu in self.ifu.subifus:
+        scale_deg = (self._scale * subifu_size).to('deg').value
 
-            # The radius of each subifu (the central row) is 1 by definition.
-            subifu_size = (subifu.n_rows * subifu.n_fibres) / 1000. * uu.mm
+        scale_ra = scale_deg / np.cos(np.radians(self.coords.dec.deg))
+        scale_dec = scale_deg
 
-            # Scales shapely geometry to mm.
-            subifu_mm = shapely.affinity.scale(subifu.geometry,
-                                               subifu_size.to('mm').value,
-                                               subifu_size.to('mm').value, center=(0, 0))
+        self.ifu.translate(self.coords.ra.deg, self.coords.dec.deg)
 
-            # Applies the plate scale and RA correction
-            subifu_arcsec = shapely.affinity.scale(
-                subifu_mm, scale, scale / np.cos(np.radians(self.coords.dec.deg)),
-                center=(0, 0))
+        centre_point = shapely.geometry.Point(self.coords.ra.deg, self.coords.dec.deg)
+        self.ifu.scale(scale_ra, scale_dec, origin=centre_point)
 
-            # Translates the IFU to its location on the region.
-            subifu_translated = shapely.affinity.translate(subifu_arcsec,
-                                                           self.coords.ra.deg,
-                                                           self.coords.dec.deg)
-
-            # Rotates the IFU
-            sub_ifu_rotated = shapely.affinity.rotate(subifu_translated, -self.angle.deg)
-
-            subifus_polygons.append(sub_ifu_rotated)
-
-        return shapely.geometry.MultiPolygon(subifus_polygons)
-
-    def set_plot_params(self, **kwargs):
-        """Sets the default plotting parameters for this tile."""
-
-        self._plot_params = kwargs
-
-    def plot(self, ax, **kwargs):
+    def plot(self, ax, show_gap_centres=True, **kwargs):
         """Plots the tile.
+
+        This method is mostly intended to be called by `.Tiling.plot`.
 
         Parameters:
             ax (`~matplotlib.axes.Axes`):
                 The matplotlib axes on which the tile will be plotted.
+            show_gap_centres (bool):
+                If `True`, the centres of the IFU gaps will be shown
+                as dots in the plot.
             kwargs (dict):
                 Matplotlib keywords to be passed to the tile
-                `~matplotlib.patches.Patch` to customise its style. If no
-                keywords are passed and ``plot_params`` were defined when
-                initialising the `.Tile`, those parameters will be used.
-                Otherwise, the default style will be used.
+                `~matplotlib.patches.Polygon` to customise its style.
 
         """
 
-        pass
+        if show_gap_centres and len(self.ifu.gap_centres) > 0:
+            ax.scatter(self.ifu.gap_centres[:, 0], self.ifu.gap_centres[:, 1],
+                       color='k', marker='o', facecolor='k', edgecolor='k', zorder=100)
+
+        for subifu in self.ifu.subifus:
+            plot_kw = {'facecolor': 'None', 'edgecolor': 'k', 'lw': 1}
+            plot_kw.update(kwargs)
+            subifu_patch = matplotlib.patches.Polygon(subifu.polygon.exterior.coords, **plot_kw,
+                                                      zorder=10)
+            ax.add_patch(subifu_patch)
+
+        ax.autoscale_view()
+
+        return ax
 
 
 class Tiling(object):
@@ -140,10 +129,6 @@ class Tiling(object):
             The `.Target` to be tiled.
         telescope (`~lvmsurveysim.telescope.Telescope`):
             The telescope that will be used to tile the target.
-        ifu (`.IFU` or None):
-            The `.IFU` to be used as tiling unit. If ``None``, the IFU
-            can be defined when calling the object. Otherwise, the tiling will
-            be run during instantiation.
 
     Attributes:
         tiles (list):
@@ -174,37 +159,45 @@ class Tiling(object):
 
     """
 
-    def __init__(self, target, telescope, ifu=None):
+    def __init__(self, target, telescope):
 
         assert isinstance(target, Target), 'target is of invalid type.'
         self.target = target
 
         self.telescope = telescope
 
-        self.tiles = []
+        self._ifu = None
 
-        # If ifu is defined, we call the tiling routine.
-        if ifu is not None:
-            self.__call__(ifu)
+        self.tiles = []
 
     def __repr__(self):
 
         return f'<Tiling target={self.target.name!r}, tiles={self.tiles!r}>'
 
-    def __call__(self, ifu):
-        """Runs the tiling process using ``ifu`` as the tiling unit."""
+    def __call__(self, ifu=None, strict=False):
+        """Runs the tiling process using ``ifu`` as the tiling unit.
 
-        self._ifu = ifu
+        Parameters:
+            ifu (`.IFU` or None):
+                The `.IFU` to be used as tiling unit. If ``None``, the IFU
+                can be defined when calling the object. Otherwise, the tiling
+                will be run during instantiation.
+            strict (bool):
+                If `True`, makes sure all the target are gets tiled. Depending
+                on the geometry of the IFU this may not be efficient.
 
-        # First pass. We overtile target.
-        untiled_shapely = copy.deepcopy(self.target.region.shapely)
+        """
 
-        while not untiled_shapely.is_empty:
-            repr_point = untiled_shapely.representative_point()
-            new_tile = Tile(self.ifu, (repr_point.x, repr_point.y),
-                            self.telescope.plate_scale.to('arcsec/mm'))
-            self.tiles.append(new_tile)
-            untiled_shapely = untiled_shapely.difference(new_tile.ifu.polygon)
+        if ifu:
+            self._ifu = ifu
+        else:
+            assert self.ifu
+
+        scale = self.telescope.plate_scale.to('degree/mm')
+
+        tile_centres = self.ifu.get_tile_grid(self.target, scale)
+
+        possible_tiles = []
 
     def plot(self, **kwargs):
         """Plots the tiles on the target region.
@@ -216,18 +209,20 @@ class Tiling(object):
                 `.Tile.set_plot_params`.
 
         Returns:
-            fig, ax:
-                The matplotlib `~matplotlib.figure.Figure` and
-                `~matplotlib.axes.Axes` objects for this plot.
+            ax:
+                The matplotlib `~matplotlib.axes.Axes` object for this plot.
 
         """
 
-        fig, ax = self.target.plot(**kwargs)
+        __, ax = self.target.plot()
 
-        for tile in self.tiles:
-            tile.plot(ax)
+        scale = self.telescope.plate_scale.to('degree/mm')
 
-        return fig, ax
+        tile_centres = self.ifu.get_tile_grid(self.target, scale)
+
+        ax.scatter(tile_centres[:, 0], tile_centres[:, 1], marker='.', color='k', zorder=100)
+
+        return ax
 
     @property
     def ifu(self):
