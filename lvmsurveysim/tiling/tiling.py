@@ -8,7 +8,7 @@
 # @Copyright: José Sánchez-Gallego
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2018-11-29 07:54:41
+# @Last modified time: 2019-01-11 12:06:07
 
 
 from __future__ import absolute_import, division, print_function
@@ -160,6 +160,8 @@ class Tiling(object):
     """
 
     def __init__(self, target, telescope):
+
+        raise NotImplementedError('this class is not yet implemented.')
 
         assert isinstance(target, Target), 'target is of invalid type.'
         self.target = target
