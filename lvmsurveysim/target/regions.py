@@ -19,7 +19,7 @@ import astropy.coordinates
 import shapely.geometry
 import shapely.affinity
 
-import numpy as np
+import numpy
 
 import matplotlib.patches
 import matplotlib.path
@@ -263,7 +263,7 @@ class EllipticalRegion(Region):
 
         # Applies the RA axis scaling
 
-        ell_ra = shapely.affinity.scale(ellr, 1 / np.cos(np.radians(self.coords.dec.deg)), 1)
+        ell_ra = shapely.affinity.scale(ellr, 1 / numpy.cos(numpy.radians(self.coords.dec.deg)), 1)
 
         return ell_ra
 
@@ -294,7 +294,7 @@ class EllipticalRegion(Region):
         # AFTER the rotation has happened, so that all the elements in the RA
         # direction are scaled properly.
         ra_transform = matplotlib.transforms.Affine2D().scale(
-            1. / np.cos(np.radians(self.coords.dec.deg)), 1)
+            1. / numpy.cos(numpy.radians(self.coords.dec.deg)), 1)
 
         # Moves the ellipse to the correct position.
         coords_transform = matplotlib.transforms.Affine2D().translate(self.coords.ra.deg,
@@ -321,6 +321,57 @@ class EllipticalRegion(Region):
             return fig, ax, ell
         else:
             return fig, ax
+
+    def to_cartesian(self):
+        """Converts from polar to cartesian coordinates."""
+
+        exterior = numpy.array(list(self.shapely.exterior.coords))
+
+        return astropy.coordinates.spherical_to_cartesian(
+            1,
+            numpy.deg2rad(exterior[:, 1]),
+            numpy.deg2rad(exterior[:, 0]))
+
+    def to_healpix(self, pixarea=None, ifu=None, telescope=None, return_coords=False):
+        """Tessellates the target region and returns a list of HealPix cells.
+
+        Parameters
+        ----------
+        pixarea : float
+            Desired area of the HealPix cell, in square degrees. The HealPix
+            order that produces a cell of size equal or smaller than
+            ``pixarea`` will be used.
+        ifu : `~lvmsurveysim.tiling.IFU`
+            The IFU used for tiling the region.
+        telescope : `~lvmsurveysim.telescope.Telescope`
+            The telescope on which the IFU is mounted.
+
+        """
+
+        import healpy
+
+        assert pixarea is not None or ifu is not None or telescope is not None, \
+            'either pixarea or ifu and telescope need to be defined.'
+
+        if pixarea is None:
+            assert ifu and telescope, 'ifu and telescope need to be defined.'
+            raise NotImplementedError
+
+        order = 0
+        while order <= 30:
+            if healpy.pixelfunc.nside2pixarea(2**order, degrees=True) <= pixarea:
+                break
+            order += 1
+
+        if order == 30:
+            raise ValueError('pixarea is too small.')
+
+        pixels = healpy.query_polygon(
+            2**order, numpy.array(self.to_cartesian()).T[:-2], inclusive=True)
+
+        if return_coords:
+            return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
+        return pixels
 
 
 class CircularRegion(EllipticalRegion):
@@ -394,13 +445,13 @@ class PolygonalRegion(Region):
 
     def __init__(self, vertices):
 
-        self.vertices = np.atleast_2d(vertices).astype(np.float)
+        self.vertices = numpy.atleast_2d(vertices).astype(numpy.float)
 
         assert self.vertices.ndim == 2, 'invalid number of dimensions.'
         assert self.vertices.shape[0] > 2, 'need at least three points for a polygon.'
 
-        if np.any(self.vertices[-1, :] != self.vertices[0, :]):
-            self.vertices = np.vstack((self.vertices, self.vertices[0, :]))
+        if numpy.any(self.vertices[-1, :] != self.vertices[0, :]):
+            self.vertices = numpy.vstack((self.vertices, self.vertices[0, :]))
 
         Region.__init__(self)
 
@@ -467,9 +518,9 @@ class OverlapRegion(Region):
     def _create_patch(self, **kwargs):
         """Returns an `~matplotlib.patches.Ellipse` for this region."""
 
-        raise NotImplemented()
+        raise NotImplementedError
 
     @add_doc(Region.plot)
     def plot(self, projection='rectangular', **kwargs):
 
-        raise NotImplemented
+        raise NotImplementedError
