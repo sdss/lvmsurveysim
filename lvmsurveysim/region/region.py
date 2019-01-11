@@ -3,7 +3,7 @@
 #
 # @Author: José Sánchez-Gallego
 # @Date: Oct 17, 2017
-# @Filename: regions.py
+# @Filename: region.py
 # @License: BSD 3-Clause
 # @Copyright: José Sánchez-Gallego
 
