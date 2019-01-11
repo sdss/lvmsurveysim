@@ -58,14 +58,22 @@ def region_factory(cls, *args, **kwargs):
     """
 
     if cls is Region:
+
+        name = kwargs.pop('name', None)
+
         if args[0] == 'ellipse':
-            return EllipticalRegion(*args[1:], **kwargs)
+            region = EllipticalRegion(*args[1:], **kwargs)
         elif args[0] == 'circle':
-            return CircularRegion(*args[1:], **kwargs)
+            region = CircularRegion(*args[1:], **kwargs)
         elif args[0] == 'polygon':
-            return PolygonalRegion(*args[1:], **kwargs)
+            region = PolygonalRegion(*args[1:], **kwargs)
         else:
             raise ValueError('invalid region type.')
+
+        if name:
+            region.name = name
+
+        return region
 
     return type.__call__(cls, *args, **kwargs)
 
@@ -100,6 +108,7 @@ class Region(object, metaclass=RegionABC):
 
     def __init__(self, *args, **kwargs):
 
+        self.name = None
         self._shapely = None
 
     def __repr__(self):
@@ -111,7 +120,7 @@ class Region(object, metaclass=RegionABC):
         """Returns an instance of `.Region` from a region list.
 
         Initialises a new `.Region` whose parameters have been previously
-        defined in a region list. REgion lists must be YAML files in which each
+        defined in a region list. Region lists must be YAML files in which each
         region has attributes ``coords``, ``region_params``, and
         ``region_params``, defined as in :ref:`target-defining`. For example:
 
@@ -135,7 +144,7 @@ class Region(object, metaclass=RegionABC):
             `None`, default to the target list contained in ``lvmcore``.
 
         Example:
-            >>> from lvmsurveysim.target import Region
+            >>> from lvmsurveysim.region import Region
             >>> m81 = Region.from_target_list('M81')
 
         """
@@ -154,9 +163,8 @@ class Region(object, metaclass=RegionABC):
 
         target = targets[name]
 
-        return cls(name, target['coords'], region_type=target['region_type'],
-                   region_params=target['region_params'])
-
+        return cls(target['region_type'], target['coords'],
+                   name=name, **target['region_params'])
 
     @abc.abstractmethod
     def _create_shapely(self):
