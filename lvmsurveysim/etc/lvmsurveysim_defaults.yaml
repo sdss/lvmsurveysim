@@ -12,7 +12,7 @@ ifu:
         n_fibres: 1641
         allow_rotation: false
 
-target_list: $LVMCORE_DIR/surveydesign/targets.yaml
+region_list: $LVMCORE_DIR/surveydesign/regions.yaml
 
 telescopes:
     APO-1m:
