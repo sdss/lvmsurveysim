@@ -116,7 +116,7 @@ class Region(object, metaclass=RegionABC):
         return f'<{self.__class__.__name__}>'
 
     @classmethod
-    def from_region_list(cls, name, region_list=None):
+    def from_list(cls, name, region_list=None):
         """Returns an instance of `.Region` from a region list.
 
         Initialises a new `.Region` whose parameters have been previously
