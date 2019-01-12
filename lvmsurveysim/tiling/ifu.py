@@ -17,7 +17,7 @@ import shapely.geometry
 from astropy.units import Quantity
 
 from lvmsurveysim import config
-from lvmsurveysim.target import Region, Target
+from lvmsurveysim.region import Region
 
 
 current_palette = sns.color_palette()
@@ -284,9 +284,7 @@ class IFU(object):
         if isinstance(scale, Quantity):
             scale = scale.to('degree/mm').value
 
-        if isinstance(region, Target):
-            region_shapely = region.region.shapely
-        elif isinstance(region, Region):
+        if isinstance(region, Region):
             region_shapely = region.shapely
         elif isinstance(region, shapely.geometry.Polygon):
             region_shapely = region
