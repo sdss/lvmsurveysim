@@ -426,7 +426,7 @@ class EllipticalRegion(Region):
             raise ValueError('pixarea is too small.')
 
         pixels = healpy.query_polygon(
-            2**order, numpy.array(self.to_cartesian()).T[:-2], inclusive=True)
+            2**order, numpy.array(self.to_cartesian()).T[:-2], inclusive=False)
 
         if return_coords:
             return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
