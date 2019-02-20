@@ -11,8 +11,6 @@
 from __future__ import absolute_import, division, print_function
 
 import abc
-import os
-import pathlib
 
 import astropy.coordinates
 import astropy.units
@@ -22,10 +20,8 @@ import matplotlib.transforms
 import numpy
 import shapely.affinity
 import shapely.geometry
-import yaml
 
 from . import plot as lvm_plot
-from .. import config
 from ..utils import add_doc
 
 
@@ -119,59 +115,6 @@ class Region(object, metaclass=RegionABC):
     def __repr__(self):
 
         return f'<{self.__class__.__name__}>'
-
-    @classmethod
-    def from_list(cls, name, region_list=None):
-        """Returns an instance of `.Region` from a region list.
-
-        Initialises a new `.Region` whose parameters have been previously
-        defined in a region list. Region lists must be YAML files in which each
-        region has attributes ``coords``, ``region_params``, and
-        ``region_params``, defined as in :ref:`target-defining`. For example:
-
-        .. code-block:: yaml
-
-            M81:
-                coords: [148.888333, 69.0652778]
-                region_type: 'ellipse'
-                region_params:
-                    a: 0.209722
-                    b: 0.106958333
-                    pa: 149
-
-        Parameters
-        ----------
-        name : str
-            The identifier for the target. Must be defined in the region.
-            list file.
-        target_list : `str`, `~pathlib.Path`, or `None`
-            The path to the YAML file containing the region list. If
-            `None`, default to the target list contained in ``lvmcore``.
-
-        Example:
-            >>> from lvmsurveysim.region import Region
-            >>> m81 = Region.from_target_list('M81')
-
-        """
-
-        if region_list is None:
-            region_list = pathlib.Path(
-                os.path.expanduser(os.path.expandvars(config['region_list'])))
-        else:
-            region_list = pathlib.Path(region_list)
-
-        assert region_list.exists()
-
-        targets = yaml.load(open(str(region_list)))
-
-        assert name in targets, 'target not found in target list.'
-
-        target = targets[name]
-
-        frame = target.get('frame', None)
-
-        return cls(target['region_type'], target['coords'],
-                   name=name, frame=frame, **target['region_params'])
 
     @abc.abstractmethod
     def _create_shapely(self):
