@@ -21,7 +21,7 @@ class Telescope(object):
     """A class to represent a telescope.
 
     Holds information about a specific telescope such as diameter and focal
-    ratio. Calculates derived quntities such as focal length and plate scale.
+    ratio. Calculates derived quantities such as focal length and plate scale.
     A `.Telescope` object can be instantiated with a name followed by a
     series of values, or just with the name. In the latter case the necessary
     information must be contained in the configuration file, under the
