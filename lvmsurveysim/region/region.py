@@ -15,6 +15,7 @@ import os
 import pathlib
 
 import astropy.coordinates
+import astropy.units
 import matplotlib.patches
 import matplotlib.path
 import matplotlib.transforms
@@ -28,7 +29,8 @@ from .. import config
 from ..utils import add_doc
 
 
-__all__ = ['Region', 'EllipticalRegion']
+__all__ = ['Region', 'EllipticalRegion', 'RectangularRegion',
+           'OverlapRegion', 'CircularRegion', 'PolygonalRegion']
 
 
 def region_factory(cls, *args, **kwargs):
@@ -65,6 +67,8 @@ def region_factory(cls, *args, **kwargs):
             region = EllipticalRegion(*args[1:], **kwargs)
         elif args[0] == 'circle':
             region = CircularRegion(*args[1:], **kwargs)
+        elif args[0] == 'rectangle':
+            region = RectangularRegion(*args[1:], **kwargs)
         elif args[0] == 'polygon':
             region = PolygonalRegion(*args[1:], **kwargs)
         else:
@@ -246,6 +250,60 @@ class Region(object, metaclass=RegionABC):
 
         return OverlapRegion(self.shapely.intersection(other.shapely))
 
+    def to_cartesian(self):
+        """Converts from polar to cartesian coordinates."""
+
+        exterior = list(self.shapely.exterior.coords)
+
+        exterior_coords = astropy.coordinates.SkyCoord(exterior, frame=self.frame, unit='deg')
+        exterior_icrs = exterior_coords.icrs
+
+        return astropy.coordinates.spherical_to_cartesian(
+            1,
+            numpy.deg2rad(exterior_icrs.data.lat.value),
+            numpy.deg2rad(exterior_icrs.data.lon.value))
+
+    def to_healpix(self, pixarea=None, ifu=None, telescope=None, return_coords=False):
+        """Tessellates the target region and returns a list of HealPix cells.
+
+        Parameters
+        ----------
+        pixarea : float
+            Desired area of the HealPix cell, in square degrees. The HealPix
+            order that produces a cell of size equal or smaller than
+            ``pixarea`` will be used.
+        ifu : `~lvmsurveysim.tiling.IFU`
+            The IFU used for tiling the region.
+        telescope : `~lvmsurveysim.telescope.Telescope`
+            The telescope on which the IFU is mounted.
+
+        """
+
+        import healpy
+
+        assert pixarea is not None or ifu is not None or telescope is not None, \
+            'either pixarea or ifu and telescope need to be defined.'
+
+        if pixarea is None:
+            assert ifu and telescope, 'ifu and telescope need to be defined.'
+            raise NotImplementedError
+
+        order = 0
+        while order <= 30:
+            if healpy.pixelfunc.nside2pixarea(2**order, degrees=True) <= pixarea:
+                break
+            order += 1
+
+        if order == 30:
+            raise ValueError('pixarea is too small.')
+
+        pixels = healpy.query_polygon(
+            2**order, numpy.array(self.to_cartesian()).T[:-2], inclusive=False)
+
+        if return_coords:
+            return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
+        return pixels
+
 
 class EllipticalRegion(Region):
     """A class that represents an elliptical region on the sky.
@@ -396,57 +454,6 @@ class EllipticalRegion(Region):
         else:
             return fig, ax
 
-    def to_cartesian(self):
-        """Converts from polar to cartesian coordinates."""
-
-        exterior = numpy.array(list(self.shapely.exterior.coords))
-
-        return astropy.coordinates.spherical_to_cartesian(
-            1,
-            numpy.deg2rad(exterior[:, 1]),
-            numpy.deg2rad(exterior[:, 0]))
-
-    def to_healpix(self, pixarea=None, ifu=None, telescope=None, return_coords=False):
-        """Tessellates the target region and returns a list of HealPix cells.
-
-        Parameters
-        ----------
-        pixarea : float
-            Desired area of the HealPix cell, in square degrees. The HealPix
-            order that produces a cell of size equal or smaller than
-            ``pixarea`` will be used.
-        ifu : `~lvmsurveysim.tiling.IFU`
-            The IFU used for tiling the region.
-        telescope : `~lvmsurveysim.telescope.Telescope`
-            The telescope on which the IFU is mounted.
-
-        """
-
-        import healpy
-
-        assert pixarea is not None or ifu is not None or telescope is not None, \
-            'either pixarea or ifu and telescope need to be defined.'
-
-        if pixarea is None:
-            assert ifu and telescope, 'ifu and telescope need to be defined.'
-            raise NotImplementedError
-
-        order = 0
-        while order <= 30:
-            if healpy.pixelfunc.nside2pixarea(2**order, degrees=True) <= pixarea:
-                break
-            order += 1
-
-        if order == 30:
-            raise ValueError('pixarea is too small.')
-
-        pixels = healpy.query_polygon(
-            2**order, numpy.array(self.to_cartesian()).T[:-2], inclusive=False)
-
-        if return_coords:
-            return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
-        return pixels
-
 
 class CircularRegion(EllipticalRegion):
     """A class that represents a circular region on the sky.
@@ -579,6 +586,85 @@ class PolygonalRegion(Region):
             return fig, ax, poly_patch
         else:
             return fig, ax
+
+
+class RectangularRegion(PolygonalRegion):
+    """A class that represents a rectangular region on the sky.
+
+    Creates a rectangular region for a rectangle on the sky.
+
+    Parameters
+    ----------
+    coords : `tuple` or `~astropy.coordinates.SkyCoord`
+        A tuple of ``(coord1, coord2)`` in degrees or a
+        `~astropy.coordinates.SkyCoord` describing the centre of the rectangle.
+    width : float
+        The length along the first axis of the rectangle, in degrees.
+    height : float
+        The length along the second axis of the rectangle, in degrees.
+    pa : float
+        The position angle (North to East) of the rectangle.
+    frame : str
+        The coordinate frame in which the coordinates are. E.g., ``'icrs'`` or
+        ``'galactic'``. Must be one of the frames understood by
+        `~astropy.coordinates.SkyCoord`.
+
+    """
+
+    def __init__(self, coords, width, height, pa=0.0, frame=None):
+
+        if not isinstance(coords, astropy.coordinates.SkyCoord):
+            assert len(coords) == 2, 'invalid number of coordinates.'
+            self.coords = astropy.coordinates.SkyCoord(coords[0],
+                                                       coords[1],
+                                                       frame=frame or 'icrs',
+                                                       unit='deg')
+        self.width = width * astropy.units.degree
+        self.height = height * astropy.units.degree
+        self.pa = pa * astropy.units.degree
+
+        self.frame = frame or 'icrs'
+
+        width_deg = self.width.value / numpy.cos(numpy.deg2rad(self.coords.data.lat.value))
+        height_deg = self.height.value
+
+        x0 = self.coords.data.lon.value - width_deg / 2.
+        x1 = self.coords.data.lon.value + width_deg / 2.
+        y0 = self.coords.data.lat.value - height_deg / 2.
+        y1 = self.coords.data.lat.value + height_deg / 2.
+
+        PolygonalRegion.__init__(self,
+                                 vertices=[(x0, y0), (x0, y1), (x1, y1), (x1, y0)],
+                                 pa=self.pa.value,
+                                 frame=self.frame)
+
+    def __repr__(self):
+
+        return (f'<{self.__class__.__name__} '
+                f'(coords={self.coords!r}, width={self.width!s}, '
+                f'height={self.height!s}, pa={self.pa!s})>')
+
+    @property
+    def vertices(self):
+        """Returns the vertices of the rectangle."""
+
+        return numpy.array(self.shapely.exterior.coords.xy).T
+
+    def _create_shapely(self):
+        """Creates a `Shapely`_ object representing the rectangle."""
+
+        width_deg = self.width.value / numpy.cos(numpy.deg2rad(self.coords.data.lat.value))
+        height_deg = self.height.value
+
+        x0 = self.coords.data.lon.value - width_deg / 2.
+        x1 = self.coords.data.lon.value + width_deg / 2.
+        y0 = self.coords.data.lat.value - height_deg / 2.
+        y1 = self.coords.data.lat.value + height_deg / 2.
+
+        box = shapely.geometry.box(x0, y0, x1, y1)
+        box_rot = shapely.affinity.rotate(box, -self.pa.value)
+
+        return box_rot
 
 
 class OverlapRegion(Region):
