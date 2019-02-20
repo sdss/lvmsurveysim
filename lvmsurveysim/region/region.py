@@ -218,13 +218,13 @@ class Region(object, metaclass=RegionABC):
 
         Parameters:
         coords (tuple or `~astropy.coordinates.SkyCoord`):
-            A tuple of ``(ra, dec)`` in degrees or the
+            A tuple of ``(coord1, coord2)`` in degrees or the
             `~astropy.coordinates.SkyCoord` the point to test.
 
         """
 
         if isinstance(coords, astropy.coordinates.SkyCoord):
-            point = shapely.geometry.Point((coords.ra.deg, coords.dec.deg))
+            point = shapely.geometry.Point((coords.data.lon.deg, coords.data.lat.deg))
         else:
             point = shapely.geometry.Point((coords[0], coords[1]))
 
@@ -255,7 +255,7 @@ class EllipticalRegion(Region):
 
     Parameters:
         coords (tuple or `~astropy.coordinates.SkyCoord`):
-            A tuple of ``(ra, dec)`` in degrees or a
+            A tuple of ``(coord1, coord2)`` in degrees or a
             `~astropy.coordinates.SkyCoord` describing the centre of the
             ellipse.
         a (float or `~astropy.coordinates.Angle`):
@@ -271,6 +271,10 @@ class EllipticalRegion(Region):
             The position angle (from North to East) of the major axis of the
             ellipse, in degrees. Gets converted to an
             `~astropy.coordinates.Angle`.
+        frame : str
+            The coordinate frame in which the coordinates are. E.g.,
+            ``'icrs'`` or ``'galactic'``. Must be one of the frames understood
+            by `~astropy.coordinates.SkyCoord`.
 
     """
 
@@ -322,7 +326,8 @@ class EllipticalRegion(Region):
 
         # See https://gis.stackexchange.com/questions/243459/drawing-ellipse-with-shapely/243462
 
-        circ = shapely.geometry.Point((self.coords.ra.deg, self.coords.dec.deg)).buffer(1)
+        circ = shapely.geometry.Point((self.coords.data.lon.deg,
+                                       self.coords.data.lat.deg)).buffer(1)
 
         ell = shapely.affinity.scale(circ, b.deg, a.deg)
 
@@ -331,9 +336,10 @@ class EllipticalRegion(Region):
 
         # Applies the RA axis scaling
 
-        ell_ra = shapely.affinity.scale(ellr, 1 / numpy.cos(numpy.radians(self.coords.dec.deg)), 1)
+        ell_lon = shapely.affinity.scale(ellr,
+                                        1 / numpy.cos(numpy.radians(self.coords.data.lat.deg)), 1)
 
-        return ell_ra
+        return ell_lon
 
     @add_doc(Region.plot)
     def plot(self, projection='rectangular', return_patch=False,
@@ -361,16 +367,16 @@ class EllipticalRegion(Region):
         # Scales the RA direction by the cos(dec) factor. We want to do this
         # AFTER the rotation has happened, so that all the elements in the RA
         # direction are scaled properly.
-        ra_transform = matplotlib.transforms.Affine2D().scale(
-            1. / numpy.cos(numpy.radians(self.coords.dec.deg)), 1)
+        lon_transform = matplotlib.transforms.Affine2D().scale(
+            1. / numpy.cos(numpy.radians(self.coords.data.lat.deg)), 1)
 
         # Moves the ellipse to the correct position.
-        coords_transform = matplotlib.transforms.Affine2D().translate(self.coords.ra.deg,
-                                                                      self.coords.dec.deg)
+        coords_transform = matplotlib.transforms.Affine2D().translate(self.coords.data.lon.deg,
+                                                                      self.coords.data.lat.deg)
 
         # This way of applying the transformation makes sure ra_transform
         # is applied in data units before ax.transData converts to pixels.
-        ell.set_transform(ra_transform + coords_transform + ax.transData)
+        ell.set_transform(lon_transform + coords_transform + ax.transData)
 
         if projection == 'rectangular':
 
@@ -450,11 +456,15 @@ class CircularRegion(EllipticalRegion):
 
     Parameters:
         coords (tuple or `~astropy.coordinates.SkyCoord`):
-            A tuple of ``(ra, dec)`` in degrees or a
+            A tuple of ``(coord1, coord2)`` in degrees or a
             `~astropy.coordinates.SkyCoord` describing the centre of the
             circle.
         r (float):
             The radius of the circle, in degrees.
+        frame : str
+            The coordinate frame in which the coordinates are. E.g.,
+            ``'icrs'`` or ``'galactic'``. Must be one of the frames understood
+            by `~astropy.coordinates.SkyCoord`.
 
     """
 
@@ -500,28 +510,34 @@ class PolygonalRegion(Region):
     `Polygon <https://shapely.readthedocs.io/en/latest/manual.html#polygons>`_
     object.
 
-    Parameters:
-        vertices (list):
+    Parameters
+    ----------
+    vertices : list
             A list or `~numpy.ndarray` of the vertices of the polygon, each
-            one of them a tuple ``(RA, Dec)``. If the last element is not
-            identical to the first one, the polygon is closed using the first
-            vertex.
+            one of them a tuple ``(coord1, coord2)``. If the last element is
+            not identical to the first one, the polygon is closed using the
+            first vertex.
+    pa : float
+        A rotation (North to East) to be applied to the vertices.
+    frame : str
+        The coordinate frame in which the coordinates are. E.g.,
+        ``'icrs'`` or ``'galactic'``. Must be one of the frames understood
+        by `~astropy.coordinates.SkyCoord`.
 
-    Example:
+    Example
+    -------
 
         >>> poly = PolygonalRegion([(169, 65), (180, 65), (170, 70), (169, 65)])
 
     """
 
-    def __init__(self, vertices):
+    def __init__(self, vertices, pa=0.0, frame=None):
 
-        self.vertices = numpy.atleast_2d(vertices).astype(numpy.float)
+        self._orig_vertices = numpy.atleast_2d(vertices).astype(numpy.float)
+        self.frame = frame
 
-        assert self.vertices.ndim == 2, 'invalid number of dimensions.'
-        assert self.vertices.shape[0] > 2, 'need at least three points for a polygon.'
-
-        if numpy.any(self.vertices[-1, :] != self.vertices[0, :]):
-            self.vertices = numpy.vstack((self.vertices, self.vertices[0, :]))
+        assert self._orig_vertices.ndim == 2, 'invalid number of dimensions.'
+        assert self._orig_vertices.shape[0] > 2, 'need at least three points for a polygon.'
 
         Region.__init__(self)
 
@@ -532,7 +548,7 @@ class PolygonalRegion(Region):
     def _create_shapely(self):
         """Creates a `Shapely`_ object representing the ellipse."""
 
-        poly = shapely.geometry.Polygon(self.vertices.tolist())
+        poly = shapely.geometry.Polygon(self._orig_vertices.tolist())
 
         return poly
 
