@@ -57,8 +57,6 @@ def region_factory(cls, *args, **kwargs):
 
     if cls is Region:
 
-        name = kwargs.pop('name', None)
-
         if args[0] == 'ellipse':
             region = EllipticalRegion(*args[1:], **kwargs)
         elif args[0] == 'circle':
@@ -69,9 +67,6 @@ def region_factory(cls, *args, **kwargs):
             region = PolygonalRegion(*args[1:], **kwargs)
         else:
             raise ValueError('invalid region type.')
-
-        if name:
-            region.name = name
 
         return region
 
@@ -108,7 +103,6 @@ class Region(object, metaclass=RegionABC):
 
     def __init__(self, *args, **kwargs):
 
-        self.name = None
         self._shapely = None
         self.frame = self.frame or 'icrs'
 
