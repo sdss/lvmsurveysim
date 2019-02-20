@@ -110,6 +110,7 @@ class Region(object, metaclass=RegionABC):
 
         self.name = None
         self._shapely = None
+        self.frame = self.frame or 'icrs'
 
     def __repr__(self):
 
@@ -163,8 +164,10 @@ class Region(object, metaclass=RegionABC):
 
         target = targets[name]
 
+        frame = target.get('frame', None)
+
         return cls(target['region_type'], target['coords'],
-                   name=name, **target['region_params'])
+                   name=name, frame=frame, **target['region_params'])
 
     @abc.abstractmethod
     def _create_shapely(self):
@@ -271,7 +274,7 @@ class EllipticalRegion(Region):
 
     """
 
-    def __init__(self, coords, a, b=None, pa=None, ba=None):
+    def __init__(self, coords, a, b=None, pa=None, ba=None, frame=None):
 
         self.a = astropy.coordinates.Angle(a, 'deg')
 
@@ -287,13 +290,19 @@ class EllipticalRegion(Region):
 
         assert self.a > self.b, 'a must be greater than b.'
 
+        self.frame = frame or 'icrs'
+
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
-            self.coords = astropy.coordinates.SkyCoord(ra=coords[0],
-                                                       dec=coords[1],
+            self.coords = astropy.coordinates.SkyCoord(coords[0],
+                                                       coords[1],
+                                                       frame=frame,
                                                        unit='deg')
 
         super(EllipticalRegion, self).__init__()
+
+        if self.frame != 'icrs':
+            raise NotImplementedError('EllipticalRegion only accepts frame="icrs".')
 
     def __repr__(self):
 
@@ -449,14 +458,16 @@ class CircularRegion(EllipticalRegion):
 
     """
 
-    def __init__(self, coords, r):
+    def __init__(self, coords, r, frame=None):
 
         self.r = astropy.coordinates.Angle(r, 'deg')
+        self.frame = frame or 'icrs'
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
-            self.coords = astropy.coordinates.SkyCoord(ra=coords[0],
-                                                       dec=coords[1],
+            self.coords = astropy.coordinates.SkyCoord(coords[0],
+                                                       coords[1],
+                                                       frame=frame,
                                                        unit='deg')
 
         Region.__init__(self)
