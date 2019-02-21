@@ -2,15 +2,15 @@
 fibre_size: 140  # in microns
 
 ifu:
-    monolithic:
-        centres: [[0, 0]]
-        n_fibres: 1657
-        allow_rotation: false
-    non_abuttable_triangle:
-        centres: [[-0.75, 0.433012702], [0.75, 0.433012702], [0, -0.866025404]]
-        # gaps: [[0, 0], [-0.75, -0.433012702], [0.75, -0.433012702], [0, 0.866025404]]
-        n_fibres: 1641
-        allow_rotation: false
+    type: monolithic
+    centres: [[0, 0]]
+    n_fibres: 1657
+    allow_rotation: false
+    # type: non_abuttable_triangle:
+    # centres: [[-0.75, 0.433012702], [0.75, 0.433012702], [0, -0.866025404]]
+    # gaps: [[0, 0], [-0.75, -0.433012702], [0.75, -0.433012702], [0, 0.866025404]]
+    # n_fibres: 1641
+    # allow_rotation: false
 
 target_file: $LVMCORE_DIR/surveydesign/targets.yaml
 
