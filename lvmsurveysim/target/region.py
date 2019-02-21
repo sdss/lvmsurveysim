@@ -68,6 +68,8 @@ def region_factory(cls, *args, **kwargs):
         else:
             raise ValueError('invalid region type.')
 
+        region.region_type = args[0]
+
         return region
 
     return type.__call__(cls, *args, **kwargs)
