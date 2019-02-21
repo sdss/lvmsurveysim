@@ -8,7 +8,7 @@
 # @Copyright: José Sánchez-Gallego
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-01-11 12:06:07
+# @Last modified time: 2019-02-21 13:57:28
 
 
 from __future__ import absolute_import, division, print_function
@@ -22,7 +22,7 @@ import numpy as np
 import shapely.affinity
 import shapely.geometry
 
-from ..target.target import Target
+from ..target import Region
 from .ifu import IFU
 
 
@@ -159,12 +159,12 @@ class Tiling(object):
 
     """
 
-    def __init__(self, target, telescope):
+    def __init__(self, region, telescope):
 
         raise NotImplementedError('this class is not yet implemented.')
 
-        assert isinstance(target, Target), 'target is of invalid type.'
-        self.target = target
+        assert isinstance(region, Region), 'region is of invalid type.'
+        self.region = region
 
         self.telescope = telescope
 
@@ -174,7 +174,7 @@ class Tiling(object):
 
     def __repr__(self):
 
-        return f'<Tiling target={self.target.name!r}, tiles={self.tiles!r}>'
+        return f'<Tiling region={self.region.name!r}, tiles={self.tiles!r}>'
 
     def __call__(self, ifu=None, strict=False):
         """Runs the tiling process using ``ifu`` as the tiling unit.
