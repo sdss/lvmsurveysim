@@ -202,47 +202,6 @@ class Region(object, metaclass=RegionABC):
             numpy.deg2rad(exterior_icrs.data.lat.value),
             numpy.deg2rad(exterior_icrs.data.lon.value))
 
-    def to_healpix(self, pixarea=None, ifu=None, telescope=None, return_coords=False):
-        """Tessellates the target region and returns a list of HealPix cells.
-
-        Parameters
-        ----------
-        pixarea : float
-            Desired area of the HealPix cell, in square degrees. The HealPix
-            order that produces a cell of size equal or smaller than
-            ``pixarea`` will be used.
-        ifu : `~lvmsurveysim.tiling.IFU`
-            The IFU used for tiling the region.
-        telescope : `~lvmsurveysim.telescope.Telescope`
-            The telescope on which the IFU is mounted.
-
-        """
-
-        import healpy
-
-        assert pixarea is not None or ifu is not None or telescope is not None, \
-            'either pixarea or ifu and telescope need to be defined.'
-
-        if pixarea is None:
-            assert ifu and telescope, 'ifu and telescope need to be defined.'
-            raise NotImplementedError
-
-        order = 0
-        while order <= 30:
-            if healpy.pixelfunc.nside2pixarea(2**order, degrees=True) <= pixarea:
-                break
-            order += 1
-
-        if order == 30:
-            raise ValueError('pixarea is too small.')
-
-        pixels = healpy.query_polygon(
-            2**order, numpy.array(self.to_cartesian()).T[:-2], inclusive=False)
-
-        if return_coords:
-            return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
-        return pixels
-
 
 class EllipticalRegion(Region):
     """A class that represents an elliptical region on the sky.
