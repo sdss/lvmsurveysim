@@ -17,12 +17,12 @@ import shapely.geometry
 from astropy.units import Quantity
 
 from lvmsurveysim import config
-from lvmsurveysim.region import Region
+from lvmsurveysim.target import Region
 
 
 current_palette = sns.color_palette()
 
-__all__ = ('fibres_to_rows', 'SubIFU', 'IFU', 'MonolithicIFU', 'NonAbuttableTriangleIFU')
+__all__ = ('fibres_to_rows', 'SubIFU', 'IFU')
 
 
 def fibres_to_rows(fibres):
@@ -218,7 +218,7 @@ class IFU(object):
     """
 
     def __init__(self, n_fibres=None, centres=None, padding=0,
-                 fibre_size=None, allow_rotation=False):
+                 fibre_size=None, allow_rotation=False, name=None):
 
         assert isinstance(centres, (list, tuple, numpy.ndarray)), 'centres is not a list'
         assert len(centres) > 0, 'centres must be a non-zero length list.'
@@ -227,6 +227,8 @@ class IFU(object):
             assert len(ll) == 2, 'each centre must be a 2D tuple.'
 
         assert n_fibres is not None, 'incorrect n_fibres input.'
+
+        self.name = name
 
         self.centres = numpy.atleast_2d(centres)
 
@@ -243,6 +245,16 @@ class IFU(object):
         self.polygon = shapely.geometry.MultiPolygon([subifu.polygon for subifu in self.subifus])
 
         self.allow_rotation = allow_rotation
+
+    @classmethod
+    def from_config(cls):
+        """Returns an `.IFU` object from the configuration file."""
+
+        ifu_conf = config['ifu']
+
+        name = ifu_conf.pop('type', None)
+
+        return cls(name=name, **ifu_conf)
 
     def scale(self, hscale, vscale, origin='center'):
         """Scales the IFU."""
@@ -368,17 +380,3 @@ class IFU(object):
             ax.set_ylim(bounds[1] - yy_pad, bounds[3] + yy_pad)
 
         return fig
-
-
-class MonolithicIFU(IFU):
-
-    def __init__(self):
-
-        super(MonolithicIFU, self).__init__(**config['ifu']['monolithic'])
-
-
-class NonAbuttableTriangleIFU(IFU):
-
-    def __init__(self):
-
-        super(NonAbuttableTriangleIFU, self).__init__(**config['ifu']['non_abuttable_triangle'])
