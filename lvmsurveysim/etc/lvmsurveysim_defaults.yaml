@@ -15,6 +15,9 @@ ifu:
 target_file: $LVMCORE_DIR/surveydesign/targets.yaml
 
 telescopes:
-    APO-1m:
+    LVM-1m:
         diameter: 1.
+        f: 5
+    LVM-160:
+        diameter: 0.16
         f: 5
