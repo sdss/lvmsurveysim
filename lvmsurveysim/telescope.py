@@ -7,11 +7,14 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-02-21 18:45:50
+# @Last modified time: 2019-02-21 18:57:17
 
 import astropy.units
 
 from lvmsurveysim import config
+
+
+__all__ = ['Telescope']
 
 
 class Telescope(object):
@@ -24,14 +27,15 @@ class Telescope(object):
     information must be contained in the configuration file, under the
     ``telescopes`` field.
 
-    Parameters:
-        name (str):
-            The name of the telescope. If only the ``name`` is provided, the
-            information will be grabbed from the configuration file.
-        diameter (float):
-            The diameter of the telescope, in meters
-        f (float):
-            The f number of the telescope.
+    Parameters
+    ----------
+    name : str
+        The name of the telescope. If only the ``name`` is provided, the
+        information will be grabbed from the configuration file.
+    diameter : float
+        The diameter of the telescope, in meters
+    f : float
+        The f number of the telescope.
 
     """
 
@@ -39,22 +43,31 @@ class Telescope(object):
 
         self.name = name
 
-        if f is None and diameter is None:
-            assert 'telescopes' in config, 'configuration does not have telescopes section.'
-            assert self.name in config['telescopes'], \
-                f'telescope name {self.name!r} not found in configuration.'
+        assert diameter is not None and f is not None, 'both diameter and f must be defined.'
 
-            self.diameter = config['telescopes'][self.name]['diameter'] * uu.meter
-            self.f = config['telescopes'][self.name]['f']
-
-        else:
-            assert all([diameter, f]), 'both diameter and f must be defined.'
-            self.diameter = diameter * astropy.units.meter
-            self.f = f
+        self.diameter = diameter * astropy.units.meter
+        self.f = f
 
     def __repr__(self):
 
         return f'<Telescope {self.name!r}>'
+
+    @classmethod
+    def from_config(cls, name):
+        """Loads a telescope configuration from the configuration file.
+
+        Example
+        -------
+
+        >>> lvm160 = Telescope.from_config('LVM-160)
+
+        """
+
+        assert 'telescopes' in config, 'configuration does not have telescopes section.'
+        assert name in config['telescopes'], f'telescope name {name!r} not found in configuration.'
+
+        return cls(name, diameter=config['telescopes'][name]['diameter'],
+                   f=config['telescopes'][name]['f'])
 
     @property
     def focal_length(self):
