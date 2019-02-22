@@ -10,17 +10,19 @@ from __future__ import absolute_import, division, print_function
 
 import matplotlib.collections
 import matplotlib.patches
-import matplotlib.pyplot as plt
+import matplotlib.pyplot
 import numpy
-import seaborn as sns
+import seaborn
 import shapely.geometry
-from astropy.units import Quantity
+import astropy.units
 
 from lvmsurveysim import config
 from lvmsurveysim.target import Region
 
 
-current_palette = sns.color_palette()
+seaborn.set()
+current_palette = seaborn.color_palette()
+
 
 __all__ = ('fibres_to_rows', 'SubIFU', 'IFU')
 
@@ -103,7 +105,11 @@ class SubIFU(object):
 
         self.centre = numpy.array(centre)
 
-        self.fibre_size = fibre_size or config['fibre_size']
+        self.fibre_size = fibre_size
+        if not isinstance(self.fibre_size, astropy.units.Quantity):
+            if not self.fibre_size:
+                self.fibre_size = config['fibre_size']
+            self.fibre_size *= astropy.units.micron
 
         self.polygon = self._create_polygon()
         self.fibres = self._create_fibres()
@@ -237,7 +243,11 @@ class IFU(object):
         assert self.n_fibres % self.n_subifus == 0, \
             'number of fibres is not a multiple of number of sub-IFUs.'
 
-        self.fibre_size = fibre_size or config['fibre_size']
+        self.fibre_size = fibre_size
+        if not isinstance(self.fibre_size, astropy.units.Quantity):
+            if not self.fibre_size:
+                self.fibre_size = config['fibre_size']
+            self.fibre_size *= astropy.units.micron
 
         self.padding = padding
 
@@ -245,6 +255,10 @@ class IFU(object):
         self.polygon = shapely.geometry.MultiPolygon([subifu.polygon for subifu in self.subifus])
 
         self.allow_rotation = allow_rotation
+
+    def __repr__(self):
+
+        return f'<IFU (name={self.name!r}, n_fibres={self.n_fibres}, centres={self.centres!s})>'
 
     @classmethod
     def from_config(cls):
@@ -293,7 +307,7 @@ class IFU(object):
 
         """
 
-        if isinstance(scale, Quantity):
+        if isinstance(scale, astropy.units.Quantity):
             scale = scale.to('degree/mm').value
 
         if isinstance(region, Region):
@@ -357,9 +371,9 @@ class IFU(object):
     def plot(self, show_fibres=False, filled=True):
         """Plots the IFU."""
 
-        with sns.axes_style('white'):
+        with seaborn.axes_style('white'):
 
-            fig, ax = plt.subplots()
+            fig, ax = matplotlib.pyplot.subplots()
 
             for subifu in self.subifus:
                 ax.add_patch(subifu.get_patch(filled=filled))
