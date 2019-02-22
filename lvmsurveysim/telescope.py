@@ -1,20 +1,17 @@
 #!/usr/bin/env python
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 #
-# @Author: José Sánchez-Gallego
-# @Date: Oct 27, 2017
+# @Author: José Sánchez-Gallego (gallegoj@uw.edu)
+# @Date: 2017-10-27
 # @Filename: telescope.py
-# @License: BSD 3-Clause
-# @Copyright: José Sánchez-Gallego
+# @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
+#
+# @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
+# @Last modified time: 2019-02-21 18:45:50
 
+import astropy.units
 
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-
-import astropy.units as uu
-
-import lvmsurveysim
+from lvmsurveysim import config
 
 
 class Telescope(object):
@@ -43,17 +40,16 @@ class Telescope(object):
         self.name = name
 
         if f is None and diameter is None:
-            assert 'telescopes' in lvmsurveysim.config, \
-                'configuration does not have telescopes section.'
-            assert self.name in lvmsurveysim.config['telescopes'], \
+            assert 'telescopes' in config, 'configuration does not have telescopes section.'
+            assert self.name in config['telescopes'], \
                 f'telescope name {self.name!r} not found in configuration.'
 
-            self.diameter = lvmsurveysim.config['telescopes'][self.name]['diameter'] * uu.meter
-            self.f = lvmsurveysim.config['telescopes'][self.name]['f']
+            self.diameter = config['telescopes'][self.name]['diameter'] * uu.meter
+            self.f = config['telescopes'][self.name]['f']
 
         else:
             assert all([diameter, f]), 'both diameter and f must be defined.'
-            self.diameter = diameter * uu.meter
+            self.diameter = diameter * astropy.units.meter
             self.f = f
 
     def __repr__(self):
@@ -70,4 +66,4 @@ class Telescope(object):
     def plate_scale(self):
         """Returns the plate scale as an `~astropy.units.Quantity`."""
 
-        return 206265 * uu.arcsec / (self.diameter.to('mm') * self.f)
+        return 206265 * astropy.units.arcsec / (self.diameter.to('mm') * self.f)
