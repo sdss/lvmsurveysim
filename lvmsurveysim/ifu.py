@@ -263,7 +263,7 @@ class IFU(object):
     def from_config(cls):
         """Returns an `.IFU` object from the configuration file."""
 
-        ifu_conf = config['ifu']
+        ifu_conf = config['ifu'].copy()
 
         name = ifu_conf.pop('type', None)
 
