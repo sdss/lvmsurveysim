@@ -15,7 +15,8 @@ import pathlib
 import numpy
 import yaml
 
-from .. import config
+from .. import config, log
+from ..ifu import IFU
 from ..telescope import Telescope
 from .region import Region
 
