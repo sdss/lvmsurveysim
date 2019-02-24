@@ -103,14 +103,49 @@ class Region(object, metaclass=RegionABC):
 
     """
 
+    _VALID_FRAMES = ['icrs', 'galactic']
+
     def __init__(self, *args, **kwargs):
 
         self._shapely = None
+
         self.frame = self.frame or 'icrs'
+
+        assert self.frame in self._VALID_FRAMES, f'frame must be one of {self._VALID_FRAMES}'
 
     def __repr__(self):
 
         return f'<{self.__class__.__name__}>'
+
+    def _get_axis_name(self, axis_id, frame=None):
+        """Returns the name of a given axis depending on the frame."""
+
+        frame = frame or self.frame
+        assert frame in self._VALID_FRAMES
+
+        if frame == 'icrs':
+            axes = ['ra', 'dec']
+        elif frame == 'galactic':
+            axes = ['l', 'b']
+
+        return axes[axis_id]
+
+    def get_coordinate(self, coord, axis_id):
+        """Return the coordinate axis value for any given frame.
+
+        Parameters
+        ----------
+        coord : `~astropy.coordinates.SkyCoord`
+            The coordinate from which to extract the axis value.
+        axis_id : int
+            The axis to extract (0: first, 1: second). For example, if the
+            frame of ``coord`` is ``icrs``, ``axis_id=1`` means ``dec``.
+
+        """
+
+        frame = coord.name
+
+        return getattr(coord, self._get_axis_name(axis_id, frame=frame))
 
     @abc.abstractmethod
     def _create_shapely(self):
@@ -130,6 +165,25 @@ class Region(object, metaclass=RegionABC):
             self._shapely = self._create_shapely()
 
         return self._shapely
+
+    def get_exterior(self, to_frame=None):
+        """Returns the coordinates of the exterior of the region.
+
+        The points returned are defined by Shapely and are identical to
+        ``self.shapely.exterior.coords`` converted to the desired reference
+        ``frame``. If ``frame`` is not passed, the frame of the region is used.
+
+        """
+
+        exterior = list(self.shapely.exterior.coords)
+
+        exterior_coords = astropy.coordinates.SkyCoord(
+            exterior, frame=self.frame, unit='deg')
+
+        if to_frame is not None and to_frame != self.frame:
+            exterior_coords = exterior_coords.transform_to(to_frame)
+
+        return exterior_coords
 
     @abc.abstractmethod
     def plot(self, projection='rectangular', **kwargs):
@@ -167,7 +221,8 @@ class Region(object, metaclass=RegionABC):
         """
 
         if isinstance(coords, astropy.coordinates.SkyCoord):
-            point = shapely.geometry.Point((coords.data.lon.deg, coords.data.lat.deg))
+            point = shapely.geometry.Point((self.get_coordinate(coords, 0).deg,
+                                            self.get_coordinate(coords, 1).deg))
         else:
             point = shapely.geometry.Point((coords[0], coords[1]))
 
@@ -189,18 +244,12 @@ class Region(object, metaclass=RegionABC):
 
         return OverlapRegion(self.shapely.intersection(other.shapely))
 
-    def to_cartesian(self):
+    def to_cartesian(self, to_frame='icrs'):
         """Converts from polar to cartesian coordinates."""
 
-        exterior = list(self.shapely.exterior.coords)
+        exterior_frame = self.get_exterior(to_frame=to_frame)
 
-        exterior_coords = astropy.coordinates.SkyCoord(exterior, frame=self.frame, unit='deg')
-        exterior_icrs = exterior_coords.icrs
-
-        return astropy.coordinates.spherical_to_cartesian(
-            1,
-            numpy.deg2rad(exterior_icrs.data.lat.value),
-            numpy.deg2rad(exterior_icrs.data.lon.value))
+        return exterior_frame.cartesian.xyz
 
 
 class EllipticalRegion(Region):
@@ -234,7 +283,7 @@ class EllipticalRegion(Region):
 
     """
 
-    def __init__(self, coords, a, b=None, pa=None, ba=None, frame=None):
+    def __init__(self, coords, a, b=None, pa=None, ba=None, frame='icrs'):
 
         self.a = astropy.coordinates.Angle(a, 'deg')
 
@@ -250,7 +299,7 @@ class EllipticalRegion(Region):
 
         assert self.a > self.b, 'a must be greater than b.'
 
-        self.frame = frame or 'icrs'
+        self.frame = frame
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
@@ -260,9 +309,6 @@ class EllipticalRegion(Region):
                                                        unit='deg')
 
         super(EllipticalRegion, self).__init__()
-
-        if self.frame != 'icrs':
-            raise NotImplementedError('EllipticalRegion only accepts frame="icrs".')
 
     def __repr__(self):
 
@@ -282,8 +328,8 @@ class EllipticalRegion(Region):
 
         # See https://gis.stackexchange.com/questions/243459/drawing-ellipse-with-shapely/243462
 
-        circ = shapely.geometry.Point((self.coords.data.lon.deg,
-                                       self.coords.data.lat.deg)).buffer(1)
+        circ = shapely.geometry.Point((self.get_coordinate(self.coords, 0).deg,
+                                       self.get_coordinate(self.coords, 1).deg)).buffer(1)
 
         ell = shapely.affinity.scale(circ, b.deg, a.deg)
 
@@ -292,8 +338,8 @@ class EllipticalRegion(Region):
 
         # Applies the RA axis scaling
 
-        ell_lon = shapely.affinity.scale(ellr,
-                                        1 / numpy.cos(numpy.radians(self.coords.data.lat.deg)), 1)
+        ell_lon = shapely.affinity.scale(
+            ellr, 1 / numpy.cos(numpy.radians(self.get_coordinate(self.coords, 1).deg)), 1)
 
         return ell_lon
 
@@ -324,11 +370,12 @@ class EllipticalRegion(Region):
         # AFTER the rotation has happened, so that all the elements in the RA
         # direction are scaled properly.
         lon_transform = matplotlib.transforms.Affine2D().scale(
-            1. / numpy.cos(numpy.radians(self.coords.data.lat.deg)), 1)
+            1. / numpy.cos(numpy.radians(self.get_coordinate(self.coords.icrs, 1).deg)), 1)
 
         # Moves the ellipse to the correct position.
-        coords_transform = matplotlib.transforms.Affine2D().translate(self.coords.data.lon.deg,
-                                                                      self.coords.data.lat.deg)
+        coords_transform = matplotlib.transforms.Affine2D().translate(
+            self.get_coordinate(self.coords.icrs, 0).deg,
+            self.get_coordinate(self.coords.icrs, 1).deg)
 
         # This way of applying the transformation makes sure ra_transform
         # is applied in data units before ax.transData converts to pixels.
@@ -373,10 +420,10 @@ class CircularRegion(EllipticalRegion):
 
     """
 
-    def __init__(self, coords, r, frame=None):
+    def __init__(self, coords, r, frame='icrs'):
 
         self.r = astropy.coordinates.Angle(r, 'deg')
-        self.frame = frame or 'icrs'
+        self.frame = frame
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
@@ -436,9 +483,10 @@ class PolygonalRegion(Region):
 
     """
 
-    def __init__(self, vertices, pa=0.0, frame=None):
+    def __init__(self, vertices, pa=0.0, frame='icrs'):
 
         self._orig_vertices = numpy.atleast_2d(vertices).astype(numpy.float)
+        self.pa = pa * astropy.units.deg
         self.frame = frame
 
         assert self._orig_vertices.ndim == 2, 'invalid number of dimensions.'
@@ -448,36 +496,50 @@ class PolygonalRegion(Region):
 
     def __repr__(self):
 
-        return f'<{self.__class__.__name__} (vertices={self.vertices!r})>'
+        return f'<{self.__class__.__name__} (vertices={self.vertices!r}, frame={self.frame!r})>'
+
+    @property
+    def vertices(self):
+        """Returns the vertices of the polygon."""
+
+        return self.get_exterior()
 
     def _create_shapely(self):
         """Creates a `Shapely`_ object representing the ellipse."""
 
         poly = shapely.geometry.Polygon(self._orig_vertices.tolist())
+        poly_rot = shapely.affinity.rotate(poly, -self.pa.value)
 
-        return poly
+        return poly_rot
 
     @add_doc(Region.plot)
     def plot(self, projection='rectangular', return_patch=False, **kwargs):
 
         fig, ax = lvm_plot.get_axes(projection=projection)
 
-        poly = matplotlib.path.Path(self.vertices, closed=True)
+        coords_icrs = numpy.array([self.vertices.l.deg, self.vertices.b.deg]).T
+
+        poly = matplotlib.path.Path(coords_icrs, closed=True)
         poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
 
         poly_patch = ax.add_patch(poly_patch)
 
         if projection == 'rectangular':
 
-            padding_x = 0.1 * (self.shapely.bounds[2] - self.shapely.bounds[0])
-            padding_y = 0.1 * (self.shapely.bounds[3] - self.shapely.bounds[1])
+            min_x, min_y = coords_icrs.min(0)
+            max_x, max_y = coords_icrs.max(0)
 
-            ax.set_xlim(self.shapely.bounds[2] + padding_x, self.shapely.bounds[0] - padding_x)
-            ax.set_ylim(self.shapely.bounds[1] - padding_y, self.shapely.bounds[3] + padding_y)
+            padding_x = 0.1 * (max_x - min_x)
+            padding_y = 0.1 * (max_y - min_y)
+
+            ax.set_xlim(min_x - padding_x, max_x + padding_x)
+            ax.set_ylim(min_y - padding_y, max_y + padding_y)
 
         elif projection == 'mollweide':
 
-            centre = self.shapely.centroid.x
+            centroid = astropy.coordinates.SkyCoord(*self.shapely.centroid.xy,
+                                                    frame=self.frame, unit='deg')
+            centre = centroid.icrs.ra.deg
             poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=centre)
 
         if return_patch:
@@ -509,7 +571,7 @@ class RectangularRegion(PolygonalRegion):
 
     """
 
-    def __init__(self, coords, width, height, pa=0.0, frame=None):
+    def __init__(self, coords, width, height, pa=0.0, frame='icrs'):
 
         if not isinstance(coords, astropy.coordinates.SkyCoord):
             assert len(coords) == 2, 'invalid number of coordinates.'
@@ -521,48 +583,20 @@ class RectangularRegion(PolygonalRegion):
         self.height = height * astropy.units.degree
         self.pa = pa * astropy.units.degree
 
-        self.frame = frame or 'icrs'
+        self.frame = frame
 
-        width_deg = self.width.value / numpy.cos(numpy.deg2rad(self.coords.data.lat.value))
+        width_deg = self.width.value / numpy.cos(self.get_coordinate(self.coords, 1).rad)
         height_deg = self.height.value
 
-        x0 = self.coords.data.lon.value - width_deg / 2.
-        x1 = self.coords.data.lon.value + width_deg / 2.
-        y0 = self.coords.data.lat.value - height_deg / 2.
-        y1 = self.coords.data.lat.value + height_deg / 2.
+        x0 = self.get_coordinate(self.coords, 0).deg - width_deg / 2.
+        x1 = self.get_coordinate(self.coords, 0).deg + width_deg / 2.
+        y0 = self.get_coordinate(self.coords, 1).deg - height_deg / 2.
+        y1 = self.get_coordinate(self.coords, 1).deg + height_deg / 2.
 
         PolygonalRegion.__init__(self,
                                  vertices=[(x0, y0), (x0, y1), (x1, y1), (x1, y0)],
                                  pa=self.pa.value,
                                  frame=self.frame)
-
-    def __repr__(self):
-
-        return (f'<{self.__class__.__name__} '
-                f'(coords={self.coords!r}, width={self.width!s}, '
-                f'height={self.height!s}, pa={self.pa!s})>')
-
-    @property
-    def vertices(self):
-        """Returns the vertices of the rectangle."""
-
-        return numpy.array(self.shapely.exterior.coords.xy).T
-
-    def _create_shapely(self):
-        """Creates a `Shapely`_ object representing the rectangle."""
-
-        width_deg = self.width.value / numpy.cos(numpy.deg2rad(self.coords.data.lat.value))
-        height_deg = self.height.value
-
-        x0 = self.coords.data.lon.value - width_deg / 2.
-        x1 = self.coords.data.lon.value + width_deg / 2.
-        y0 = self.coords.data.lat.value - height_deg / 2.
-        y1 = self.coords.data.lat.value + height_deg / 2.
-
-        box = shapely.geometry.box(x0, y0, x1, y1)
-        box_rot = shapely.affinity.rotate(box, -self.pa.value)
-
-        return box_rot
 
 
 class OverlapRegion(Region):
