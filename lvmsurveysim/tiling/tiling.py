@@ -8,7 +8,7 @@
 # @Copyright: José Sánchez-Gallego
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-02-21 13:57:28
+# @Last modified time: 2019-02-21 14:27:23
 
 
 from __future__ import absolute_import, division, print_function
@@ -22,8 +22,9 @@ import numpy as np
 import shapely.affinity
 import shapely.geometry
 
+from lvmsurveysim.ifu import IFU
+
 from ..target import Region
-from .ifu import IFU
 
 
 __all__ = ['Tiling', 'Tile']
