@@ -61,7 +61,7 @@ class Target(object):
         if isinstance(telescope, Telescope):
             self.telescope = Telescope
         else:
-            self.telescope = Telescope(telescope)
+            self.telescope = Telescope.from_config(telescope)
 
         self.region = Region(*args, **kwargs)
 
@@ -148,12 +148,19 @@ class Target(object):
 
         import healpy
 
+        telescope = telescope or self.telescope
+
+        if ifu is None:
+            ifu = IFU.from_config()
+            log.warning(f'no IFU provided. Using default IFU {ifu.name!r}.')
+
         assert pixarea is not None or ifu is not None or telescope is not None, \
             'either pixarea or ifu and telescope need to be defined.'
 
         if pixarea is None:
-            assert ifu and telescope, 'ifu and telescope need to be defined.'
-            raise NotImplementedError
+            pixarea = (ifu.fibre_size / 2. * telescope.plate_scale).to('degree')**2 * numpy.pi
+            pixarea *= ifu.n_fibres
+            pixarea = pixarea.value
 
         order = 0
         while order <= 30:
