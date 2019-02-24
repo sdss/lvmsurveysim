@@ -178,6 +178,11 @@ class Target(object):
             return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
         return pixels
 
+    def plot(self, *args, **kwargs):
+        """Plots the region. An alias for ``.Region.plot``."""
+
+        return self.region.plot(*args, **kwargs)
+
 
 class TargetSet(list):
     """A list of all the targets to observe.
