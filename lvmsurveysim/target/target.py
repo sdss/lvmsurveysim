@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-02-20 17:48:00
+# @Last modified time: 2019-02-22 16:25:47
 
 import os
 import pathlib
@@ -130,20 +130,27 @@ class Target(object):
 
         return cls(region_type, coords, name=name, **target)
 
-    def get_healpix(self, pixarea=None, ifu=None, telescope=None, return_coords=False):
-        """Tessellates the target region and returns a list of HealPix cells.
+    def get_healpix(self, pixarea=None, ifu=None, telescope=None,
+                    inclusive=True, return_coords=False):
+        """Tessellates the target region and returns a list of HealPix pixels.
 
         Parameters
         ----------
         pixarea : float
-            Desired area of the HealPix cell, in square degrees. The HealPix
-            order that produces a cell of size equal or smaller than
+            Desired area of the HealPix pixel, in square degrees. The HealPix
+            order that produces a pixel of size equal or smaller than
             ``pixarea`` will be used.
         ifu : `~lvmsurveysim.tiling.IFU`
             The IFU used for tiling the region.
         telescope : `~lvmsurveysim.telescope.Telescope`
             The telescope on which the IFU is mounted. Defaults to the object
             ``telescope`` attribute.
+        inclusive : bool
+            Whather to include the HealPix pixels that overlap with the region
+            but are not completely contained by it.
+        return_coords : bool
+            If True, returns the coordinates of the included pixels instead of
+            their value.
 
         """
 
@@ -172,8 +179,11 @@ class Target(object):
         if order == 30:
             raise ValueError('pixarea is too small.')
 
-        pixels = healpy.query_polygon(
-            2**order, numpy.array(self.to_cartesian()).T[:-2], inclusive=False)
+        cartesian = numpy.array(self.region.to_cartesian()).T
+        while numpy.all(cartesian[0] == cartesian[-1]):
+            cartesian = numpy.delete(cartesian, [cartesian.shape[0] - 1], axis=0)
+
+        pixels = healpy.query_polygon(2**order, cartesian, inclusive=inclusive)
 
         if return_coords:
             return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
