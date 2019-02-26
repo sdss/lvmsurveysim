@@ -34,7 +34,7 @@ def region_factory(cls, *args, **kwargs):
 
     Based on first argument, determines the type of region to return and
     passes it the ``args`` and ``kwargs``. This function is intended for
-    overrding the ``__call__`` method in the `abc.ABCMeta` metacalass. The
+    overriding the ``__call__`` method in the `abc.ABCMeta` metacalass. The
     reason is that we want `.Region` to have
     `abstract methods <abc.abstractmethod>` while also being a factory.
     See `this stack overflow <https://stackoverflow.com/a/5961102>`_ for
