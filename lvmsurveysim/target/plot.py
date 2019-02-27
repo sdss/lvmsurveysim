@@ -1,23 +1,20 @@
 #!/usr/bin/env python
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 #
-# @Author: José Sánchez-Gallego
-# @Date: Oct 17, 2017
+# @Author: José Sánchez-Gallego (gallegoj@uw.edu)
+# @Date: 2017-10-17
 # @Filename: plot.py
-# @License: BSD 3-Clause
-# @Copyright: José Sánchez-Gallego
-
-
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+# @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
+#
+# @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
+# @Last modified time: 2019-02-27 11:51:04
 
 import matplotlib.pyplot as plt
 import matplotlib.transforms
+import numpy
+import seaborn
 
-import numpy as np
-
-import seaborn as sns
+from . import _VALID_FRAMES
 
 
 __all__ = ['get_axes', 'transform_patch_mollweide']
@@ -26,7 +23,7 @@ __all__ = ['get_axes', 'transform_patch_mollweide']
 __MOLLWEIDE_ORIGIN__ = 120
 
 
-def get_axes(projection='rectangular'):
+def get_axes(projection='rectangular', frame='icrs'):
     """Returns axes for a particular projection.
 
     Parameters:
@@ -34,6 +31,10 @@ def get_axes(projection='rectangular'):
             The type of projection of the axes returned. Either `rectangular`
             for a normal, cartesian, projection, or
             `mollweide <https://en.wikipedia.org/wiki/Mollweide_projection>`_.
+        frame : str
+            The reference frame of the axes. Must be one of
+            `~lvmsurveysim.target.region._VALID_FRAMES`. Used to define
+            the axis labels.
 
     Returns:
         fig, ax:
@@ -42,14 +43,20 @@ def get_axes(projection='rectangular'):
 
     """
 
-    with sns.axes_style('whitegrid'):
+    assert frame in _VALID_FRAMES, 'invalid frame'
+
+    with seaborn.axes_style('whitegrid'):
 
         if projection == 'rectangular':
             fig = plt.figure(figsize=(10, 6))
             ax = fig.add_subplot(111)
 
-            ax.set_xlabel(r'$\alpha_{2000}$')
-            ax.set_ylabel(r'$\delta_{2000}$')
+            if frame == 'icrs':
+                ax.set_xlabel(r'$\alpha_{2000}\,{\rm [deg]}$')
+                ax.set_ylabel(r'$\delta_{2000}\,{\rm [deg]}$')
+            elif frame == 'galactic':
+                ax.set_xlabel(r'$\rm l\,[deg]$')
+                ax.set_ylabel(r'$\rm b\,[deg]$')
 
             ax.set_xlim(360, 0)
             ax.set_ylim(-20, 80)
@@ -59,10 +66,10 @@ def get_axes(projection='rectangular'):
             ax = fig.add_subplot(111, projection='mollweide')
             org = __MOLLWEIDE_ORIGIN__
 
-            tick_labels = np.array([150., 120, 90, 60, 30, 0,
-                                    330, 300, 270, 240, 210])
-            tick_labels = np.remainder(tick_labels + 360 + org, 360)
-            tick_labels = np.array(tick_labels / 15., int)
+            tick_labels = numpy.array([150., 120, 90, 60, 30, 0,
+                                       330, 300, 270, 240, 210])
+            tick_labels = numpy.remainder(tick_labels + 360 + org, 360)
+            tick_labels = numpy.array(tick_labels / 15., int)
 
             tickStr = []
             for tick_label in tick_labels[1::2]:
@@ -121,10 +128,10 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
 
     """
 
-    trans_to_rads = matplotlib.transforms.Affine2D().scale(np.pi / 180, np.pi / 180)
-    trans_reflect = matplotlib.transforms.Affine2D(np.array([[-1, 0, 0],
-                                                             [0, 1, 0],
-                                                             [0, 0, 1]]))
+    trans_to_rads = matplotlib.transforms.Affine2D().scale(numpy.pi / 180, numpy.pi / 180)
+    trans_reflect = matplotlib.transforms.Affine2D(numpy.array([[-1, 0, 0],
+                                                                [0, 1, 0],
+                                                                [0, 0, 1]]))
 
     # If patch_centre is not defined, tries to figure out the centre from
     # the patch itself
@@ -139,7 +146,7 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
     else:
         translation = __MOLLWEIDE_ORIGIN__ + 360
 
-    trans_origin = matplotlib.transforms.Affine2D().translate(np.radians(translation), 0)
+    trans_origin = matplotlib.transforms.Affine2D().translate(numpy.radians(translation), 0)
 
     patch.set_transform(trans_to_rads + trans_reflect + trans_origin + ax.transData)
 
