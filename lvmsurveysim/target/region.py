@@ -21,6 +21,7 @@ import numpy
 import shapely.affinity
 import shapely.geometry
 
+from . import _VALID_FRAMES
 from . import plot as lvm_plot
 from ..utils import add_doc
 
@@ -103,15 +104,15 @@ class Region(object, metaclass=RegionABC):
 
     """
 
-    _VALID_FRAMES = ['icrs', 'galactic']
-
     def __init__(self, *args, **kwargs):
 
         self._shapely = None
 
         self.frame = self.frame or 'icrs'
 
-        assert self.frame in self._VALID_FRAMES, f'frame must be one of {self._VALID_FRAMES}'
+        assert self.frame in _VALID_FRAMES, f'frame must be one of {_VALID_FRAMES}'
+
+        self._shapely = self._create_shapely()
 
     def __repr__(self):
 
@@ -121,7 +122,7 @@ class Region(object, metaclass=RegionABC):
         """Returns the name of a given axis depending on the frame."""
 
         frame = frame or self.frame
-        assert frame in self._VALID_FRAMES
+        assert frame in _VALID_FRAMES
 
         if frame == 'icrs':
             axes = ['ra', 'dec']
@@ -355,7 +356,7 @@ class EllipticalRegion(Region):
         b = astropy.coordinates.Angle(b, 'deg')
         pa = astropy.coordinates.Angle(pa, 'deg')
 
-        fig, ax = lvm_plot.get_axes(projection=projection)
+        fig, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
 
         # Creates the ellipse in (0, 0) so that the scaling doesn't move the
         # centre. We will translate it after scaling in the RA direction.
@@ -505,7 +506,7 @@ class PolygonalRegion(Region):
         return self.get_exterior()
 
     def _create_shapely(self):
-        """Creates a `Shapely`_ object representing the ellipse."""
+        """Creates a `Shapely`_ object representing the polygon."""
 
         poly = shapely.geometry.Polygon(self._orig_vertices.tolist())
         poly_rot = shapely.affinity.rotate(poly, -self.pa.value)
@@ -515,19 +516,20 @@ class PolygonalRegion(Region):
     @add_doc(Region.plot)
     def plot(self, projection='rectangular', return_patch=False, **kwargs):
 
-        fig, ax = lvm_plot.get_axes(projection=projection)
+        fig, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
 
-        coords_icrs = numpy.array([self.vertices.l.deg, self.vertices.b.deg]).T
+        coords = numpy.array([self.get_coordinate(self.vertices, 0).deg,
+                              self.get_coordinate(self.vertices, 1).deg]).T
 
-        poly = matplotlib.path.Path(coords_icrs, closed=True)
+        poly = matplotlib.path.Path(coords, closed=True)
         poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
 
         poly_patch = ax.add_patch(poly_patch)
 
         if projection == 'rectangular':
 
-            min_x, min_y = coords_icrs.min(0)
-            max_x, max_y = coords_icrs.max(0)
+            min_x, min_y = coords.min(0)
+            max_x, max_y = coords.max(0)
 
             padding_x = 0.1 * (max_x - min_x)
             padding_y = 0.1 * (max_y - min_y)
@@ -537,10 +539,8 @@ class PolygonalRegion(Region):
 
         elif projection == 'mollweide':
 
-            centroid = astropy.coordinates.SkyCoord(*self.shapely.centroid.xy,
-                                                    frame=self.frame, unit='deg')
-            centre = centroid.icrs.ra.deg
-            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=centre)
+            centroid = self.shapely.centroid.x
+            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=centroid)
 
         if return_patch:
             return fig, ax, poly_patch
