@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-02-27 11:51:04
+# @Last modified time: 2019-02-28 14:03:36
 
 import matplotlib.pyplot as plt
 import matplotlib.transforms
@@ -17,7 +17,7 @@ import seaborn
 from . import _VALID_FRAMES
 
 
-__all__ = ['get_axes', 'transform_patch_mollweide']
+__all__ = ['get_axes', 'transform_patch_mollweide', 'convert_to_mollweide']
 
 
 __MOLLWEIDE_ORIGIN__ = 120
@@ -86,6 +86,30 @@ def get_axes(projection='rectangular', frame='icrs'):
             raise ValueError('invalid projection')
 
     return fig, ax
+
+
+def convert_to_mollweide(coords):
+    """Converts ``[0, 360)`` coordinates to Mollweide-valid values.
+
+    Converts values to radians and offsets the Longitude to match the custom
+    Mollweide projection used here.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        A ``Nx2`` array of coordinates to be converted.
+
+    """
+
+    coord0 = numpy.remainder(coords[:, 0] + 360 - __MOLLWEIDE_ORIGIN__, 360)
+    ind = coord0 > 180.
+    coord0[ind] -= 360
+    coord0 = -coord0
+
+    coords[:, 0] = coord0
+    coords *= numpy.pi / 180.
+
+    return coords
 
 
 def transform_patch_mollweide(ax, patch, patch_centre=None):
