@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-05 17:35:20
+# @Last modified time: 2019-03-05 23:12:09
 
 import healpy
 import numpy
@@ -181,11 +181,11 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False):
 
         nside_k = 2**kk
 
-        # We use a buffer of 1.5r because the shape of the HealPix pixels is not
+        # We use a buffer of 2r because the shape of the HealPix pixels is not
         # circular. This increases the number of pixels that overlap with the
         # region. Later we make sure that only those whose centre is contained
         # in the region are included.
-        dd = 1.5 * numpy.sqrt(healpy.nside2pixarea(nside_k, degrees=True) / numpy.pi)
+        dd = 2. * numpy.sqrt(healpy.nside2pixarea(nside_k, degrees=True) / numpy.pi)
 
         # If k=0 (first HealPix level) we test all the 12 pixels. Otherwise we
         # take the pixels that overlapped in the previous level and test each
