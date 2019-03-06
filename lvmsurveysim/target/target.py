@@ -7,18 +7,21 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-02-22 16:25:47
+# @Last modified time: 2019-03-05 17:52:47
 
 import os
 import pathlib
 
+import astropy
 import numpy
 import yaml
 
+from . import _VALID_FRAMES
 from .. import config, log
 from ..ifu import IFU
 from ..telescope import Telescope
 from .region import Region
+from . import plot as lvm_plot
 
 
 __all__ = ['Target', 'TargetSet']
@@ -65,6 +68,8 @@ class Target(object):
             self.telescope = Telescope.from_config(telescope)
 
         self.region = Region(*args, **kwargs)
+
+        self.frame = self.region.frame
 
     def __repr__(self):
 
@@ -131,7 +136,7 @@ class Target(object):
         return cls(region_type, coords, name=name, **target)
 
     def get_healpix(self, pixarea=None, ifu=None, telescope=None,
-                    inclusive=True, return_coords=False):
+                    return_coords=False, to_frame=None):
         """Tessellates the target region and returns a list of HealPix pixels.
 
         Parameters
@@ -141,20 +146,33 @@ class Target(object):
             order that produces a pixel of size equal or smaller than
             ``pixarea`` will be used.
         ifu : `~lvmsurveysim.tiling.IFU`
-            The IFU used for tiling the region.
+            The IFU used for tiling the region. If not provided, the default
+            one is used.
         telescope : `~lvmsurveysim.telescope.Telescope`
             The telescope on which the IFU is mounted. Defaults to the object
             ``telescope`` attribute.
-        inclusive : bool
-            Whather to include the HealPix pixels that overlap with the region
-            but are not completely contained by it.
         return_coords : bool
-            If True, returns the coordinates of the included pixels instead of
-            their value.
+            If `True`, returns the coordinates of the included pixels instead
+            of their value.
+        to_frame : str
+            If ``return_coords``, the reference frame in which the coordinates
+            should be returned. If `None`, defaults to the region internal
+            reference frame.
+
+        Returns
+        -------
+        pixels : `numpy.ndarray` or `~astropy.coordinates.SkyCoord`
+            A list of HealPix pixels that tile this target. Only pixels whose
+            centre is contained in the region are included. If
+            ``return_coords=True``, returns a `~astropy.coordinates.SkyCoord`
+            with the list of coordinates.
 
         """
 
-        import healpy
+        import lvmsurveysim.utils.healpy
+
+        if to_frame is not None:
+            assert to_frame in _VALID_FRAMES, 'invalid frame'
 
         telescope = telescope or self.telescope
 
@@ -170,29 +188,57 @@ class Target(object):
             pixarea *= ifu.n_fibres
             pixarea = pixarea.value
 
-        order = 0
-        while order <= 30:
-            if healpy.pixelfunc.nside2pixarea(2**order, degrees=True) <= pixarea:
-                break
-            order += 1
+        nside = lvmsurveysim.utils.healpy.get_minimum_nside_pixarea(pixarea)
 
-        if order == 30:
-            raise ValueError('pixarea is too small.')
-
-        cartesian = numpy.array(self.region.to_cartesian()).T
-        while numpy.all(cartesian[0] == cartesian[-1]):
-            cartesian = numpy.delete(cartesian, [cartesian.shape[0] - 1], axis=0)
-
-        pixels = healpy.query_polygon(2**order, cartesian, inclusive=inclusive)
+        pixels = lvmsurveysim.utils.healpy.tile_geometry(self.region.shapely, nside,
+                                                         return_coords=return_coords)
 
         if return_coords:
-            return numpy.array(healpy.pixelfunc.pix2ang(2**order, pixels, lonlat=True)).T
+            coords = astropy.coordinates.SkyCoord(pixels[:, 0], pixels[:, 1],
+                                                  frame=self.frame, unit='deg')
+            if to_frame is not None:
+                coords = coords.transform_to(to_frame)
+            return coords
+
         return pixels
 
     def plot(self, *args, **kwargs):
         """Plots the region. An alias for ``.Region.plot``."""
 
         return self.region.plot(*args, **kwargs)
+
+    def plot_healpix(self, coords=None, ifu=None, **kwargs):
+        """Plots the region as HealPix pixels.
+
+        Parameters
+        ----------
+        coords : `astropy.coordinates.SkyCoord`
+            A list of `~astropy.coordinates.SkyCoord` to plot. If not provided,
+            `~.Target.get_healpix` will be called with the options below.
+        ifu : `~lvmsurveysim.tiling.IFU`
+            The IFU used for tiling the region. If not provided, the default
+            one is used.
+        kwargs : dict
+            Parameters to be passed to `~matplotlib.axes.scatter`.
+
+        Returns
+        -------
+        axes : `~matplotlib.axes.Axes`
+            The `~matplotlib.axes.Axes` of the Matplotlib figure.
+
+        """
+
+        if coords is None:
+            coords = self.get_healpix(ifu=ifu, return_coords=True, to_frame='icrs')
+
+        fig, ax = lvm_plot.get_axes(projection='mollweide')
+
+        coords_array = numpy.array([[cc.ra.deg, cc.dec.deg] for cc in coords])
+        coords_moll = lvm_plot.convert_to_mollweide(coords_array)
+
+        ax.scatter(coords_moll[:, 0], coords_moll[:, 1], **kwargs)
+
+        return ax
 
 
 class TargetSet(list):
