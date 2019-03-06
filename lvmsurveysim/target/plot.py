@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-02-28 14:03:36
+# @Last modified time: 2019-03-05 17:56:12
 
 import matplotlib.pyplot as plt
 import matplotlib.transforms
@@ -51,13 +51,6 @@ def get_axes(projection='rectangular', frame='icrs'):
             fig = plt.figure(figsize=(10, 6))
             ax = fig.add_subplot(111)
 
-            if frame == 'icrs':
-                ax.set_xlabel(r'$\alpha_{2000}\,{\rm [deg]}$')
-                ax.set_ylabel(r'$\delta_{2000}\,{\rm [deg]}$')
-            elif frame == 'galactic':
-                ax.set_xlabel(r'$\rm l\,[deg]$')
-                ax.set_ylabel(r'$\rm b\,[deg]$')
-
             ax.set_xlim(360, 0)
             ax.set_ylim(-20, 80)
 
@@ -79,11 +72,15 @@ def get_axes(projection='rectangular', frame='icrs'):
             ax.set_xticklabels(tickStr)  # we add the scale on the x axis
             ax.grid(True)
 
-            ax.set_xlabel(r'$\alpha_{2000}$')
-            ax.set_ylabel(r'$\delta_{2000}$')
-
         else:
             raise ValueError('invalid projection')
+
+        if frame == 'icrs':
+            ax.set_xlabel(r'$\alpha_{2000}\,{\rm [deg]}$')
+            ax.set_ylabel(r'$\delta_{2000}\,{\rm [deg]}$')
+        elif frame == 'galactic':
+            ax.set_xlabel(r'$\rm l\,[deg]$')
+            ax.set_ylabel(r'$\rm b\,[deg]$')
 
     return fig, ax
 
