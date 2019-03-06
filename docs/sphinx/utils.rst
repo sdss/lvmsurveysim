@@ -9,7 +9,7 @@ lvmsurveysim.utils
     :show-inheritance:
     :undoc-members:
 
-.. automodule:: lvmsurveysim.utils.healpy
+.. automodule:: lvmsurveysim.utils.healpix
     :members:
     :show-inheritance:
     :undoc-members:

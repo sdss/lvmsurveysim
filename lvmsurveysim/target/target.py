@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-05 23:39:48
+# @Last modified time: 2019-03-06 08:49:30
 
 import os
 import pathlib
@@ -169,7 +169,7 @@ class Target(object):
 
         """
 
-        import lvmsurveysim.utils.healpy
+        import lvmsurveysim.utils.healpix
 
         if to_frame is not None:
             assert to_frame in _VALID_FRAMES, 'invalid frame'
@@ -188,10 +188,10 @@ class Target(object):
             pixarea *= ifu.n_fibres
             pixarea = pixarea.value
 
-        nside = lvmsurveysim.utils.healpy.get_minimum_nside_pixarea(pixarea)
+        nside = lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
 
-        pixels = lvmsurveysim.utils.healpy.tile_geometry(self.region.shapely, nside,
-                                                         return_coords=return_coords)
+        pixels = lvmsurveysim.utils.healpix.tile_geometry(self.region.shapely, nside,
+                                                          return_coords=return_coords)
 
         if return_coords:
             coords = astropy.coordinates.SkyCoord(pixels[:, 0], pixels[:, 1],
