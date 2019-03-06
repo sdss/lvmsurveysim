@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-05 18:09:14
+# @Last modified time: 2019-03-05 23:39:48
 
 import os
 import pathlib
@@ -207,7 +207,7 @@ class Target(object):
 
         return self.region.plot(*args, **kwargs)
 
-    def plot_healpix(self, coords=None, ifu=None, frame=None, **kwargs):
+    def plot_healpix(self, coords=None, ifu=None, frame=None, ax=None, **kwargs):
         """Plots the region as HealPix pixels.
 
         Parameters
@@ -221,6 +221,9 @@ class Target(object):
         frame : `str`
             The reference frame on which the pixels will be displayed. Defaults
             to the internal frame of the target.
+        ax : `~matplotlib.axes.Axes`
+            A Matplotlib `~matplotlib.axes.Axes` object to use. Otherwise, a
+            new one will be created.
         kwargs : dict
             Parameters to be passed to `~matplotlib.axes.scatter`.
 
@@ -237,7 +240,8 @@ class Target(object):
             coords = self.get_healpix_tiling(ifu=ifu, return_coords=True,
                                              to_frame=frame)
 
-        fig, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
+        if ax is None:
+            __, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
 
         if frame == 'icrs':
             lon, lat = coords.ra.deg, coords.dec.deg
@@ -285,3 +289,54 @@ class TargetList(list):
         targets = [Target.from_list(name, target_file=target_file) for name in names]
 
         super().__init__(targets)
+
+    def get_healpix_tiling(self, **kwargs):
+        """Gets the HealPix coverage for all the targets in the set.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Parameters to be passed to `.Target.get_healpix_tiling`.
+
+        Returns
+        -------
+        tiling : dict
+            A dictionary in which the key is the index of the target in the
+            `.TargetList` and its value the output of
+            `.Target.get_healpix_tiling` called with ``kwarg`` parameters
+            (i.e., either an array of HealPix pixels at ``nside`` resolution
+            or a `~astropy.coordinates.SkyCoord` object with the position of
+            the pixel centres).
+
+        """
+
+        return {ii: self[ii].get_healpix_tiling(**kwargs) for ii in range(len(self))}
+
+    def plot_healpix(self, frame='icrs', **kwargs):
+        """Plots all the target pixels in a single Mollweide projection.
+
+        Parameters
+        ----------
+        frame : str
+            The coordinate frame to which all the pixel centres will be
+            converted.
+        kwargs : dict
+            Parameters to be passed to `.Target.plot_healpix`. By default, each
+            target will be plotted on a different colour.
+
+        Returns
+        -------
+        axes : `~matplotlib.axes.Axes`
+            The `~matplotlib.axes.Axes` of the Matplotlib figure.
+
+        """
+
+        assert len(self) > 0, 'no targets in list.'
+
+        ax = self[0].plot_healpix(frame=frame, **kwargs)
+
+        if len(self) > 1:
+            for target in self[1:]:
+                ax = target.plot_healpix(ax=ax, frame=frame, **kwargs)
+
+        return ax
