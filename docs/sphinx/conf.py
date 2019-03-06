@@ -109,7 +109,8 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3.6', None),
                        'astropy': ('http://docs.astropy.org/en/latest', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),
                        'shapely': ('https://shapely.readthedocs.io/en/latest', None),
-                       'matplotlib': ('https://matplotlib.org/', None)}
+                       'matplotlib': ('https://matplotlib.org/', None),
+                       'healpy': ('https://healpy.readthedocs.io/en/latest/', None)}
 
 autodoc_mock_imports = ['_tkinter']
 autodoc_member_order = 'groupwise'
