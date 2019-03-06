@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-05 17:52:47
+# @Last modified time: 2019-03-05 18:03:39
 
 import os
 import pathlib
@@ -207,7 +207,7 @@ class Target(object):
 
         return self.region.plot(*args, **kwargs)
 
-    def plot_healpix(self, coords=None, ifu=None, **kwargs):
+    def plot_healpix(self, coords=None, ifu=None, frame=None, **kwargs):
         """Plots the region as HealPix pixels.
 
         Parameters
@@ -218,6 +218,9 @@ class Target(object):
         ifu : `~lvmsurveysim.tiling.IFU`
             The IFU used for tiling the region. If not provided, the default
             one is used.
+        frame : `str`
+            The reference frame on which the pixels will be displayed. Defaults
+            to the internal frame of the target.
         kwargs : dict
             Parameters to be passed to `~matplotlib.axes.scatter`.
 
@@ -228,12 +231,20 @@ class Target(object):
 
         """
 
+        frame = frame or self.frame
+
         if coords is None:
-            coords = self.get_healpix(ifu=ifu, return_coords=True, to_frame='icrs')
+            coords = self.get_healpix(ifu=ifu, return_coords=True,
+                                      to_frame=frame)
 
-        fig, ax = lvm_plot.get_axes(projection='mollweide')
+        fig, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
 
-        coords_array = numpy.array([[cc.ra.deg, cc.dec.deg] for cc in coords])
+        if frame == 'icrs':
+            lon, lat = coords.ra.deg, coords.dec.deg
+        elif frame == 'galactic':
+            lon, lat = coords.l.deg, coords.b.deg
+
+        coords_array = numpy.array([lon, lat]).T
         coords_moll = lvm_plot.convert_to_mollweide(coords_array)
 
         ax.scatter(coords_moll[:, 0], coords_moll[:, 1], **kwargs)
