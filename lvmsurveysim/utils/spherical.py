@@ -39,7 +39,7 @@ def ellipse_bbox(ra, dec, a, b, pa, padding=0):
     """Returns the bounding box in RA and Dec for a rotated ellipse.
 
     All parameters must be float numbers in degrees. See
-    `~lvmsurveysim.target.regions.EllipticalRegion` for details.
+    `~lvmsurveysim.target.region.EllipticalRegion` for details.
 
     """
 
