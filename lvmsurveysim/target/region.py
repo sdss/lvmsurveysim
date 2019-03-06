@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-05 17:40:35
+# @Last modified time: 2019-03-05 23:26:02
 
 import abc
 
@@ -173,25 +173,28 @@ class Region(object, metaclass=RegionABC):
         return numpy.array(self.shapely.exterior.xy).T
 
     @abc.abstractmethod
-    def plot(self, projection='rectangular', **kwargs):
+    def plot(self, ax=None, projection='rectangular', **kwargs):
         """Plots the region.
 
-        Parameters:
-            projection (str):
-                The projection to use. At this time, only ``rectangular`` and
-                ``mollweide`` are accepted.
-            return_patch (bool):
-                If True, returns the
-                `matplotlib patch <https://matplotlib.org/api/patches_api.html>`_
-                for the region.
-            kwargs (dict):
-                Options to be passed to matplotlib when creating the patch.
+        Parameters
+        ----------
+        ax : `~matplotlib.axes.Axes`
+            The axes to use. If `None`, new axes will be created.
+        projection (str):
+            The projection to use. At this time, only ``rectangular`` and
+            ``mollweide`` are accepted.
+        return_patch (bool):
+            If True, returns the
+            `matplotlib patch <https://matplotlib.org/api/patches_api.html>`_
+            for the region.
+        kwargs (dict):
+            Options to be passed to matplotlib when creating the patch.
 
-        Returns:
-            Returns the matplotlib `~matplotlib.figure.Figure` and
-            `~matplotlib.axes.Axes` objects for this plot. If not specified,
-            the default plotting styles will be used. If ``return_patch=True``,
-            returns the patch as well.
+        Returns
+        -------
+        Returns the matplotlib ~matplotlib.axes.Axes` object for this plot.
+        If not specified, the default plotting styles will be used.
+        If ``return_patch=True``, returns the patch as well.
 
         """
 
@@ -385,7 +388,7 @@ class EllipticalRegion(Region):
         return ell_lon
 
     @add_doc(Region.plot)
-    def plot(self, projection='rectangular', return_patch=False,
+    def plot(self, ax=None, projection='rectangular', return_patch=False,
              a=None, b=None, pa=None, **kwargs):
 
         a = a if a is not None else self.a
@@ -396,7 +399,8 @@ class EllipticalRegion(Region):
         b = astropy.coordinates.Angle(b, 'deg')
         pa = astropy.coordinates.Angle(pa, 'deg')
 
-        fig, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
+        if ax is None:
+            __, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
 
         # Creates the ellipse in (0, 0) so that the scaling doesn't move the
         # centre. We will translate it after scaling in the RA direction.
@@ -436,9 +440,9 @@ class EllipticalRegion(Region):
             ell = lvm_plot.transform_patch_mollweide(ax, ell, patch_centre=centre)
 
         if return_patch:
-            return fig, ax, ell
+            return ax, ell
         else:
-            return fig, ax
+            return ax
 
 
 class CircularRegion(EllipticalRegion):
@@ -489,9 +493,9 @@ class CircularRegion(EllipticalRegion):
         return circ
 
     @add_doc(Region.plot)
-    def plot(self, projection='rectangular', return_patch=False, **kwargs):
+    def plot(self, ax=None, projection='rectangular', return_patch=False, **kwargs):
 
-        return super(CircularRegion, self).plot(projection=projection,
+        return super(CircularRegion, self).plot(ax=ax, projection=projection,
                                                 return_patch=return_patch,
                                                 a=self.r, b=self.r, pa=0, **kwargs)
 
@@ -554,9 +558,10 @@ class PolygonalRegion(Region):
         return poly_rot
 
     @add_doc(Region.plot)
-    def plot(self, projection='rectangular', return_patch=False, **kwargs):
+    def plot(self, ax=None, projection='rectangular', return_patch=False, **kwargs):
 
-        fig, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
+        if ax is None:
+            __, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
 
         coords = self.get_exterior()
 
