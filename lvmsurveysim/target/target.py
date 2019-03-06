@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-06 15:00:18
+# @Last modified time: 2019-03-06 15:17:43
 
 import os
 import pathlib
@@ -136,7 +136,7 @@ class Target(object):
         return cls(region_type, coords, name=name, **target)
 
     def get_healpix_tiling(self, pixarea=None, ifu=None, telescope=None,
-                           return_coords=False, to_frame=None):
+                           return_coords=False, to_frame=None, inclusive=True):
         """Tessellates the target region and returns a list of HealPix pixels.
 
         Parameters
@@ -158,6 +158,11 @@ class Target(object):
             If ``return_coords``, the reference frame in which the coordinates
             should be returned. If `None`, defaults to the region internal
             reference frame.
+        inclusive : bool
+            Whether to return pixels that only partially overlap with the
+            target region. Note that this is only approximated (see the
+            explanation in `~lvmsurveysim.utils.healpix.tile_geometry`).
+
 
         Returns
         -------
@@ -191,7 +196,8 @@ class Target(object):
         nside = lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
 
         pixels = lvmsurveysim.utils.healpix.tile_geometry(self.region.shapely, nside,
-                                                          return_coords=return_coords)
+                                                          return_coords=return_coords,
+                                                          inclusive=inclusive)
 
         if return_coords:
             coords = astropy.coordinates.SkyCoord(pixels[:, 0], pixels[:, 1],
