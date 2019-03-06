@@ -24,7 +24,7 @@ from .region import Region
 from . import plot as lvm_plot
 
 
-__all__ = ['Target', 'TargetSet']
+__all__ = ['Target', 'TargetList']
 
 
 class Target(object):
@@ -252,7 +252,7 @@ class Target(object):
         return ax
 
 
-class TargetSet(list):
+class TargetList(list):
     """A list of all the targets to observe.
 
     Parameters
