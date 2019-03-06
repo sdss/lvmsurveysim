@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-06 10:08:15
+# @Last modified time: 2019-03-06 10:11:46
 
 import healpy
 import numpy
@@ -23,9 +23,9 @@ def nested_regrade(pixels, nside_in, nside_out):
     """Returns the parent/children pixels from a given HealPix nested pixel.
 
     The HealPix nested mode follows a quadrilateral tree pixel scheme (see
-    Figure 1 in Górski et al.) When the resolution (nside) increases, each
-    pixel is divided in four pixels. The numbering of such pixels follows a
-    simple binary representation achieved by appending binary digits to the
+    Figure 1 in Górski et al. 2005) When the resolution (nside) increases,
+    each pixel is divided in four pixels. The numbering of such pixels follows
+    a simple binary representation achieved by appending binary digits to the
     new pixels. So, for example, pixel 22 (``b10110``) becomes four new pixels
     with binary numbers ``b1011000, b1011001, b1011010, and b1011011``,
     corresponding to decimal ``91, 92, 93, and 94``.
