@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-06 10:11:46
+# @Last modified time: 2019-03-06 14:59:25
 
 import healpy
 import numpy
@@ -123,7 +123,7 @@ def get_minimum_nside_pixarea(pixarea):
     return int(2**kk)
 
 
-def tile_geometry(polygon, nside, ring=False, return_coords=False):
+def tile_geometry(polygon, nside, ring=False, return_coords=False, inclusive=True):
     """Returns a list of pixels that tile a Shapely polygon.
 
     While `healpy.query_polygon` provides an efficient method to tile a
@@ -134,10 +134,15 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False):
     one would expect.
 
     This function tiles a `Polygon <shapely:Polygon>` assuming an Euclidian
-    distance between the vertices. Only pixels whose centre is contained in the
-    polygon are returned. If you want to include partially overlapping pixels
-    consider adding a buffer to the polygon. The polygon must have longitude
+    distance between the vertices. The polygon must have longitude
     limits defined between -360 and 720 degrees.
+
+    If ``inclusive=True`` the function will return all pixels that overlap with
+    the region. The area of the pixel is approximated as a circle with the
+    same area as a pixel. This approximation is good for low latitudes but
+    becomes worse for higher latitudes, where the shape of the pixel cannot
+    be approximated by a circle. If ``inclusive=False`` only pixels whose
+    centre is inside the region will be returned.
 
     Parameters
     ----------
@@ -153,6 +158,8 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False):
     return_coords : bool
         If `True`, returns an array with the longitude and latitude of the
         pixels in degrees.
+    inclusive : bool
+        Whether to return pixels that only partially overlap with the region.
 
     Returns
     -------
@@ -181,11 +188,8 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False):
 
         nside_k = 2**kk
 
-        # We use a buffer of 2r because the shape of the HealPix pixels is not
-        # circular. This increases the number of pixels that overlap with the
-        # region. Later we make sure that only those whose centre is contained
-        # in the region are included.
-        dd = 2. * numpy.sqrt(healpy.nside2pixarea(nside_k, degrees=True) / numpy.pi)
+        # Approximates the pixel as a circle of radius r.
+        rr = numpy.sqrt(healpy.nside2pixarea(nside_k, degrees=True) / numpy.pi)
 
         # If k=0 (first HealPix level) we test all the 12 pixels. Otherwise we
         # take the pixels that overlapped in the previous level and test each
@@ -206,7 +210,7 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False):
 
                 # Create a Point object with a radius dd centred at the
                 # position of the pixel +/- the offset.
-                point = shapely.geometry.Point(lon + offset, lat).buffer(dd)
+                point = shapely.geometry.Point(lon + offset, lat).buffer(rr)
 
                 # If a pixel is completely contained by the polygon, adds
                 # all the nested pixels at the nside resolution and we are done.
@@ -217,13 +221,23 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False):
                         pixels.append(pix)
                     break
 
-                # If the pixel overlaps but is not completely contained, adds
-                # it to the list of pixels whose children will be tested in
-                # the next iteration.
-                elif prep_polygon.intersects(point):
-                    if nside_k < nside:
-                        intersect.append(pix)
+                # If we are at the final nside level and the pixel intersects
+                # with the polygon, we include it.
+                if nside_k == nside and inclusive and prep_polygon.intersects(point):
+                    pixels.append(pix)
                     break
+
+                # If we are not yet at the final nside level we want to be greedy.
+                # We create a pixel with twice the radius and check if it intersects.
+                # If it does we add it to the list of pixels to test in the next
+                # nside level. We do this to compensate for the fact that pixels
+                # at high latitudes are significantly non-circular and if we
+                # just use point we may be missing some pixels.
+                if nside_k < nside:
+                    point_2r = shapely.geometry.Point(lon + offset, lat).buffer(2. * rr)
+                    if prep_polygon.intersects(point_2r):
+                        intersect.append(pix)
+                        break
 
         intersect = numpy.unique(intersect).tolist()
 
@@ -232,22 +246,11 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False):
 
     pixels = numpy.unique(pixels)
 
-    # Get the position of all the candidate pixels.
-    lon, lat = healpy.pix2ang(nside, pixels, nest=True, lonlat=True)
-
-    # Checks whether the centre of each of the candidate pixels is inside the
-    # polygon. Does does for each of the offsets and creates a mask.
-    valid_pixel_mask = numpy.zeros(len(pixels), dtype=int)
-    for offset in [0, -360, 360]:
-        valid_pixel_mask |= shapely.vectorized.contains(polygon, lon + offset, lat)
-
-    valid_pixels = pixels[numpy.where(valid_pixel_mask)]
-
     if return_coords:
-        lon, lat = healpy.pix2ang(nside, valid_pixels, nest=True, lonlat=True)
+        lon, lat = healpy.pix2ang(nside, pixels, nest=True, lonlat=True)
         return numpy.array([lon, lat]).T
 
     if ring:
-        return healpy.nest2ring(nside, valid_pixels)
+        return healpy.nest2ring(nside, pixels)
 
-    return valid_pixels
+    return pixels
