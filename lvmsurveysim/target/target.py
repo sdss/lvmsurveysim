@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-05 18:03:39
+# @Last modified time: 2019-03-05 18:09:14
 
 import os
 import pathlib
@@ -135,8 +135,8 @@ class Target(object):
 
         return cls(region_type, coords, name=name, **target)
 
-    def get_healpix(self, pixarea=None, ifu=None, telescope=None,
-                    return_coords=False, to_frame=None):
+    def get_healpix_tiling(self, pixarea=None, ifu=None, telescope=None,
+                           return_coords=False, to_frame=None):
         """Tessellates the target region and returns a list of HealPix pixels.
 
         Parameters
@@ -234,8 +234,8 @@ class Target(object):
         frame = frame or self.frame
 
         if coords is None:
-            coords = self.get_healpix(ifu=ifu, return_coords=True,
-                                      to_frame=frame)
+            coords = self.get_healpix_tiling(ifu=ifu, return_coords=True,
+                                             to_frame=frame)
 
         fig, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
 
