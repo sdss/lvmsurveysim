@@ -202,8 +202,6 @@ class MyLogger(Logger):
         if category is None:
             category = UserWarning
 
-        full_msg = '{0} {1}'.format(category.__name__, msg)
-
         n_issued = 0
         if category in self.warning_registry:
             if msg in self.warning_registry[category]:
@@ -214,7 +212,7 @@ class MyLogger(Logger):
             category_filter = None
             regex_filter = None
             for warnings_filter in warnings.filters:
-                if issubclass(category,  warnings_filter[2]):
+                if issubclass(category, warnings_filter[2]):
                     category_filter = warnings_filter[0]
                     regex_filter = warnings_filter[1]
 
@@ -223,9 +221,9 @@ class MyLogger(Logger):
                     return
 
             if category_filter == 'error':
-                raise ValueError(full_msg)
+                raise ValueError(msg)
 
-        super(MyLogger, self).warning(full_msg)
+        super(MyLogger, self).warning(msg)
 
         if msg in self.warning_registry[category]:
             self.warning_registry[category][msg] += 1
