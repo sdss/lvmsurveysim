@@ -19,7 +19,7 @@ target
 ------
 
 .. automodule:: lvmsurveysim.target.target
-    :members: Target
+    :members: Target, TargetList
     :show-inheritance:
     :undoc-members:
     :private-members:
@@ -29,8 +29,8 @@ target
 regions
 -------
 
-.. automodule:: lvmsurveysim.target.regions
-    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, OverlapRegion, region_factory
+.. automodule:: lvmsurveysim.target.region
+    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, RectangleRegion, OverlapRegion, region_factory
     :show-inheritance:
     :undoc-members:
 

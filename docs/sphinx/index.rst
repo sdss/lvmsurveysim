@@ -12,9 +12,9 @@ Reference
 .. toctree::
    :maxdepth: 2
 
-   tiling
    target
    telescope
+   utils
    changelog
 
 |
