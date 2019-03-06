@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-06 08:49:30
+# @Last modified time: 2019-03-06 15:00:18
 
 import os
 import pathlib
@@ -178,7 +178,7 @@ class Target(object):
 
         if ifu is None:
             ifu = IFU.from_config()
-            log.warning(f'no IFU provided. Using default IFU {ifu.name!r}.')
+            log.warning(f'target {self.name}: no IFU provided. Using default IFU {ifu.name!r}.')
 
         assert pixarea is not None or ifu is not None or telescope is not None, \
             'either pixarea or ifu and telescope need to be defined.'
