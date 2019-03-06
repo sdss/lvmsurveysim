@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 #
-# @Author: José Sánchez-Gallego
-# @Date: Oct 17, 2017
+# @Author: José Sánchez-Gallego (gallegoj@uw.edu)
+# @Date: 2017-10-17
 # @Filename: region.py
-# @License: BSD 3-Clause
-# @Copyright: José Sánchez-Gallego
-
-
-from __future__ import absolute_import, division, print_function
+# @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
+#
+# @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
+# @Last modified time: 2019-03-05 17:40:35
 
 import abc
 
@@ -18,6 +17,7 @@ import matplotlib.patches
 import matplotlib.path
 import matplotlib.transforms
 import numpy
+import scipy
 import shapely.affinity
 import shapely.geometry
 
@@ -167,24 +167,10 @@ class Region(object, metaclass=RegionABC):
 
         return self._shapely
 
-    def get_exterior(self, to_frame=None):
-        """Returns the coordinates of the exterior of the region.
+    def get_exterior(self):
+        """Returns the coordinates of the exterior of the region."""
 
-        The points returned are defined by Shapely and are identical to
-        ``self.shapely.exterior.coords`` converted to the desired reference
-        ``frame``. If ``frame`` is not passed, the frame of the region is used.
-
-        """
-
-        exterior = list(self.shapely.exterior.coords)
-
-        exterior_coords = astropy.coordinates.SkyCoord(
-            exterior, frame=self.frame, unit='deg')
-
-        if to_frame is not None and to_frame != self.frame:
-            exterior_coords = exterior_coords.transform_to(to_frame)
-
-        return exterior_coords
+        return numpy.array(self.shapely.exterior.xy).T
 
     @abc.abstractmethod
     def plot(self, projection='rectangular', **kwargs):
@@ -245,12 +231,66 @@ class Region(object, metaclass=RegionABC):
 
         return OverlapRegion(self.shapely.intersection(other.shapely))
 
-    def to_cartesian(self, to_frame='icrs'):
+    def to_cartesian(self):
         """Converts from polar to cartesian coordinates."""
 
-        exterior_frame = self.get_exterior(to_frame=to_frame)
+        exterior = self.get_exterior()
 
-        return exterior_frame.cartesian.xyz
+        cart = astropy.coordinates.spherical_to_cartesian(
+            1,
+            numpy.deg2rad(exterior[:, 1]),
+            numpy.deg2rad(exterior[:, 0]))
+
+        return numpy.array(cart).T
+
+    def split(self, wrap=360):
+        """Returns a list of `.PolygonalRegion` after wrapping."""
+
+        x, y = self.shapely.exterior.xy
+
+        vertices = [[], [], []]
+
+        for idx in range(len(x)):
+
+            x0 = x[idx]
+            y0 = y[idx]
+
+            if x0 < 0:
+                vertices[0].append([x0, y0])
+            elif x0 > 0 and x0 < wrap:
+                vertices[1].append([x0, y0])
+            else:
+                vertices[2].append([x0, y0])
+
+            if idx == len(x) - 1:
+                break
+
+            x1 = x[idx + 1]
+            y1 = y[idx + 1]
+            yinterp = scipy.interpolate.interp1d([x0, x1], [y0, y1])
+
+            if numpy.sign(x0) != numpy.sign(x1):
+                y_new = yinterp(0.)
+                vertices[0].append([0., y_new])
+                vertices[1].append([0.001, y_new])
+            elif (x0 < wrap and y1 > wrap) or (x0 > wrap and y1 < wrap):
+                y_new = yinterp(wrap)
+                vertices[1].append([wrap, y_new])
+                vertices[2].append([wrap, y_new])
+
+        vertices = [numpy.array(verts) for verts in vertices]
+        regions = []
+
+        if vertices[0].size > 0:
+            vertices[0][:, 0] += (wrap - 0.001)
+
+        if vertices[2].size > 0:
+            vertices[2][:, 0] -= (wrap + 0.001)
+
+        regions = [Region('polygon', verts.tolist(), frame=self.frame)
+                   for verts in vertices if verts.size > 0]
+
+        return regions
 
 
 class EllipticalRegion(Region):
@@ -518,8 +558,7 @@ class PolygonalRegion(Region):
 
         fig, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
 
-        coords = numpy.array([self.get_coordinate(self.vertices, 0).deg,
-                              self.get_coordinate(self.vertices, 1).deg]).T
+        coords = self.get_exterior()
 
         poly = matplotlib.path.Path(coords, closed=True)
         poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
@@ -540,7 +579,8 @@ class PolygonalRegion(Region):
         elif projection == 'mollweide':
 
             centroid = self.shapely.centroid.x
-            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=centroid)
+            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch,
+                                                            patch_centre=centroid)
 
         if return_patch:
             return fig, ax, poly_patch
