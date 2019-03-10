@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-06 07:23:03
+# @Last modified time: 2019-03-08 13:42:43
 
 import abc
 
@@ -203,8 +203,9 @@ class Region(object, metaclass=RegionABC):
     def contains(self, coords):
         """Returns ``True`` if the ``coords`` are inside the region.
 
-        Parameters:
-        coords (tuple or `~astropy.coordinates.SkyCoord`):
+        Parameters
+        ----------
+        coords : `tuple` or `~astropy.coordinates.SkyCoord`
             A tuple of ``(coord1, coord2)`` in degrees or the
             `~astropy.coordinates.SkyCoord` the point to test.
 

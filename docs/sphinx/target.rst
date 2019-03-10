@@ -4,6 +4,7 @@
 lvmsurveysim.target
 ===================
 
+
 .. _target-defining:
 
 Defnining a target
@@ -11,9 +12,8 @@ Defnining a target
 
 Here we explain how to define a target.
 
-.. _target-reference:
 
-|
+.. _target-reference:
 
 target
 ------
@@ -24,17 +24,15 @@ target
     :undoc-members:
     :private-members:
 
-|
 
 regions
 -------
 
 .. automodule:: lvmsurveysim.target.region
-    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, RectangleRegion, OverlapRegion, region_factory
+    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, RectangularRegion, OverlapRegion, region_factory
     :show-inheritance:
     :undoc-members:
 
-|
 
 plot
 ----
