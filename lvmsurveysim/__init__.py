@@ -7,9 +7,18 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-02-21 18:47:20
+# @Last modified time: 2019-03-11 18:02:18
 
 # flake8: noqa
+
+from astropy import log
+
+try:
+    log.disable_warnings_logging()
+    log.disable_exception_logging()
+except:
+    pass
+
 
 from .utils.config import get_config
 from .utils.logger import log
