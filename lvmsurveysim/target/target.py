@@ -7,21 +7,23 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-06 15:17:43
+# @Last modified time: 2019-03-12 11:03:34
 
 import os
 import pathlib
+import warnings
 
 import astropy
 import numpy
 import yaml
 
 from . import _VALID_FRAMES
-from .. import config, log
+from . import plot as lvm_plot
+from .. import config
+from ..exceptions import LVMSurveySimWarning
 from ..ifu import IFU
 from ..telescope import Telescope
 from .region import Region
-from . import plot as lvm_plot
 
 
 __all__ = ['Target', 'TargetList']
@@ -183,7 +185,9 @@ class Target(object):
 
         if ifu is None:
             ifu = IFU.from_config()
-            log.warning(f'target {self.name}: no IFU provided. Using default IFU {ifu.name!r}.')
+            warnings.warn(f'target {self.name}: no IFU provided. '
+                          f'Using default IFU {ifu.name!r}.',
+                          LVMSurveySimWarning)
 
         assert pixarea is not None or ifu is not None or telescope is not None, \
             'either pixarea or ifu and telescope need to be defined.'
