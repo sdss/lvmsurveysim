@@ -21,3 +21,20 @@ telescopes:
     LVM-160:
         diameter: 0.16
         f: 5
+
+observing_plan:
+    APO:
+        start_date: 2459216
+        end_date: 2461041
+        equatorial: false
+    LCO:
+        start_date: 2459216
+        end_date: 2461041
+        equatorial: true
+
+scheduler:
+    max_airmass: 1.5
+    moon_separation: 50
+    exposure_time: 900
+    overhead: 1.33
+    zenith_avoidance: 5
