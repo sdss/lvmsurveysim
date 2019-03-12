@@ -5,9 +5,6 @@
 #
 # Created by José Sánchez-Gallego on 17 Sep 2017.
 
-from __future__ import absolute_import, division, print_function
-
-import collections
 import datetime
 import logging
 import os
@@ -111,7 +108,6 @@ class MyFormatter(logging.Formatter):
         return result
 
 
-Logger = logging.getLoggerClass()
 my_fmt = MyFormatter()
 
 
@@ -130,7 +126,7 @@ class LoggerStdout(object):
         pass
 
 
-class MyLogger(Logger):
+class MyLogger(logging.Logger):
     """This class is used to set up the logging system.
 
     The main functionality added by this class over the built-in
@@ -143,15 +139,13 @@ class MyLogger(Logger):
 
     INFO = 15
 
-    warning_registry = collections.defaultdict(dict)
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name):
 
         self.fh = None
         self.sh = None
         self.log_filename = None
 
-        super(MyLogger, self).__init__(*args, **kwargs)
+        super().__init__(name)
 
     def _catch_exceptions(self, exctype, value, tb):
         """Catches all exceptions and logs them."""
@@ -265,6 +259,10 @@ class MyLogger(Logger):
     #     else:
     #         self.warning_registry[category][msg] = 1
 
+    def warning(self, *args, **kwargs):
+
+        super().warning(*args, **kwargs)
+
     def save_log(self, path):
         shutil.copyfile(self.log_filename, os.path.expanduser(path))
 
@@ -285,8 +283,8 @@ class MyLogger(Logger):
             self.fh = TimedRotatingFileHandler(str(log_file_path), when='midnight', utc=True)
             self.fh.suffix = '%Y-%m-%d_%H:%M:%S'
         except (IOError, OSError) as ee:
-            self.warning('log file {0!r} could not be opened for writing: {1}'.format(
-                log_file_path, ee), RuntimeWarning)
+            warnings.warn('log file {0!r} could not be opened for writing: {1}'.format(
+                          log_file_path, ee), RuntimeWarning)
         else:
             self.fh.setFormatter(my_fmt)
             self.addHandler(self.fh)
@@ -295,6 +293,8 @@ class MyLogger(Logger):
         self.log_filename = log_file_path
 
 
+orig_logger = logging.getLoggerClass()
 logging.setLoggerClass(MyLogger)
 log = logging.getLogger(__name__)
 log._set_defaults()  # Inits sh handler
+logging.setLoggerClass(orig_logger)
