@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-10 15:05:53
+# @Last modified time: 2019-03-11 16:48:52
 
 import datetime
 import warnings
@@ -168,6 +168,11 @@ class ObservingPlan(object):
         end = self.data['JD'][-1]
 
         return f'<Observing plan (observatory={self.observatory!r}, dates=({start}, {end}))>'
+
+    def __getitem__(self, item):
+        """Overrides getitem to access the astropy table directly."""
+
+        return self.data.__getitem__(item)
 
     def write(self, path):
         """Writes the observing plan to a file."""
