@@ -5,7 +5,6 @@
 #
 # Created by José Sánchez-Gallego on 17 Sep 2017.
 
-
 from __future__ import absolute_import, division, print_function
 
 import collections
@@ -57,7 +56,7 @@ def colored_formatter(record):
     message = record.getMessage()
 
     if levelname == 'warning':
-        warning_category_groups = re.match(r'^\w*?(.+?Warning) (.*)', message)
+        warning_category_groups = re.match(r'^\w*?(.+?Warning): (.*)', message)
         if warning_category_groups is not None:
             warning_category, warning_text = warning_category_groups.groups()
 
@@ -166,6 +165,15 @@ class MyLogger(Logger):
     def _set_defaults(self, log_level=logging.INFO, redirect_stdout=False):
         """Reset logger to its initial state."""
 
+        # Disable astropy logging if present because it uses the same override
+        # of showwarning than us and messes up things
+        try:
+            from astropy import log
+            log.disable_warnings_logging()
+            log.disable_exception_logging()
+        except Exception:
+            pass
+
         # Remove all previous handlers
         for handler in self.handlers[:]:
             self.removeHandler(handler)
@@ -188,47 +196,74 @@ class MyLogger(Logger):
         # Catches exceptions
         sys.excepthook = self._catch_exceptions
 
-    def warning(self, msg, category=None, use_filters=True):
-        """Custom ``logging.warning``.
+        warnings.showwarning = self._showwarning
 
-        Behaves like the default ``logging.warning`` but accepts ``category``
-        and ``use_filters`` as arguments. ``category`` is the type of warning
-        we are issuing (defaults to `UserWarning`). If ``use_filters=True``,
-        checks whether there are global filters set for the message or the
-        warning category and behaves accordingly.
+    def _showwarning(self, *args, **kwargs):
 
-        """
+        warning = args[0]
 
-        if category is None:
-            category = UserWarning
+        message = '{0}: {1}'.format(warning.__class__.__name__, args[0])
 
-        n_issued = 0
-        if category in self.warning_registry:
-            if msg in self.warning_registry[category]:
-                n_issued = self.warning_registry[category]
+        mod_path = args[2]
 
-        if use_filters:
+        mod_name = None
+        mod_path, ext = os.path.splitext(mod_path)
 
-            category_filter = None
-            regex_filter = None
-            for warnings_filter in warnings.filters:
-                if issubclass(category, warnings_filter[2]):
-                    category_filter = warnings_filter[0]
-                    regex_filter = warnings_filter[1]
+        for name, mod in list(sys.modules.items()):
+            try:
+                path = os.path.splitext(getattr(mod, '__file__', ''))[0]
+            except Exception:
+                continue
+            if path == mod_path:
+                mod_name = mod.__name__
+                break
 
-            if (category_filter == 'ignore') or (category_filter == 'once' and n_issued >= 1):
-                if regex_filter is None or regex_filter.search(msg) is not None:
-                    return
-
-            if category_filter == 'error':
-                raise ValueError(msg)
-
-        super(MyLogger, self).warning(msg)
-
-        if msg in self.warning_registry[category]:
-            self.warning_registry[category][msg] += 1
+        if mod_name is not None:
+            self.warning(message, extra={'origin': mod_name})
         else:
-            self.warning_registry[category][msg] = 1
+            self.warning(message)
+
+    # def warning(self, msg, category=None, use_filters=True):
+    #     """Custom ``logging.warning``.
+
+    #     Behaves like the default ``logging.warning`` but accepts ``category``
+    #     and ``use_filters`` as arguments. ``category`` is the type of warning
+    #     we are issuing (defaults to `UserWarning`). If ``use_filters=True``,
+    #     checks whether there are global filters set for the message or the
+    #     warning category and behaves accordingly.
+
+    #     """
+
+    #     if category is None:
+    #         category = UserWarning
+
+    #     n_issued = 0
+    #     if category in self.warning_registry:
+    #         if msg in self.warning_registry[category]:
+    #             n_issued = self.warning_registry[category]
+
+    #     if use_filters:
+
+    #         category_filter = None
+    #         regex_filter = None
+    #         for warnings_filter in warnings.filters:
+    #             if issubclass(category, warnings_filter[2]):
+    #                 category_filter = warnings_filter[0]
+    #                 regex_filter = warnings_filter[1]
+
+    #         if (category_filter == 'ignore') or (category_filter == 'once' and n_issued >= 1):
+    #             if regex_filter is None or regex_filter.search(msg) is not None:
+    #                 return
+
+    #         if category_filter == 'error':
+    #             raise ValueError(msg)
+
+    #     super(MyLogger, self).warning(msg)
+
+    #     if msg in self.warning_registry[category]:
+    #         self.warning_registry[category][msg] += 1
+    #     else:
+    #         self.warning_registry[category][msg] = 1
 
     def save_log(self, path):
         shutil.copyfile(self.log_filename, os.path.expanduser(path))
