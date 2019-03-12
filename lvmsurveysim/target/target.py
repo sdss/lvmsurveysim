@@ -7,15 +7,20 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 11:03:34
+# @Last modified time: 2019-03-12 15:08:38
 
 import os
 import pathlib
 import warnings
 
 import astropy
+import healpy
+import matplotlib.pyplot
 import numpy
+import seaborn
 import yaml
+
+import lvmsurveysim.utils.healpix
 
 from . import _VALID_FRAMES
 from . import plot as lvm_plot
@@ -27,6 +32,9 @@ from .region import Region
 
 
 __all__ = ['Target', 'TargetList']
+
+
+seaborn.set()
 
 
 class Target(object):
@@ -137,6 +145,26 @@ class Target(object):
 
         return cls(region_type, coords, name=name, **target)
 
+    def _get_nside(self, pixarea=None, ifu=None, telescope=None):
+        """Gets the ``nside`` for a pixarea or IFU/telescope configuration."""
+
+        telescope = telescope or self.telescope
+
+        if ifu is None:
+            ifu = IFU.from_config()
+            warnings.warn(f'target {self.name}: no IFU provided. '
+                          f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
+
+        assert pixarea is not None or (ifu is not None and telescope is not None), \
+            'either pixarea or ifu and telescope need to be defined.'
+
+        if pixarea is None:
+            pixarea = (ifu.fibre_size / 2. * telescope.plate_scale).to('degree')**2 * numpy.pi
+            pixarea *= ifu.n_fibres
+            pixarea = pixarea.value
+
+        return lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
+
     def get_healpix_tiling(self, pixarea=None, ifu=None, telescope=None,
                            return_coords=False, to_frame=None, inclusive=True):
         """Tessellates the target region and returns a list of HealPix pixels.
@@ -147,10 +175,10 @@ class Target(object):
             Desired area of the HealPix pixel, in square degrees. The HealPix
             order that produces a pixel of size equal or smaller than
             ``pixarea`` will be used.
-        ifu : `~lvmsurveysim.tiling.IFU`
+        ifu : ~lvmsurveysim.tiling.IFU
             The IFU used for tiling the region. If not provided, the default
             one is used.
-        telescope : `~lvmsurveysim.telescope.Telescope`
+        telescope : ~lvmsurveysim.telescope.Telescope
             The telescope on which the IFU is mounted. Defaults to the object
             ``telescope`` attribute.
         return_coords : bool
@@ -176,28 +204,10 @@ class Target(object):
 
         """
 
-        import lvmsurveysim.utils.healpix
-
         if to_frame is not None:
             assert to_frame in _VALID_FRAMES, 'invalid frame'
 
-        telescope = telescope or self.telescope
-
-        if ifu is None:
-            ifu = IFU.from_config()
-            warnings.warn(f'target {self.name}: no IFU provided. '
-                          f'Using default IFU {ifu.name!r}.',
-                          LVMSurveySimWarning)
-
-        assert pixarea is not None or ifu is not None or telescope is not None, \
-            'either pixarea or ifu and telescope need to be defined.'
-
-        if pixarea is None:
-            pixarea = (ifu.fibre_size / 2. * telescope.plate_scale).to('degree')**2 * numpy.pi
-            pixarea *= ifu.n_fibres
-            pixarea = pixarea.value
-
-        nside = lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
+        nside = self._get_nside(pixarea=pixarea, ifu=ifu, telescope=telescope)
 
         pixels = lvmsurveysim.utils.healpix.tile_geometry(self.region.shapely, nside,
                                                           return_coords=return_coords,
@@ -217,30 +227,34 @@ class Target(object):
 
         return self.region.plot(*args, **kwargs)
 
-    def plot_healpix(self, coords=None, ifu=None, frame=None, ax=None, **kwargs):
+    def plot_healpix(self, coords=None, ifu=None, frame=None, fig=None,
+                     use_healpy=False, **kwargs):
         """Plots the region as HealPix pixels.
 
         Parameters
         ----------
-        coords : `astropy.coordinates.SkyCoord`
+        coords : astropy.coordinates.SkyCoord
             A list of `~astropy.coordinates.SkyCoord` to plot. If not provided,
             `~.Target.get_healpix` will be called with the options below.
-        ifu : `~lvmsurveysim.tiling.IFU`
+        ifu : ~lvmsurveysim.tiling.IFU
             The IFU used for tiling the region. If not provided, the default
             one is used.
-        frame : `str`
+        frame : str
             The reference frame on which the pixels will be displayed. Defaults
             to the internal frame of the target.
-        ax : `~matplotlib.axes.Axes`
+        ax : ~matplotlib.axes.Axes
             A Matplotlib `~matplotlib.axes.Axes` object to use. Otherwise, a
             new one will be created.
+        use_healpy : bool
+            If `True`, uses the Healpy Mollweide plotting system.
         kwargs : dict
-            Parameters to be passed to `~matplotlib.axes.scatter`.
+            Parameters to be passed to `~matplotlib.axes.scatter` (or
+            `~healpy.visufunc.mollview` if ``use_healpix=True``).
 
         Returns
         -------
-        axes : `~matplotlib.axes.Axes`
-            The `~matplotlib.axes.Axes` of the Matplotlib figure.
+        figure : `~matplotlib.figure.Figure`
+            The Matplotlib `~matplotlib.figure.Figure`.
 
         """
 
@@ -250,20 +264,43 @@ class Target(object):
             coords = self.get_healpix_tiling(ifu=ifu, return_coords=True,
                                              to_frame=frame)
 
-        if ax is None:
-            __, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
-
         if frame == 'icrs':
             lon, lat = coords.ra.deg, coords.dec.deg
         elif frame == 'galactic':
             lon, lat = coords.l.deg, coords.b.deg
+
+        if use_healpy:
+
+            if 'fig' not in kwargs:
+                kwargs['fig'] = matplotlib.pyplot.Figure()
+
+            # Convert coordinates to pixels.
+            nside = self._get_nside(ifu=ifu)
+            pixels = healpy.ang2pix(nside, lon, lat, nest=True, lonlat=True)
+
+            npix = numpy.zeros(healpy.nside2npix(nside)) + kwargs.pop('value', 1)
+            mask = numpy.ones(healpy.nside2npix(nside), dtype=numpy.bool)
+            mask[pixels] = False
+
+            healmap = healpy.ma(npix)
+            healmap.mask = mask
+
+            healpy.mollview(healmap.filled(), nest=True, cbar=False, hold=True, **kwargs)
+            healpy.graticule(dpar=30, dmer=30)
+
+            return kwargs['fig']
+
+        if fig is None:
+            fig, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
+        else:
+            ax = fig.axes[0]
 
         coords_array = numpy.array([lon, lat]).T
         coords_moll = lvm_plot.convert_to_mollweide(coords_array)
 
         ax.scatter(coords_moll[:, 0], coords_moll[:, 1], **kwargs)
 
-        return ax
+        return fig
 
 
 class TargetList(list):
@@ -336,17 +373,17 @@ class TargetList(list):
 
         Returns
         -------
-        axes : `~matplotlib.axes.Axes`
-            The `~matplotlib.axes.Axes` of the Matplotlib figure.
+        figure : `~matplotlib.figure.Figure`
+            The Matplotlib `~matplotlib.figure.Figure`.
 
         """
 
         assert len(self) > 0, 'no targets in list.'
 
-        ax = self[0].plot_healpix(frame=frame, **kwargs)
+        fig = self[0].plot_healpix(frame=frame, **kwargs)
 
         if len(self) > 1:
             for target in self[1:]:
-                ax = target.plot_healpix(ax=ax, frame=frame, **kwargs)
+                fig = target.plot_healpix(fig=fig, frame=frame, **kwargs)
 
-        return ax
+        return fig
