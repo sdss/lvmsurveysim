@@ -20,6 +20,8 @@ If you don't get an error then you are probably ready to start using the code.
 
 Additionally you may want to check out `lvmcore <https://github.com/sdss/lvmcore>`__, which contains the target file (although this is not necessary to run a simulation). Simply download the code and make the environment variable ``$LVMCORE_DIR`` point to the directory.
 
+Note that the code requires Python 3.6+ to run.
+
 
 Running a simulation
 --------------------
