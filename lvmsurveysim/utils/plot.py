@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 19:42:52
+# @Last modified time: 2019-03-13 01:10:38
 
 import matplotlib.patches
 import matplotlib.pyplot as plt
@@ -175,15 +175,16 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
     return patch
 
 
-def plot_ellipse(ax, ra, dec, width=3.0, height=None, org=0,
+def plot_ellipse(ax, ra, dec, width=3.0, height=None, origin=0,
                  bgcolor='b', zorder=0, alpha=0.8):
+    """Plots an ellipse path of a given angular size."""
 
     ra = numpy.atleast_1d(ra)
     dec = numpy.atleast_1d(dec)
 
     height = width or height
 
-    ra = numpy.remainder(ra + 360 - org, 360)  # shift RA values
+    ra = numpy.remainder(ra + 360 - origin, 360)  # shift RA values
     ind = ra > 180.
     ra[ind] -= 360  # scale conversion to [-180, 180]
     ra = -ra        # reverse the scale: East to the left
