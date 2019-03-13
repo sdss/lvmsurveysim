@@ -7,11 +7,12 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 18:21:58
+# @Last modified time: 2019-03-12 19:01:11
 
 import astropy
 import numpy
 
+import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
 from lvmsurveysim import IFU, config, log
 
@@ -93,6 +94,21 @@ class Scheduler(object):
 
         self.schedule.meta['targets'] = ','.join(self.targets._names)
         self.schedule.write(path, format='fits', overwrite=overwrite)
+
+    @classmethod
+    def load(cls, path):
+
+        schedule = astropy.table.Table.read(path)
+
+        target_names = schedule.meta['TARGETS'].split(',')
+        targets = lvmsurveysim.target.TargetList(
+            [lvmsurveysim.target.Target.from_list(target_name)
+             for target_name in target_names])
+
+        scheduler = cls(targets, observing_plans=[])
+        scheduler.schedule = schedule
+
+        return scheduler
 
     def _create_observing_plans(self):
         """Returns a list of `.ObservingPlan` from the configuration file."""
