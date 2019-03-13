@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 18:59:46
+# @Last modified time: 2019-03-12 19:42:52
 
 import matplotlib.patches
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ import seaborn
 from lvmsurveysim.target import _VALID_FRAMES
 
 
-__all__ = ['get_axes', 'transform_patch_mollweide', 'convert_to_mollweide']
+__all__ = ['get_axes', 'transform_patch_mollweide', 'convert_to_mollweide', 'plot_ellipse']
 
 
 __MOLLWEIDE_ORIGIN__ = 120
@@ -181,7 +181,7 @@ def plot_ellipse(ax, ra, dec, width=3.0, height=None, org=0,
     ra = numpy.atleast_1d(ra)
     dec = numpy.atleast_1d(dec)
 
-    width = width or height
+    height = width or height
 
     ra = numpy.remainder(ra + 360 - org, 360)  # shift RA values
     ind = ra > 180.
@@ -190,7 +190,7 @@ def plot_ellipse(ax, ra, dec, width=3.0, height=None, org=0,
 
     for ii in range(len(ra)):
 
-        ell = matplotlib.pathces.Ellipse(
+        ell = matplotlib.patches.Ellipse(
             xy=(numpy.radians(ra[ii]), numpy.radians(dec[ii])),
             width=numpy.radians(width) / numpy.cos(numpy.radians(dec[ii])),
             height=numpy.radians(height),
