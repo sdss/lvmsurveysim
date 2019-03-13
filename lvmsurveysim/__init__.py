@@ -32,4 +32,4 @@ warnings.filterwarnings('ignore',
 warnings.filterwarnings('ignore', category=astropy.utils.exceptions.ErfaWarning)
 
 
-__version__ = '0.1.0'
+__version__ = '0.1.1dev'

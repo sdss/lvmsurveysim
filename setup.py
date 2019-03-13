@@ -27,7 +27,7 @@ install_requires = [line.strip().replace('==', '>=') for line in open(requiremen
 
 NAME = 'lvmsurveysim'
 # do not use x.x.x-dev.  things complain.  instead use x.x.xdev
-VERSION = '0.1.0'
+VERSION = '0.1.1dev'
 RELEASE = 'dev' not in VERSION
 
 
