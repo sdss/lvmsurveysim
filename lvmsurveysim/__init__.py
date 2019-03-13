@@ -7,9 +7,11 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-11 22:36:05
+# @Last modified time: 2019-03-12 15:37:23
 
 # flake8: noqa
+
+import warnings
 
 from .utils.config import get_config
 from .utils.logger import log
@@ -20,6 +22,10 @@ config = get_config('~/.lvm/lvmsurveysim.yaml')
 
 from .ifu import *
 from .telescope import *
+
+
+warnings.filterwarnings('ignore',
+                        message='Tried to get polar motions for times after IERS .*')
 
 
 __version__ = '0.1.0dev'
