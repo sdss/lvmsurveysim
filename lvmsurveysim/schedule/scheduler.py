@@ -85,7 +85,7 @@ class Scheduler(object):
 
     def __repr__(self):
 
-        return (f'<Scheduler (observing_plans={len(self.observing_plan)}, '
+        return (f'<Scheduler (observing_plans={len(self.observing_plans)}, '
                 f'n_target={len(self.pointings)})>')
 
     def save(self, path, overwrite=False):
