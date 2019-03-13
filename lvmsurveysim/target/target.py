@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 18:56:27
+# @Last modified time: 2019-03-12 19:49:22
 
 import os
 import pathlib
@@ -393,10 +393,13 @@ class TargetList(list):
 
         assert len(self) > 0, 'no targets in list.'
 
-        fig = self[0].plot_healpix(frame=frame, **kwargs)
+        zorder = 100
+
+        fig = self[0].plot_healpix(frame=frame, zorder=zorder, **kwargs)
 
         if len(self) > 1:
             for target in self[1:]:
-                fig = target.plot_healpix(fig=fig, frame=frame, **kwargs)
+                zorder -= 1
+                fig = target.plot_healpix(fig=fig, frame=frame, zorder=zorder, **kwargs)
 
         return fig
