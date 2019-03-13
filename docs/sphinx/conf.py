@@ -37,7 +37,7 @@ extensions = [
     'sphinx.ext.todo', 'sphinx.ext.viewcode',
     'IPython.sphinxext.ipython_console_highlighting',
     'IPython.sphinxext.ipython_directive',
-    'sphinx.ext.intersphinx']
+    'sphinx.ext.intersphinx', 'releases']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -118,6 +118,10 @@ modindex_common_prefix = ['lvmsurveysim.']
 
 napoleon_use_rtype = False
 napoleon_use_ivar = True
+
+releases_github_path = 'sdss/lvmsurveysim'
+releases_document_name = ['changelog']
+releases_unstable_prehistory = True
 
 todo_include_todos = True
 
