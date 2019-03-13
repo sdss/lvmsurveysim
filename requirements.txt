@@ -10,3 +10,4 @@ matplotlib>=1.5.3
 Shapely>=1.6.1
 PyYAML>=3.12
 healpy>=1.12.8
+astral>=1.10.1
