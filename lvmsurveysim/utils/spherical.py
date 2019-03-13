@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 17:27:27
+# @Last modified time: 2019-03-12 17:29:13
 
 import numpy
 
@@ -18,11 +18,17 @@ __all__ = ['great_circle_distance', 'ellipse_bbox', 'get_lst', 'get_altitude']
 def great_circle_distance(ra0, dec0, ra1, dec1):
     """Returns the great angle distance between two points.
 
-    Parameters:
-        ra0,dec0 (float):
-            The RA and Dec coordinates of the first point. In degrees.
-        ra1,dec1 (float):
-            The RA and Dec coordinates of the first point. In degrees.
+    Parameters
+    ----------
+    ra0,dec0 : float or ~numpy.ndarray
+        The RA and Dec coordinates of the first point. In degrees.
+    ra1,dec1 : float or ~numpy.ndarray
+        The RA and Dec coordinates of the first point. In degrees.
+
+    Returns
+    -------
+    separation : float or ~numpy.ndarray
+        The separation between the two sets of coordinates, in degrees.
 
     """
 
@@ -66,7 +72,7 @@ def get_lst(jd, lon):
 
     Returns
     -------
-    lmst : float or ~numpy.ndarray
+    lmst : `float` or `~numpy.ndarray`
         The Local Median Sideral Time in hours. Same shape as the input ``jd``.
 
     """
@@ -103,7 +109,7 @@ def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
 
     Returns
     -------
-    altitude : float or ~numpy.ndarray
+    altitude : `float` or `~numpy.ndarray`
         The altitude of the object at the given time. Returns the airmass if
         ``airmass=True``.
 
