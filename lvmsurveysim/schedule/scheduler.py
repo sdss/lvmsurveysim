@@ -7,13 +7,13 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-11 19:04:28
+# @Last modified time: 2019-03-12 18:01:59
 
 import astropy
-import astropy.coordinates
 import numpy
 
-from lvmsurveysim import IFU, config
+import lvmsurveysim.utils.spherical
+from lvmsurveysim import IFU, config, log
 
 from .plan import ObservingPlan
 
@@ -88,6 +88,12 @@ class Scheduler(object):
         return (f'<Scheduler (observing_plans={len(self.observing_plan)}, '
                 f'n_target={len(self.pointings)})>')
 
+    def save(self, path):
+        """Saves the results to a file as FITS."""
+
+        self.schedule.meta['targets'] = ','.join(self.targets._names)
+        self.schedule.write(path, format='fits')
+
     def _create_observing_plans(self):
         """Returns a list of `.ObservingPlan` from the configuration file."""
 
@@ -102,11 +108,13 @@ class Scheduler(object):
 
         return observing_plan
 
-    def run(self, **kwargs):
+    def run(self, progress_bar=False, **kwargs):
         """Schedules the pointings.
 
         Parameters
         ----------
+        progress_bar : bool
+            If `True`, shows a progress bar.
         kwargs : dict
             Parameters to be passed to `~.Scheduler.schedule_one_night`.
 
@@ -124,11 +132,6 @@ class Scheduler(object):
             [numpy.array([self.pointings[idx].ra.deg, self.pointings[idx].dec.deg]).T
              for idx in sorted(self.pointings)])
 
-        ap_coordinates = astropy.coordinates.SkyCoord(ra=coordinates[:, 0],
-                                                      dec=coordinates[:, 1],
-                                                      frame='icrs',
-                                                      unit='deg')
-
         # Create an array of pointing to priority.
         priorities = numpy.concatenate([numpy.repeat(self.targets[idx].priority,
                                                      len(self.pointings[idx]))
@@ -140,14 +143,25 @@ class Scheduler(object):
         min_date = numpy.min([numpy.min(plan['JD']) for plan in self.observing_plans])
         max_date = numpy.max([numpy.max(plan['JD']) for plan in self.observing_plans])
 
-        for jd in range(min_date, max_date + 1)[0:5]:
+        dates = range(min_date, max_date + 1)
+
+        if progress_bar:
+            generator = astropy.utils.console.ProgressBar(dates)
+        else:
+            generator = dates
+
+        for jd in generator:
+
+            if progress_bar is False:
+                log.info(f'scheduling JD={jd}.')
+
             for plan in self.observing_plans:
 
                 if jd not in plan['JD']:
                     continue
 
                 new_observed = self.schedule_one_night(jd, plan, index_to_target,
-                                                       priorities, ap_coordinates,
+                                                       priorities, coordinates,
                                                        observed, **kwargs)
 
                 observed |= new_observed
@@ -211,7 +225,9 @@ class Scheduler(object):
         new_observed = numpy.zeros(len(observed), dtype=numpy.bool)
 
         observatory = plan.observatory
-        location = plan.location
+
+        lon = plan.location.lon.deg
+        lat = plan.location.lat.deg
 
         night_plan = plan[plan['JD'] == jd]
         jd0 = night_plan['evening_twilight'][0]
@@ -219,26 +235,27 @@ class Scheduler(object):
 
         eff_exp_time = exposure_time * overhead / 86400.
 
-        times = astropy.time.Time(numpy.arange(jd0, jd1 + eff_exp_time, eff_exp_time), format='jd')
-        altaz_frames = astropy.coordinates.AltAz(obstime=times, location=location)
-
-        moons = astropy.coordinates.get_moon(time=times)
+        times = numpy.arange(jd0, jd1 + eff_exp_time, eff_exp_time)
+        moons = astropy.coordinates.get_moon(time=astropy.time.Time(times, format='jd'))
 
         # Iterates until the night is done.
         for ii in range(len(times)):
 
-            altaz_frame = altaz_frames[ii]
+            jd = times[ii]
             moon = moons[ii]
+
+            moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
+                moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
 
             # Select targets that are above the max airmass and with good
             # Moon avoidance.
-            moon_ok = coordinates.separation(moon).deg > moon_separation
+            moon_ok = moon_to_pointings > moon_separation
 
-            # Converts the coordinates to altaz.
-            coordinates_altaz = coordinates.transform_to(altaz_frame)
+            airmasses = lvmsurveysim.utils.spherical.get_altitude(
+                coordinates[:, 0], coordinates[:, 1], jd=jd,
+                lon=lon, lat=lat, airmass=True)
 
             # Gets valid airmasses
-            airmasses = coordinates_altaz.secz
             airmass_ok = (airmasses < max_airmass) & (airmasses > 0)
 
             # Creates a mask of valid pointings with correct Moon avoidance,
@@ -246,10 +263,11 @@ class Scheduler(object):
             valid_idx = numpy.where(moon_ok & airmass_ok & ~observed & ~new_observed)[0]
 
             if len(valid_idx) == 0:
+                self._record_observation(jd, observatory)
                 continue
 
             # Gets the coordinates and priorities of valid pointings.
-            valid_coordinates = coordinates_altaz[valid_idx]
+            valid_airmasses = airmasses[valid_idx]
             valid_priorities = priorities[valid_idx]
 
             already_observed = False
@@ -267,13 +285,14 @@ class Scheduler(object):
                 valid_priority_idx = numpy.where(valid_priorities == priority)[0]
 
                 if len(valid_priority_idx) == 0:
+                    self._record_observation(jd, observatory)
                     continue
 
-                valid_coordinates_priority = valid_coordinates[valid_priority_idx]
+                valid_airmasses_priority = valid_airmasses[valid_priority_idx]
 
                 # Gets the pointing with the smallest airmass.
-                obs_airmass_idx = valid_coordinates_priority.secz.argmin()
-                obs_airmass = valid_coordinates_priority.secz.min()
+                obs_airmass_idx = valid_airmasses_priority.argmin()
+                obs_airmass = valid_airmasses_priority.min()
 
                 # Gets the index of the pointing in the master list.
                 observed_idx = valid_idx[valid_priority_idx[obs_airmass_idx]]
@@ -282,8 +301,8 @@ class Scheduler(object):
                 new_observed[observed_idx] = True
 
                 # Gets the parameters of the pointing.
-                ra = coordinates[observed_idx].ra.deg
-                dec = coordinates[observed_idx].dec.deg
+                ra = coordinates[observed_idx, 0]
+                dec = coordinates[observed_idx, 1]
 
                 target_index = index_to_target[observed_idx]
                 target_name = self.targets[target_index].name
@@ -296,10 +315,18 @@ class Scheduler(object):
                 pointing_index = observed_idx - target_index_first
 
                 # Update the table with the schedule.
-                self.schedule.add_row(
-                    (times[ii].jd, observatory, target_name, pointing_index,
-                     ra, dec, 0, 0, obs_airmass))
+                self._record_observation(jd, observatory,
+                                         target_name=target_name,
+                                         pointing_index=pointing_index,
+                                         ra=ra, dec=dec, airmass=obs_airmass)
 
                 already_observed = True
 
         return new_observed
+
+    def _record_observation(self, jd, observatory, target_name='-',
+                            pointing_index=-1, ra=-999., dec=-999.,
+                            airmass=-999.):
+
+        self.schedule.add_row((jd, observatory, target_name, pointing_index,
+                               ra, dec, 0, 0, airmass))
