@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 22:45:48
+# @Last modified time: 2019-03-12 23:10:44
 
 import itertools
 
@@ -391,3 +391,42 @@ class Scheduler(object):
 
         self.schedule.add_row((jd, observatory, target_name, pointing_index,
                                ra, dec, 0, 0, airmass))
+
+    def get_unused_time(self, observatory, return_lst=False):
+        """Returns the unobserved times for an observatory.
+
+        Parameters
+        ----------
+        observatory : str
+            The observatory to filter for.
+        return_lst : bool
+            If `True`, returns an array with the LSTs of all the unobserved
+            times.
+
+        Returns
+        -------
+        table : `~numpy.ndarray`
+            An array containing the unused times at an observatory, as JDs.
+            If ``return_lst=True`` returns an array of the corresponding LSTs.
+
+        """
+
+        unused = self.schedule[self.schedule['target'] == '-']
+
+        if observatory:
+            unused = unused[unused['observatory'] == observatory]
+
+        if not return_lst:
+            return unused['JD'].data
+
+        if observatory == 'APO':
+            full_obs_name = 'Apache Point Observatory'
+        elif observatory == 'LCO':
+            full_obs_name = 'Las Campanas Observatory'
+        else:
+            raise ValueError(f'invalid observatory {observatory!r}.')
+
+        location = astropy.coordinates.EarthLocation.of_site(full_obs_name)
+
+        return lvmsurveysim.utils.spherical.get_lst(unused['JD'].data,
+                                                    location.lon.deg)
