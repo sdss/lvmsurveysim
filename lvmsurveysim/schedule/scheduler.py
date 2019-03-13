@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 18:01:59
+# @Last modified time: 2019-03-12 18:21:58
 
 import astropy
 import numpy
@@ -88,11 +88,11 @@ class Scheduler(object):
         return (f'<Scheduler (observing_plans={len(self.observing_plan)}, '
                 f'n_target={len(self.pointings)})>')
 
-    def save(self, path):
+    def save(self, path, overwrite=False):
         """Saves the results to a file as FITS."""
 
         self.schedule.meta['targets'] = ','.join(self.targets._names)
-        self.schedule.write(path, format='fits')
+        self.schedule.write(path, format='fits', overwrite=overwrite)
 
     def _create_observing_plans(self):
         """Returns a list of `.ObservingPlan` from the configuration file."""
