@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-06 14:59:25
+# @Last modified time: 2019-03-13 15:01:07
 
 import healpy
 import numpy
@@ -39,7 +39,7 @@ def nested_regrade(pixels, nside_in, nside_out):
 
     Parameters
     ----------
-    pixels : `int` or `~numpy.ndarray`
+    pixels : int or ~numpy.ndarray
         The pixels for which we want to get the parents/children. Can be a
         single integer or an array of indices.
     nside_in : int
@@ -146,7 +146,7 @@ def tile_geometry(polygon, nside, ring=False, return_coords=False, inclusive=Tru
 
     Parameters
     ----------
-    polygon : `Polygon <shapely:Polygon>` or `~numpy.ndarray`
+    polygon : shapely:Polygon or ~numpy.ndarray
         The polygon to tile. If an array, it must be a collection of ``Nx2``
         points defining the position of the vertices. The polygon must be
         convex.

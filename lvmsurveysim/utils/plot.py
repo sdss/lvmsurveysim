@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 01:10:38
+# @Last modified time: 2019-03-13 14:58:20
 
 import matplotlib.patches
 import matplotlib.pyplot as plt
@@ -94,7 +94,7 @@ def convert_to_mollweide(coords):
 
     Parameters
     ----------
-    coords : numpy.ndarray
+    coords : ~numpy.ndarray
         A ``Nx2`` array of coordinates to be converted.
 
     """
@@ -126,7 +126,7 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
     Parameters:
         ax (~matplotlib.axes.Axes):
             The axes on which the ``patch`` has been plotted.
-        patch (`~matplotlib.patches.Patch`):
+        patch (~matplotlib.patches.Patch):
             The patch to be transformed.
         patch_centre (float):
             The RA value that will be used to determine the direction of the
