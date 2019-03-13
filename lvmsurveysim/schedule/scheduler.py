@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 09:19:41
+# @Last modified time: 2019-03-13 11:37:17
 
 import itertools
 
@@ -46,7 +46,8 @@ class Scheduler(object):
         If `None`, the list will be created from the ``observing_plan``
         section in the configuration file.
     ifu : ~lvmsurveysim.ifu.IFU
-        The `~lvmsurveysim.ifu.IFU` to use.
+        The `~lvmsurveysim.ifu.IFU` to use. Defaults to the one from the
+        configuration file.
 
     Attributes
     ----------
