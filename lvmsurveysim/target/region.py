@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 18:42:32
+# @Last modified time: 2019-03-13 11:32:39
 
 import abc
 
@@ -343,7 +343,7 @@ class EllipticalRegion(Region):
         else:
             self.b = astropy.coordinates.Angle(b, 'deg')
 
-        assert self.a > self.b, 'a must be greater than b.'
+        assert self.a >= self.b, 'a must be greater or equal than b.'
 
         self.frame = frame
 
