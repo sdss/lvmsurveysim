@@ -13,3 +13,8 @@ lvmsurveysim.utils
     :members:
     :show-inheritance:
     :undoc-members:
+
+.. automodule:: lvmsurveysim.utils.plot
+    :members:
+    :show-inheritance:
+    :undoc-members:
