@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 19:01:11
+# @Last modified time: 2019-03-12 22:45:48
 
 import itertools
 
@@ -102,6 +102,7 @@ class Scheduler(object):
 
     @classmethod
     def load(cls, path):
+        """Creates a new instance from a schedule file."""
 
         schedule = astropy.table.Table.read(path)
 
@@ -329,14 +330,10 @@ class Scheduler(object):
             valid_airmasses = airmasses[valid_idx]
             valid_priorities = priorities[valid_idx]
 
-            already_observed = False
+            did_observe = False
 
             # Loops starting with pointings with the highest priority.
             for priority in range(valid_priorities.max(), valid_priorities.min() - 1, -1):
-
-                # If we have already observed a pointing at this time, exit.
-                if already_observed:
-                    break
 
                 # Gets the indices that correspond to this priority (note that
                 # these indices correspond to positions in valid_idx, not in the
@@ -344,7 +341,6 @@ class Scheduler(object):
                 valid_priority_idx = numpy.where(valid_priorities == priority)[0]
 
                 if len(valid_priority_idx) == 0:
-                    self._record_observation(jd, observatory)
                     continue
 
                 valid_airmasses_priority = valid_airmasses[valid_priority_idx]
@@ -379,13 +375,19 @@ class Scheduler(object):
                                          pointing_index=pointing_index,
                                          ra=ra, dec=dec, airmass=obs_airmass)
 
-                already_observed = True
+                did_observe = True
+
+                break
+
+            if did_observe is False:
+                self._record_observation(jd, observatory)
 
         return new_observed
 
     def _record_observation(self, jd, observatory, target_name='-',
                             pointing_index=-1, ra=-999., dec=-999.,
                             airmass=-999.):
+        """Adds a row to the schedule."""
 
         self.schedule.add_row((jd, observatory, target_name, pointing_index,
                                ra, dec, 0, 0, airmass))
