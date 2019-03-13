@@ -7,14 +7,15 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-05 17:56:12
+# @Last modified time: 2019-03-12 18:59:46
 
+import matplotlib.patches
 import matplotlib.pyplot as plt
 import matplotlib.transforms
 import numpy
 import seaborn
 
-from . import _VALID_FRAMES
+from lvmsurveysim.target import _VALID_FRAMES
 
 
 __all__ = ['get_axes', 'transform_patch_mollweide', 'convert_to_mollweide']
@@ -172,3 +173,33 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
     patch.set_transform(trans_to_rads + trans_reflect + trans_origin + ax.transData)
 
     return patch
+
+
+def plot_ellipse(ax, ra, dec, width=3.0, height=None, org=0,
+                 bgcolor='b', zorder=0, alpha=0.8):
+
+    ra = numpy.atleast_1d(ra)
+    dec = numpy.atleast_1d(dec)
+
+    width = width or height
+
+    ra = numpy.remainder(ra + 360 - org, 360)  # shift RA values
+    ind = ra > 180.
+    ra[ind] -= 360  # scale conversion to [-180, 180]
+    ra = -ra        # reverse the scale: East to the left
+
+    for ii in range(len(ra)):
+
+        ell = matplotlib.pathces.Ellipse(
+            xy=(numpy.radians(ra[ii]), numpy.radians(dec[ii])),
+            width=numpy.radians(width) / numpy.cos(numpy.radians(dec[ii])),
+            height=numpy.radians(height),
+            edgecolor='None',
+            lw=0.0,
+            facecolor=bgcolor,
+            zorder=zorder,
+            alpha=alpha)
+
+        ax.add_patch(ell)
+
+    return ax
