@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 23:10:44
+# @Last modified time: 2019-03-13 09:19:41
 
 import itertools
 
@@ -147,7 +147,7 @@ class Scheduler(object):
             target_data = data[data['target'] == name]
 
             plot_ellipse(ax, target_data['ra'], target_data['dec'],
-                         width=radius, org=__MOLLWEIDE_ORIGIN__, **sty)
+                         width=radius, origin=__MOLLWEIDE_ORIGIN__, **sty)
 
             if observatory is not None:
                 ax.set_title(f'Observatory: {observatory}')
