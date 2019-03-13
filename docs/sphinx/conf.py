@@ -34,7 +34,7 @@ from pkg_resources import parse_version
 # ones.
 extensions = [
     'sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosummary',
-    'sphinx.ext.todo', 'sphinx.ext.viewcode',
+    'sphinx.ext.todo', 'sphinx.ext.viewcode', 'sphinx.ext.imgmath',
     'IPython.sphinxext.ipython_console_highlighting',
     'IPython.sphinxext.ipython_directive',
     'sphinx.ext.intersphinx', 'releases']
