@@ -9,12 +9,17 @@
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
 # @Last modified time: 2019-03-12 19:01:11
 
+import itertools
+
 import astropy
+import cycler
+import healpy
 import numpy
 
 import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
 from lvmsurveysim import IFU, config, log
+from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, plot_ellipse
 
 from .plan import ObservingPlan
 
@@ -109,6 +114,44 @@ class Scheduler(object):
         scheduler.schedule = schedule
 
         return scheduler
+
+    def plot(self, observatory=None):
+        """Plots the observed pointings.
+
+        Parameters
+        ----------
+        observatory : str
+            Plot only the points for that observatory. Otherwise, plots all
+            the pointings.
+
+        """
+
+        color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
+
+        fig, ax = get_axes(projection='mollweide')
+
+        data = self.schedule[self.schedule['ra'] > 0.]
+
+        if observatory:
+            data = data[data['observatory'] == observatory]
+
+        for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
+
+            target = self.targets[ii]
+            name = target.name
+            nside = target._get_nside(ifu=self.ifu)
+
+            radius = healpy.max_pixrad(nside, degrees=True)
+
+            target_data = data[data['target'] == name]
+
+            plot_ellipse(ax, target_data['ra'], target_data['dec'],
+                         width=radius, org=__MOLLWEIDE_ORIGIN__, **sty)
+
+            if observatory is not None:
+                ax.set_title(f'Observatory: {observatory}')
+
+        return fig
 
     def _create_observing_plans(self):
         """Returns a list of `.ObservingPlan` from the configuration file."""
