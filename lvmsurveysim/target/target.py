@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 15:08:38
+# @Last modified time: 2019-03-12 15:26:14
 
 import os
 import pathlib
@@ -331,11 +331,17 @@ class TargetList(list):
 
         targets_dict = yaml.load(open(str(target_file)))
 
-        names = targets_dict.keys()
+        self._names = list(targets_dict.keys())
 
-        targets = [Target.from_list(name, target_file=target_file) for name in names]
+        targets = [Target.from_list(name, target_file=target_file)
+                   for name in self._names]
 
         super().__init__(targets)
+
+    def get_target(self, name):
+        """Returns the target whose name correspond to ``name``."""
+
+        return self[self._names.index(name)]
 
     def get_healpix_tiling(self, **kwargs):
         """Gets the HealPix coverage for all the targets in the set.
