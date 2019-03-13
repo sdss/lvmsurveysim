@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 19:49:22
+# @Last modified time: 2019-03-13 13:12:04
 
 import os
 import pathlib
@@ -131,7 +131,7 @@ class Target(object):
 
         assert target_file.exists()
 
-        targets = yaml.load(open(str(target_file)))
+        targets = yaml.load(open(str(target_file)), Loader=yaml.FullLoader)
 
         assert name in targets, 'target not found in target list.'
 
@@ -336,7 +336,7 @@ class TargetList(list):
 
             assert target_file.exists()
 
-            targets_dict = yaml.load(open(str(target_file)))
+            targets_dict = yaml.load(open(str(target_file)), Loader=yaml.FullLoader)
 
             self._names = list(targets_dict.keys())
 

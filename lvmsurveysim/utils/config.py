@@ -34,9 +34,9 @@ def get_config(user_path):
     """Returns a dictionary object with configuration options."""
 
     user_path = pathlib.Path(user_path).expanduser()
-    user = user_path.exists() and yaml.load(open(str(user_path), 'r'))
+    user = user_path.exists() and yaml.load(open(str(user_path), 'r'), Loader=yaml.FullLoader)
 
     default_path = pathlib.Path(__file__).parents[0] / '../etc/lvmsurveysim_defaults.yaml'
-    default = yaml.load(open(str(default_path), 'r'))
+    default = yaml.load(open(str(default_path), 'r'), Loader=yaml.FullLoader)
 
     return merge(user, default)
