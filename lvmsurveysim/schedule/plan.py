@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-11 16:48:52
+# @Last modified time: 2019-03-13 13:15:57
 
 import datetime
 import warnings
@@ -174,10 +174,10 @@ class ObservingPlan(object):
 
         return self.data.__getitem__(item)
 
-    def write(self, path):
+    def write(self, path, overwrite=False):
         """Writes the observing plan to a file."""
 
-        self.data.write(path, format='ascii.fixed_width', delimiter='|')
+        self.data.write(path, format='ascii.fixed_width', delimiter='|', overwrite=overwrite)
 
     @classmethod
     def read(cls, path, observatory):
