@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 14:58:20
+# @Last modified time: 2019-03-13 15:05:29
 
 import matplotlib.patches
 import matplotlib.pyplot as plt
@@ -34,7 +34,7 @@ def get_axes(projection='rectangular', frame='icrs'):
             `mollweide <https://en.wikipedia.org/wiki/Mollweide_projection>`_.
         frame : str
             The reference frame of the axes. Must be one of
-            `~lvmsurveysim.target.region._VALID_FRAMES`. Used to define
+            `~lvmsurveysim.target._VALID_FRAMES`. Used to define
             the axis labels.
 
     Returns:

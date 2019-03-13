@@ -56,6 +56,9 @@ If the file is not specified in either case, ``lvmsurveysim`` defaults to ``$LVM
 target
 ------
 
+.. automodule:: lvmsurveysim.target
+    :members: _VALID_FRAMES
+
 .. automodule:: lvmsurveysim.target.target
     :members: Target, TargetList
     :show-inheritance:
