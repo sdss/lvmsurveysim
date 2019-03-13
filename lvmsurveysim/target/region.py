@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-08 13:42:43
+# @Last modified time: 2019-03-12 18:42:32
 
 import abc
 
@@ -21,9 +21,10 @@ import scipy
 import shapely.affinity
 import shapely.geometry
 
+from lvmsurveysim.utils import add_doc
+from lvmsurveysim.utils import plot as lvm_plot
+
 from . import _VALID_FRAMES
-from . import plot as lvm_plot
-from ..utils import add_doc
 
 
 __all__ = ['Region', 'EllipticalRegion', 'RectangularRegion',

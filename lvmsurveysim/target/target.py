@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 15:26:14
+# @Last modified time: 2019-03-12 18:41:38
 
 import os
 import pathlib
@@ -21,9 +21,9 @@ import seaborn
 import yaml
 
 import lvmsurveysim.utils.healpix
+from lvmsurveysim.utils import plot as lvm_plot
 
 from . import _VALID_FRAMES
-from . import plot as lvm_plot
 from .. import config
 from ..exceptions import LVMSurveySimWarning
 from ..ifu import IFU
