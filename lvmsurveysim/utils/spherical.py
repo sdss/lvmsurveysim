@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 17:13:11
+# @Last modified time: 2019-03-12 17:27:27
 
 import numpy
 
@@ -53,13 +53,88 @@ def ellipse_bbox(ra, dec, a, b, pa, padding=0):
     return (numpy.array([ra - ra_delta - padding, ra + ra_delta + padding]),
             numpy.array([dec - dec_delta - padding, dec + dec_delta + padding]))
 
-    a_x = a * np.sin(pa_rad)
-    a_y = a * np.cos(pa_rad)
-    b_x = b * np.cos(pa_rad)
-    b_y = b * np.sin(pa_rad)
 
-    ra_delta = np.sqrt(a_x**2 + b_x**2) / np.cos(np.deg2rad(dec))
-    dec_delta = np.sqrt(a_y**2 + b_y**2)
+def get_lst(jd, lon):
+    """Returns the approximate Local Median Sidereal Time.
 
-    return (np.array([ra - ra_delta - padding, ra + ra_delta + padding]),
-            np.array([dec - dec_delta - padding, dec + dec_delta + padding]))
+    Parameters
+    ----------
+    jd : float or ~numpy.ndarray
+        The Julian Date or an array of dates.
+    lon : float
+        The longitude of the location.
+
+    Returns
+    -------
+    lmst : float or ~numpy.ndarray
+        The Local Median Sideral Time in hours. Same shape as the input ``jd``.
+
+    """
+
+    dd = jd - 2451545.0
+
+    lmst = ((280.46061837 + 360.98564736629 * dd + 0.000388 *
+            (dd / 36525.)**2 + lon) % 360) / 15.
+
+    return lmst
+
+
+def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
+    """Returns the altitude of an object from its equatorial coordinates.
+
+    Parameters
+    ----------
+    ra : float or ~numpy.ndarray
+        The Right Ascension of the object(s).
+    ra : float or ~numpy.ndarray
+        The declination of the object(s).
+    jd : float or ~numpy.ndarray
+        The Julian Date or an array of dates. The local sidereal time will
+        be calculated from these dates using the longitude.
+    lst : float or ~numpy.ndarray
+        The local sidereal time, in hours. Overrides ``jd``.
+    lon : float
+        The longitude of the location.
+    lat : float
+        The latitude of the location.
+    airmass : bool
+        If `True`, returns the airmass (:math:`\sec z`) instead of the
+        altitude.
+
+    Returns
+    -------
+    altitude : float or ~numpy.ndarray
+        The altitude of the object at the given time. Returns the airmass if
+        ``airmass=True``.
+
+    """
+
+    ra = numpy.atleast_1d(ra)
+    dec = numpy.atleast_1d(dec)
+
+    assert len(ra) == len(dec), 'ra and dec must have the same length.'
+
+    if jd is not None:
+
+        assert lst is None, 'cannot set jd and lst at the same time.'
+
+        jd = numpy.atleast_1d(jd)
+        lst = get_lst(jd, lon)
+
+    if len(lst) == 1:
+        lst = numpy.repeat(lst, len(ra))
+    elif len(lst) != len(ra):
+        raise ValueError('jd does not have the same length as the coordinates.')
+
+    ha = (lst * 15. - ra) % 360.
+
+    sin_alt = (numpy.sin(numpy.radians(dec)) * numpy.sin(numpy.radians(lat)) +
+               numpy.cos(numpy.radians(dec)) * numpy.cos(numpy.radians(lat)) *
+               numpy.cos(numpy.radians(ha)))
+
+    alt = numpy.rad2deg(numpy.arcsin(sin_alt))
+
+    if airmass:
+        return 1 / numpy.cos(numpy.radians(90 - alt))
+
+    return alt
