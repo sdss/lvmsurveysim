@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 18:41:38
+# @Last modified time: 2019-03-12 18:56:27
 
 import os
 import pathlib
@@ -319,24 +319,31 @@ class TargetList(list):
 
     """
 
-    def __init__(self, target_file=None):
+    def __init__(self, targets=None, target_file=None):
 
-        if target_file is None:
-            target_file = pathlib.Path(
-                os.path.expanduser(os.path.expandvars(config['target_file'])))
+        if targets:
+
+            self._names = [target.name for target in targets]
+            super().__init__(targets)
+
         else:
-            target_file = pathlib.Path(target_file)
 
-        assert target_file.exists()
+            if target_file is None:
+                target_file = pathlib.Path(
+                    os.path.expanduser(os.path.expandvars(config['target_file'])))
+            else:
+                target_file = pathlib.Path(target_file)
 
-        targets_dict = yaml.load(open(str(target_file)))
+            assert target_file.exists()
 
-        self._names = list(targets_dict.keys())
+            targets_dict = yaml.load(open(str(target_file)))
 
-        targets = [Target.from_list(name, target_file=target_file)
-                   for name in self._names]
+            self._names = list(targets_dict.keys())
 
-        super().__init__(targets)
+            targets = [Target.from_list(name, target_file=target_file)
+                       for name in self._names]
+
+            super().__init__(targets)
 
     def get_target(self, name):
         """Returns the target whose name correspond to ``name``."""
