@@ -14,6 +14,7 @@ Reference
 
    target
    telescope
+   ifu
    schedule
    utils
    changelog
