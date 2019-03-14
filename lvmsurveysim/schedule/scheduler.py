@@ -312,16 +312,23 @@ class Scheduler(object):
             # Moon avoidance.
             moon_ok = moon_to_pointings > moon_separation
 
-            airmasses = lvmsurveysim.utils.spherical.get_altitude(
-                coordinates[:, 0], coordinates[:, 1], jd=jd,
-                lon=lon, lat=lat, airmass=True)
+            # get the altitude
+            alt = lvmsurveysim.utils.spherical.get_altitude(
+                    coordinates[:, 0], coordinates[:, 1], jd=jd,
+                    lon=lon, lat=lat)
+
+            # avoid the zenith!
+            alt_ok = alt < (90 - __ZENITH_AVOIDANCE__)
+
+            # calculate the airmass from the altitude
+            airmasses = 1 / numpy.cos(numpy.radians(90 - alt))
 
             # Gets valid airmasses
             airmass_ok = (airmasses < max_airmass) & (airmasses > 0)
 
             # Creates a mask of valid pointings with correct Moon avoidance,
             # airmass, and that have not been observed.
-            valid_idx = numpy.where(moon_ok & airmass_ok & ~observed & ~new_observed)[0]
+            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & ~observed & ~new_observed)[0]
 
             if len(valid_idx) == 0:
                 self._record_observation(jd, observatory)
