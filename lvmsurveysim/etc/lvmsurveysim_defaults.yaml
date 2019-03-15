@@ -1,10 +1,10 @@
 
-fibre_size: 140  # in microns
+fibre_size: 174  # in microns. this is really the lenslet pitch
 
 ifu:
     type: monolithic
     centres: [[0, 0]]
-    n_fibres: 1657
+    n_fibres: 1641   #this is assuming 3*547
     allow_rotation: false
     # type: non_abuttable_triangle:
     # centres: [[-0.75, 0.433012702], [0.75, 0.433012702], [0, -0.866025404]]
@@ -14,13 +14,15 @@ ifu:
 
 target_file: $LVMCORE_DIR/surveydesign/targets.yaml
 
+# note that what matters is the f-ratio of the fiber input (post lenslets)
+# not the telescope native f-ratio
 telescopes:
     LVM-1m:
         diameter: 1.
-        f: 5
+        f: 3.7
     LVM-160:
         diameter: 0.16
-        f: 5
+        f: 3.7
 
 observing_plan:
     APO:
