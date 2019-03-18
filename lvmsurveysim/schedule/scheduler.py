@@ -31,6 +31,7 @@ __MOON_SEPARATION__ = config['scheduler']['moon_separation']
 __EXPOSURE_TIME__ = config['scheduler']['exposure_time']
 __OVERHEAD__ = config['scheduler']['overhead']
 __ZENITH_AVOIDANCE__ = config['scheduler']['zenith_avoidance']
+__DEFAULT_TIME_STEP__ = 900 #default time step in s
 
 
 class Scheduler(object):
@@ -198,8 +199,8 @@ class Scheduler(object):
                                                      len(self.pointings[idx]))
                                         for idx in sorted(self.pointings)])
 
-        # Mask with observed pointings
-        observed = numpy.zeros(len(index_to_target), dtype=numpy.bool)
+        # Mask with observed exposure time for each pointing
+        observed = numpy.zeros(len(index_to_target), dtype=numpy.float)
 
         min_date = numpy.min([numpy.min(plan['JD']) for plan in self.observing_plans])
         max_date = numpy.max([numpy.max(plan['JD']) for plan in self.observing_plans])
@@ -225,7 +226,197 @@ class Scheduler(object):
                                                        priorities, coordinates,
                                                        observed, **kwargs)
 
-                observed |= new_observed
+                observed += new_observed
+
+
+    def schedule_one_night_nd(self, jd, plan, index_to_target, target_priorities,
+                              coordinates, target_exposure_times, exposure_quantums, observed,
+                              max_airmass=__MAX_AIRMASS__,
+                              moon_separation=__MOON_SEPARATION__,
+                              exposure_time=__EXPOSURE_TIME__,
+                              overhead=__OVERHEAD__,
+                              zenith_avoidance=__ZENITH_AVOIDANCE__,
+                              follow_target=False):
+        """
+        Schedules a single night in a single observatory, new version.
+
+        This method is not intended to be called directly. Instead, use
+        `.run`.
+
+        Return
+        ------
+        ~numpy.array with the exposure time added to each tile during this night.
+
+        Parameters
+        ----------
+        jd : int
+            The Julian Date to schedule. Must be included in ``plan``.
+        plan : .ObservingPlan
+            The observing plan to schedule for the night.
+        jd : int
+            The Julian Date to schedule. Must be included in ``plan``.
+        plan : .ObservingPlan
+            The observing plan to schedule for the night.
+        index_to_target : ~numpy.ndarray
+            An array with the length of all the pointings indicating the index
+            of the target it correspond to.
+        priorities : ~numpy.ndarray
+            An array with the length of all the pointings indicating the
+            priority of the target.
+        coordinates : ~astropy.coordinates.SkyCoord
+            The coordinates of each one of the pointings, in the ICRS frame.
+            The ordering of the coordinates is the same as in ``target_index``.
+        target_exposure_times : ~numpy.ndarray
+            An array with the length of all pointings with total desired exposure time in s for each tile.
+        exposure_quantums : ~numpy.ndarray
+            An array with the length of all pointings with exposure time in s to schedule for each visit.
+        observed : ~numpy.ndarray
+            A float array that carries the executed exposure time for each tile.
+        max_airmass : float
+            The maximum airmass to allow. Defaults to the value
+            ``scheduler.max_airmass`` in the configuration file.
+        moon_separation : float
+            The minimum allowed Moon separation. Defaults to the value
+            ``scheduler.min_moon_separation`` in the configuration file.
+        exposure_time : float
+            Exposure time to complete each pointing, in seconds. Defaults to
+            the value ``scheduler.exposure_time``.
+        overhead : float
+            The overhead due to operations procedures (slewing, calibrations,
+            etc). Defaults to the value ``scheduler.overhead``.
+        zenith_avoidance : float
+            Degrees around the zenith/pole in which we should not observe.
+            Defaults to the value ``scheduler.zenith_avoidance``.
+        """
+        observatory = plan.observatory
+
+        lon = plan.location.lon.deg
+        lat = plan.location.lat.deg
+
+        night_plan = plan[plan['JD'] == jd]
+        jd0 = night_plan['evening_twilight'][0]
+        jd1 = night_plan['morning_twilight'][0]
+
+        # start at evening twilight
+        current_jd = jd0
+
+        # copy the original priorities since we'll mess with them to prioritize unfinished tiles
+        priorities = np.copy(target_priorities)
+
+        # while the current time is before morning twilight ...
+        while current_jd < jd1:
+
+            # get the moon's coordinates
+            moon = astropy.coordinates.get_moon(time=astropy.time.Time(current_jd, format='jd'))
+
+            # get the distance to the moon
+            moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
+                moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
+
+                       # Select targets that are above the max airmass and with good
+            # Moon avoidance.
+            moon_ok = moon_to_pointings > moon_separation
+
+            # get the altitude
+            alt_start = lvmsurveysim.utils.spherical.get_altitude(
+                        coordinates[:, 0], coordinates[:, 1], jd=current_jd,
+                        lon=lon, lat=lat)
+
+            alt_end = lvmsurveysim.utils.spherical.get_altitude(
+                        coordinates[:, 0], coordinates[:, 1], jd=current_jd+(exposure_quantums/86400.0),
+                        lon=lon, lat=lat)
+
+            # avoid the zenith!
+            alt_ok = (alt_start < (90 - __ZENITH_AVOIDANCE__)) & (alt_end < (90 - __ZENITH_AVOIDANCE__))
+
+            # calculate the airmass from the altitude
+            airmasses_start = 1 / numpy.cos(numpy.radians(90 - alt_start))
+            airmasses_end = 1 / numpy.cos(numpy.radians(90 - alt_end))
+
+            # Gets valid airmasses
+            airmass_ok = ((airmasses_start < max_airmass) & (airmasses_start > 0)) & ((airmasses_end < max_airmass) & (airmasses_end > 0))
+
+            # find observations that have nonzero exposure but are incomplete
+            incomplete = (observed+new_observed>0) & (observed+new_observed<target_exposure_times)
+
+            # Creates a mask of valid pointings with correct Moon avoidance,
+            # airmass, zenith avoidance and that have not been observed long enough.
+            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & (observed+new_observed)<target_exposure_times)[0]
+
+            # if there's nothing to observe, record the time slot as vacant (for record keeping)
+            if len(valid_idx) == 0:
+                self._record_observation(current_jd, observatory)
+                continue
+
+            # Gets the coordinates and priorities of valid pointings.
+            valid_airmasses = airmasses_start[valid_idx]
+            valid_priorities = priorities[valid_idx]
+            incomplete = incomplete[valid_idx]
+
+            did_observe = False
+
+            # give incomplete observations the highest priority
+            maxpriority = valid_priorities.max()
+            valid_priorities[incomplete] += maxpriority+1
+
+            # Loops starting with pointings with the highest priority.
+            for priority in range(valid_priorities.max(), valid_priorities.min() - 1, -1):
+
+                # Gets the indices that correspond to this priority (note that
+                # these indices correspond to positions in valid_idx, not in the
+                # master list).
+                valid_priority_idx = numpy.where(valid_priorities == priority)[0]
+
+                # if there's nothing to do at the current priority, try the next lower
+                if len(valid_priority_idx) == 0:
+                    continue
+
+                valid_airmasses_priority = valid_airmasses[valid_priority_idx]
+
+                # Gets the pointing with the smallest airmass.
+                obs_airmass_idx = valid_airmasses_priority.argmin()
+                obs_airmass = valid_airmasses_priority[obs_airmass_idx]
+
+                # Gets the index of the pointing in the master list.
+                observed_idx = valid_idx[valid_priority_idx[obs_airmass_idx]]
+
+                # observe it, give it one quantum of exposure
+                new_observed[observed_idx] += exposure_quantums[observed_idx]
+                # if it is incomplete still, increase priority further so that we visit it again right away
+                if observed[observed_idx] + new_observed[observed_idx] < target_exposure_times[observed_idx]:
+                    priorities[observed_idx] = maxpriority+2
+
+                # Gets the parameters of the pointing.
+                ra = coordinates[observed_idx, 0]
+                dec = coordinates[observed_idx, 1]
+
+                target_index = index_to_target[observed_idx]
+                target_name = self.targets[target_index].name
+
+                # Get the index of the first value in index_to_target that matches
+                # the index of the target.
+                target_index_first = numpy.nonzero(target_index == target_index)[0][0]
+
+                # Get the index of the pointing within its target.
+                pointing_index = observed_idx - target_index_first
+
+                # Update the table with the schedule.
+                self._record_observation(current_jd, observatory,
+                                         target_name=target_name,
+                                         pointing_index=pointing_index,
+                                         ra=ra, dec=dec, airmass=obs_airmass)
+
+                did_observe = True
+                current_jd += exposure_quantums[observed_idx]*overhead
+
+                break
+
+            if did_observe is False:
+                self._record_observation(current_jd, observatory)
+                current_jd += __DEFAULT_TIME_STEP__
+
+        return new_observed
+
 
     def schedule_one_night(self, jd, plan, index_to_target, priorities,
                            coordinates, observed,
@@ -279,7 +470,6 @@ class Scheduler(object):
             Moon avoidance and airmass. Otherwise the code will select the
             most optimal pointing regarding of target (but respecting
             priorities).
-
         """
 
         # Mask to mark pointings observed tonight
@@ -312,17 +502,27 @@ class Scheduler(object):
             # Moon avoidance.
             moon_ok = moon_to_pointings > moon_separation
 
-            airmasses = lvmsurveysim.utils.spherical.get_altitude(
-                coordinates[:, 0], coordinates[:, 1], jd=jd,
-                lon=lon, lat=lat, airmass=True)
+            # get the altitude
+            alt = lvmsurveysim.utils.spherical.get_altitude(
+                    coordinates[:, 0], coordinates[:, 1], jd=jd,
+                    lon=lon, lat=lat)
+
+            # avoid the zenith!
+            alt_ok = alt < (90 - __ZENITH_AVOIDANCE__)
+
+            # calculate the airmass from the altitude
+            airmasses = 1 / numpy.cos(numpy.radians(90 - alt))
 
             # Gets valid airmasses
             airmass_ok = (airmasses < max_airmass) & (airmasses > 0)
 
             # Creates a mask of valid pointings with correct Moon avoidance,
-            # airmass, and that have not been observed.
-            valid_idx = numpy.where(moon_ok & airmass_ok & ~observed & ~new_observed)[0]
+            # airmass, zenith avoidance and that have not been observed.
+            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & ~observed & ~new_observed)[0]
 
+            # pass the valid pointings to merit function?
+
+            # if there's nothing to observe, record the time slot as vacant (for record keeping)
             if len(valid_idx) == 0:
                 self._record_observation(jd, observatory)
                 continue
@@ -341,6 +541,7 @@ class Scheduler(object):
                 # master list).
                 valid_priority_idx = numpy.where(valid_priorities == priority)[0]
 
+                # if there's nothing to do at the current priority, try the next lower
                 if len(valid_priority_idx) == 0:
                     continue
 
@@ -348,7 +549,7 @@ class Scheduler(object):
 
                 # Gets the pointing with the smallest airmass.
                 obs_airmass_idx = valid_airmasses_priority.argmin()
-                obs_airmass = valid_airmasses_priority.min()
+                obs_airmass = valid_airmasses_priority[obs_airmass_idx]
 
                 # Gets the index of the pointing in the master list.
                 observed_idx = valid_idx[valid_priority_idx[obs_airmass_idx]]
