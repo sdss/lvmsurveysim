@@ -109,7 +109,7 @@ class Target(object):
                 observatory: APO {LCO, BOTH}
                 telecope: LVM-1m {LVM-160}
                 max_airmass: 1.75
-                exptime_total: 900
+                exptime: 900
                 n_exposures: 1
                 min_exposures: 1
 
