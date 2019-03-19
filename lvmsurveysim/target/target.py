@@ -106,7 +106,13 @@ class Target(object):
                     b: 0.106958333
                     pa: 149
                 priority: 1
-                telecope: APO 1-m
+                observatory: APO {LCO, BOTH}
+                telecope: LVM-1m {LVM-160}
+                max_airmass: 1.75
+                exptime_total: 900
+                n_exposures: 1
+                min_exposures: 1
+
 
         Parameters
         ----------
