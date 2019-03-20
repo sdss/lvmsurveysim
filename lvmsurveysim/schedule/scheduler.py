@@ -184,24 +184,41 @@ class Scheduler(object):
 
         # Create some master arrays with all the pointings for convenience.
 
+        s = sorted(self.pointings)
+
         # An array with the length of all the pointings indicating the index
         # of the target it correspond to.
         index_to_target = numpy.concatenate([numpy.repeat(idx, len(self.pointings[idx]))
-                                             for idx in sorted(self.pointings)])
+                                             for idx in s])
 
-        max_airmass_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
-                                             for idx in sorted(self.pointings)])
-                                             
         # All the coordinates
         coordinates = numpy.vstack(
             [numpy.array([self.pointings[idx].ra.deg, self.pointings[idx].dec.deg]).T
-             for idx in sorted(self.pointings)])
+             for idx in s])
 
         # Create an array of pointing to priority.
         priorities = numpy.concatenate([numpy.repeat(self.targets[idx].priority,
-                                                     len(self.pointings[idx]))
-                                        for idx in sorted(self.pointings)])
+                                        len(self.pointings[idx]))
+                                        for idx in s])
 
+        # array with the total exposure time for each tile
+        target_exposure_times = numpy.concatenate([numpy.repeat(self.targets[idx].exptime*self.targets[idx].n_exposures, 
+                                            len(self.pointings[idx]))
+                                            for idx in s])
+        
+        # array with exposure quantums (the minimum time to spend on a tile)
+        exposure_quantums = numpy.concatenate([numpy.repeat(self.targets[idx].exptime*self.targets[idx].min_exposures, 
+                                            len(self.pointings[idx]))
+                                            for idx in s])
+                                             
+        # array with the airmass limit for each pointing
+        max_airmass_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
+                                             for idx in s])
+                                             
+        # array with the airmass limit for each pointing
+        max_airmass_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
+                                             for idx in s])
+                                             
         # Mask with observed exposure time for each pointing
         observed = numpy.zeros(len(index_to_target), dtype=numpy.float)
 
@@ -226,7 +243,7 @@ class Scheduler(object):
                     continue
 
                 new_observed = self.schedule_one_night_nd(jd, plan, index_to_target, max_airmass_to_target,
-                                                       priorities, coordinates,
+                                                       priorities, coordinates, target_exposure_times, exposure_quantums, 
                                                        observed, **kwargs)
 
                 observed += new_observed
