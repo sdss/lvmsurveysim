@@ -189,6 +189,9 @@ class Scheduler(object):
         index_to_target = numpy.concatenate([numpy.repeat(idx, len(self.pointings[idx]))
                                              for idx in sorted(self.pointings)])
 
+        max_airmass_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
+                                             for idx in sorted(self.pointings)])
+                                             
         # All the coordinates
         coordinates = numpy.vstack(
             [numpy.array([self.pointings[idx].ra.deg, self.pointings[idx].dec.deg]).T
@@ -222,14 +225,14 @@ class Scheduler(object):
                 if jd not in plan['JD']:
                     continue
 
-                new_observed = self.schedule_one_night(jd, plan, index_to_target,
+                new_observed = self.schedule_one_night_nd(jd, plan, index_to_target, max_airmass_to_target,
                                                        priorities, coordinates,
                                                        observed, **kwargs)
 
                 observed += new_observed
 
 
-    def schedule_one_night_nd(self, jd, plan, index_to_target, target_priorities,
+    def schedule_one_night_nd(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, observed,
                               max_airmass=__MAX_AIRMASS__,
                               moon_separation=__MOON_SEPARATION__,
@@ -334,7 +337,7 @@ class Scheduler(object):
             airmasses_end = 1 / numpy.cos(numpy.radians(90 - alt_end))
 
             # Gets valid airmasses
-            airmass_ok = ((airmasses_start < max_airmass) & (airmasses_start > 0)) & ((airmasses_end < max_airmass) & (airmasses_end > 0))
+            airmass_ok = ((airmasses_start < max_airmass_to_target) & (airmasses_start > 0)) & ((airmasses_end < max_airmass_to_target) & (airmasses_end > 0))
 
             # find observations that have nonzero exposure but are incomplete
             incomplete = (observed+new_observed>0) & (observed+new_observed<target_exposure_times)
