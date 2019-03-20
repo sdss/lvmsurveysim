@@ -102,3 +102,4 @@ ENV/
 
 # VS code config files
 *launch.json
+settings.jyson
