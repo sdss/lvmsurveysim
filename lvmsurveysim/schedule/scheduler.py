@@ -250,7 +250,8 @@ class Scheduler(object):
 
 
     def schedule_one_night_nd(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
-                              coordinates, target_exposure_times, exposure_quantums, observed,
+                              coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
+                              observed,
                               max_airmass=__MAX_AIRMASS__,
                               moon_separation=__MOON_SEPARATION__,
                               exposure_time=__EXPOSURE_TIME__,
@@ -321,7 +322,7 @@ class Scheduler(object):
         current_jd = jd0
 
         # copy the original priorities since we'll mess with them to prioritize unfinished tiles
-        priorities = np.copy(target_priorities)
+        priorities = numpy.copy(target_priorities)
 
         # while the current time is before morning twilight ...
         while current_jd < jd1:
@@ -335,7 +336,7 @@ class Scheduler(object):
 
                        # Select targets that are above the max airmass and with good
             # Moon avoidance.
-            moon_ok = moon_to_pointings > moon_separation
+            moon_ok = moon_to_pointings > target_min_moon_dist
 
             # get the altitude
             alt_start = lvmsurveysim.utils.spherical.get_altitude(
