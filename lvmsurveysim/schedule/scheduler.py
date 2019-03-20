@@ -214,7 +214,11 @@ class Scheduler(object):
         # array with the airmass limit for each pointing
         max_airmass_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
                                              for idx in s])
-                                           
+
+        # array with the airmass limit for each pointing
+        min_moon_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].min_moon_dist, len(self.pointings[idx]))
+                                             for idx in s])
+
         # Mask with observed exposure time for each pointing
         observed = numpy.zeros(len(index_to_target), dtype=numpy.float)
 
