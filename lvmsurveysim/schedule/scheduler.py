@@ -242,14 +242,14 @@ class Scheduler(object):
                 if jd not in plan['JD']:
                     continue
 
-                new_observed = self.schedule_one_night_nd(jd, plan, index_to_target, max_airmass_to_target,
+                new_observed = self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
                                                        priorities, coordinates, target_exposure_times, exposure_quantums, 
                                                        observed, **kwargs)
 
                 observed += new_observed
 
 
-    def schedule_one_night_nd(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
+    def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
                               observed,
                               overhead=__OVERHEAD__,
@@ -435,7 +435,7 @@ class Scheduler(object):
         return new_observed
 
 
-    def schedule_one_night(self, jd, plan, index_to_target, priorities,
+    def schedule_one_night_jose(self, jd, plan, index_to_target, priorities,
                            coordinates, observed,
                            max_airmass=__MAX_AIRMASS__,
                            moon_separation=__MOON_SEPARATION__,
