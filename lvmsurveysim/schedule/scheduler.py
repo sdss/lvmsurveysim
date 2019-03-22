@@ -323,7 +323,7 @@ class Scheduler(object):
         # start at evening twilight
         current_jd = jd0
 
-        # get the moon's coordinates and lunation
+        # get the moon's coordinates and lunation, assume it is constant for the night for speed
         #moon = astropy.coordinates.get_moon(time=astropy.time.Time((jd0+jd1)/2.0, format='jd'))
         moon = astropy.coordinates.SkyCoord(night_plan['moon_ra'],night_plan['moon_dec'],unit='deg')
         lunation = night_plan['moon_phase']
@@ -336,13 +336,12 @@ class Scheduler(object):
 
         new_observed = observed*0.0
 
+        # Select targets that are above the max airmass and with good
+        # moon avoidance.
+        moon_ok = (moon_to_pointings > target_min_moon_dist) & (lunation<=max_lunation)
+
         # while the current time is before morning twilight ...
-
         while current_jd < jd1:
-
-            # Select targets that are above the max airmass and with good
-            # moon avoidance.
-            moon_ok = (moon_to_pointings > target_min_moon_dist) & (lunation<=max_lunation)
 
             # get the altitude
             alt_start = lvmsurveysim.utils.spherical.get_altitude(
