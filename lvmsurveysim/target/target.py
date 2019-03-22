@@ -95,7 +95,6 @@ class Target(object):
         else:
             self.telescope = Telescope.from_config(telescope)
 
-        print(kwargs)
         self.region = Region(*args, **kwargs)
 
         self.frame = self.region.frame

@@ -51,6 +51,6 @@ The following code runs a simple simulation
 
 Note that in line 5 we provide the name of a file with the targets we want to observe. If that parameter is not provided the ``lvmcore`` target file will be used.
 
-`scheduler.run <lvmsurveysim.schedule.scheduler.Scheduler.run>` uses the default parameters for the simulation defined in the ``scheduler`` of the `configuration file <https://github.com/sdss/lvmsurveysim/blob/master/lvmsurveysim/etc/lvmsurveysim_defaults.yaml>`__. This can be overridden; for example calling ``scheduler.run(overhead=1)`` will run a simulation without overheads.
+`scheduler.run <lvmsurveysim.schedule.scfheduler.Scheduler.run>` uses the default parameters for the simulation defined in the ``scheduler`` of the `configuration file <https://github.com/sdss/lvmsurveysim/blob/master/lvmsurveysim/etc/lvmsurveysim_defaults.yaml>`__. This can be overridden; for example calling ``scheduler.run(overhead=1)`` will run a simulation without overheads.
 
 A more complicated example, with some plotting of the inputs and outputs can be found `here <https://gist.github.com/albireox/3e88a206f557af98ae1e4de9ecc338c4>`__.
