@@ -56,6 +56,17 @@ class Target(object):
         The telescope that will observe the target. Must be a string that
         matches a telescope entry in the configuration file or a
         `~lvmsurveysim.telescope.Telescope` instance.
+    max_airmass : float 
+        Maximum air mass to observe the given target
+    exptime : float
+        Exposure time of an individual pointing
+    n_exposures
+        Number of individual pointings to reach desired S/N
+    min_exposures : int
+        Minimum number of exposures to make a "good visit"
+    min_moon_dist : float
+        Minimum moon distance between target before observations are called off.
+
 
     Attributes
     ----------
@@ -69,6 +80,13 @@ class Target(object):
         self.name = kwargs.pop('name', '')
         self.priority = kwargs.pop('priority', 1)
 
+        self.observatory = kwargs.pop('observatory', 'BOTH')
+        self.max_airmass = kwargs.pop('max_airmass', 1.75)
+        self.exptime = kwargs.pop('exptime', 900)
+        self.n_exposures = kwargs.pop('n_exposures', 9)
+        self.min_exposures = kwargs.pop('min_exposures', 3)
+        self.min_moon_dist=  kwargs.pop('min_moon_dist', 90)
+
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
 
@@ -77,6 +95,7 @@ class Target(object):
         else:
             self.telescope = Telescope.from_config(telescope)
 
+        print(kwargs)
         self.region = Region(*args, **kwargs)
 
         self.frame = self.region.frame
