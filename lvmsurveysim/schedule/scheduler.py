@@ -246,7 +246,7 @@ class Scheduler(object):
                                                     priorities, coordinates, target_exposure_times, exposure_quantums, 
                                                     min_moon_to_target,
                                                     observed, **kwargs)
-                                                    
+
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
@@ -426,13 +426,13 @@ class Scheduler(object):
                                          ra=ra, dec=dec, airmass=obs_airmass)
 
                 did_observe = True
-                current_jd += exposure_quantums[observed_idx]*overhead
+                current_jd += (exposure_quantums[observed_idx]*overhead)/86400.0
 
                 break
 
             if did_observe is False:
                 self._record_observation(current_jd, observatory)
-                current_jd += __DEFAULT_TIME_STEP__
+                current_jd += (__DEFAULT_TIME_STEP__)/86400.0
 
         return new_observed
 
