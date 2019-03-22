@@ -101,5 +101,6 @@ ENV/
 .mypy_cache/
 
 # VS code config files
+.vscode
 *launch.json
 settings.json
