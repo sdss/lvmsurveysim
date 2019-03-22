@@ -219,6 +219,10 @@ class Scheduler(object):
         min_moon_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].min_moon_dist, len(self.pointings[idx]))
                                              for idx in s])
 
+        # array with the lunation limit for each pointing
+        max_lunation = numpy.concatenate([numpy.repeat(self.targets[idx].max_lunation, len(self.pointings[idx]))
+                                          for idx in s])
+
         # Mask with observed exposure time for each pointing
         observed = numpy.zeros(len(index_to_target), dtype=numpy.float)
 
@@ -244,13 +248,13 @@ class Scheduler(object):
 
                 observed += self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
                                                     priorities, coordinates, target_exposure_times, exposure_quantums, 
-                                                    min_moon_to_target,
+                                                    min_moon_to_target, max_lunation,
                                                     observed, **kwargs)
 
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
-                              observed,
+                              max_lunation, observed,
                               overhead=__OVERHEAD__,
                               zenith_avoidance=__ZENITH_AVOIDANCE__):
         """
@@ -294,6 +298,9 @@ class Scheduler(object):
         moon_separation : float
             The minimum allowed Moon separation. Defaults to the value
             ``scheduler.min_moon_separation`` in the configuration file.
+        max_lunation : float
+            The maximum allowed moon illumination fraction. Defaults to the value
+            ``scheduler.max_illumination`` in the configuration file.
         exposure_time : float
             Exposure time to complete each pointing, in seconds. Defaults to
             the value ``scheduler.exposure_time``.
@@ -316,8 +323,13 @@ class Scheduler(object):
         # start at evening twilight
         current_jd = jd0
 
-        # get the moon's coordinates
-        moon = astropy.coordinates.get_moon(time=astropy.time.Time((jd0+jd1)/2.0, format='jd'))
+        # get the moon's coordinates and lunation
+        #moon = astropy.coordinates.get_moon(time=astropy.time.Time((jd0+jd1)/2.0, format='jd'))
+        moon = astropy.coordinates.SkyCoord(night_plan['moon_ra'],night_plan['moon_dec'],unit='deg')
+        lunation = night_plan['moon_phase']
+        # get the distance to the moon
+        moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
+                            moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
 
         # copy the original priorities since we'll mess with them to prioritize unfinished tiles
         priorities = numpy.copy(target_priorities)
@@ -327,10 +339,6 @@ class Scheduler(object):
         # while the current time is before morning twilight ...
 
         while current_jd < jd1:
-
-            # get the distance to the moon
-            moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
-                moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
 
             # Select targets that are above the max airmass and with good
             # moon avoidance.
