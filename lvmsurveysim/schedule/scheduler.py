@@ -316,16 +316,17 @@ class Scheduler(object):
         # start at evening twilight
         current_jd = jd0
 
+        # get the moon's coordinates
+        moon = astropy.coordinates.get_moon(time=astropy.time.Time((jd0+jd1)/2.0, format='jd'))
+
         # copy the original priorities since we'll mess with them to prioritize unfinished tiles
         priorities = numpy.copy(target_priorities)
 
         new_observed = observed*0.0
 
         # while the current time is before morning twilight ...
-        while current_jd < jd1:
 
-            # get the moon's coordinates
-            moon = astropy.coordinates.get_moon(time=astropy.time.Time(current_jd, format='jd'))
+        while current_jd < jd1:
 
             # get the distance to the moon
             moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
