@@ -293,17 +293,13 @@ class Scheduler(object):
         observed : ~numpy.ndarray
             A float array that carries the executed exposure time for each tile.
         max_airmass : float
-            The maximum airmass to allow. Defaults to the value
-            ``scheduler.max_airmass`` in the configuration file.
+            The maximum airmass to allow. 
         moon_separation : float
-            The minimum allowed Moon separation. Defaults to the value
-            ``scheduler.min_moon_separation`` in the configuration file.
+            The minimum allowed Moon separation. 
         max_lunation : float
-            The maximum allowed moon illumination fraction. Defaults to the value
-            ``scheduler.max_illumination`` in the configuration file.
+            The maximum allowed moon illumination fraction. 
         exposure_time : float
-            Exposure time to complete each pointing, in seconds. Defaults to
-            the value ``scheduler.exposure_time``.
+            Exposure time to complete each pointing, in seconds. 
         overhead : float
             The overhead due to operations procedures (slewing, calibrations,
             etc). Defaults to the value ``scheduler.overhead``.
