@@ -364,6 +364,7 @@ class Scheduler(object):
             # if there's nothing to observe, record the time slot as vacant (for record keeping)
             if len(valid_idx) == 0:
                 self._record_observation(current_jd, observatory)
+                current_jd += (__DEFAULT_TIME_STEP__)/86400.0
                 continue
 
             # Gets the coordinates and priorities of valid pointings.
