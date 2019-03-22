@@ -359,7 +359,7 @@ class Scheduler(object):
 
             # Creates a mask of valid pointings with correct Moon avoidance,
             # airmass, zenith avoidance and that have not been observed long enough.
-            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & (observed+new_observed)<target_exposure_times)[0]
+            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & ((observed+new_observed)<target_exposure_times))[0]
 
             # if there's nothing to observe, record the time slot as vacant (for record keeping)
             if len(valid_idx) == 0:
