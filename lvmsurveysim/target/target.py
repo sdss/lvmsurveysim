@@ -85,7 +85,8 @@ class Target(object):
         self.exptime = kwargs.pop('exptime', 900)
         self.n_exposures = kwargs.pop('n_exposures', 9)
         self.min_exposures = kwargs.pop('min_exposures', 3)
-        self.min_moon_dist=  kwargs.pop('min_moon_dist', 90)
+        self.min_moon_dist = kwargs.pop('min_moon_dist', 90)
+        self.max_lunation = kwargs.pop('max_lunation', 1.0)
 
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
