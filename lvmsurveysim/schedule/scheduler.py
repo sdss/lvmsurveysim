@@ -242,13 +242,11 @@ class Scheduler(object):
                 if jd not in plan['JD']:
                     continue
 
-                new_observed = self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
-                                                       priorities, coordinates, target_exposure_times, exposure_quantums, 
-                                                       min_moon_to_target,
-                                                       observed, **kwargs)
-
-                observed += new_observed
-
+                observed += self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
+                                                    priorities, coordinates, target_exposure_times, exposure_quantums, 
+                                                    min_moon_to_target,
+                                                    observed, **kwargs)
+                                                    
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
@@ -320,6 +318,8 @@ class Scheduler(object):
 
         # copy the original priorities since we'll mess with them to prioritize unfinished tiles
         priorities = numpy.copy(target_priorities)
+
+        new_observed = observed*0.0
 
         # while the current time is before morning twilight ...
         while current_jd < jd1:
