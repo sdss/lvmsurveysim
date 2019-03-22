@@ -102,6 +102,9 @@ class Scheduler(object):
         self.schedule.meta['targets'] = ','.join(self.targets._names)
         self.schedule.write(path, format='fits', overwrite=overwrite)
 
+    def schedule_to_healpix(self, schedule):
+        """ Create an astronomical healpix array from the schedule """ # TODO: Merge all data from the fits file into a healpix array of arbitrary resolution
+
     @classmethod
     def load(cls, path):
         """Creates a new instance from a schedule file."""
