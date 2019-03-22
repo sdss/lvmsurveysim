@@ -342,7 +342,7 @@ class Scheduler(object):
 
             # Select targets that are above the max airmass and with good
             # moon avoidance.
-            moon_ok = moon_to_pointings > target_min_moon_dist
+            moon_ok = (moon_to_pointings > target_min_moon_dist) & (lunation<=max_lunation)
 
             # get the altitude
             alt_start = lvmsurveysim.utils.spherical.get_altitude(
