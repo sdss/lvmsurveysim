@@ -252,12 +252,8 @@ class Scheduler(object):
     def schedule_one_night_nd(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
                               observed,
-                              max_airmass=__MAX_AIRMASS__,
-                              moon_separation=__MOON_SEPARATION__,
-                              exposure_time=__EXPOSURE_TIME__,
                               overhead=__OVERHEAD__,
-                              zenith_avoidance=__ZENITH_AVOIDANCE__,
-                              follow_target=False):
+                              zenith_avoidance=__ZENITH_AVOIDANCE__):
         """
         Schedules a single night in a single observatory, new version.
 
@@ -334,8 +330,8 @@ class Scheduler(object):
             moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
                 moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
 
-                       # Select targets that are above the max airmass and with good
-            # Moon avoidance.
+            # Select targets that are above the max airmass and with good
+            # moon avoidance.
             moon_ok = moon_to_pointings > target_min_moon_dist
 
             # get the altitude
