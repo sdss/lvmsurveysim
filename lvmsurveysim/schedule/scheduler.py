@@ -244,6 +244,7 @@ class Scheduler(object):
 
                 new_observed = self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
                                                        priorities, coordinates, target_exposure_times, exposure_quantums, 
+                                                       min_moon_to_target,
                                                        observed, **kwargs)
 
                 observed += new_observed
