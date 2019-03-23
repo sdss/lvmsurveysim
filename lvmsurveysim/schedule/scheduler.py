@@ -102,9 +102,6 @@ class Scheduler(object):
         self.schedule.meta['targets'] = ','.join(self.targets._names)
         self.schedule.write(path, format='fits', overwrite=overwrite)
 
-    def schedule_to_healpix(self, schedule):
-        """ Create an astronomical healpix array from the schedule """ # TODO: Merge all data from the fits file into a healpix array of arbitrary resolution
-
     @classmethod
     def load(cls, path):
         """Creates a new instance from a schedule file."""
@@ -271,7 +268,6 @@ class Scheduler(object):
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
                               max_lunation, observed,
-                              overhead=__OVERHEAD__,
                               zenith_avoidance=__ZENITH_AVOIDANCE__):
         """
         Schedules a single night in a single observatory, new version.
@@ -285,10 +281,6 @@ class Scheduler(object):
 
         Parameters
         ----------
-        jd : int
-            The Julian Date to schedule. Must be included in ``plan``.
-        plan : .ObservingPlan
-            The observing plan to schedule for the night.
         jd : int
             The Julian Date to schedule. Must be included in ``plan``.
         plan : .ObservingPlan
@@ -314,11 +306,6 @@ class Scheduler(object):
             The minimum allowed Moon separation. 
         max_lunation : float
             The maximum allowed moon illumination fraction. 
-        exposure_time : float
-            Exposure time to complete each pointing, in seconds. 
-        overhead : float
-            The overhead due to operations procedures (slewing, calibrations,
-            etc). Defaults to the value ``scheduler.overhead``.
         zenith_avoidance : float
             Degrees around the zenith/pole in which we should not observe.
             Defaults to the value ``scheduler.zenith_avoidance``.
@@ -327,6 +314,8 @@ class Scheduler(object):
 
         lon = plan.location.lon.deg
         lat = plan.location.lat.deg
+
+        maxpriority = max([t.priority for t in self.targets])
 
         night_plan = plan[plan['JD'] == jd]
         jd0 = night_plan['evening_twilight'][0]
@@ -395,7 +384,6 @@ class Scheduler(object):
             did_observe = False
 
             # give incomplete observations the highest priority
-            maxpriority = valid_priorities.max()
             valid_priorities[valid_incomplete] = maxpriority+1
 
             # Loops starting with pointings with the highest priority.
@@ -428,6 +416,7 @@ class Scheduler(object):
 
                 target_index = index_to_target[observed_idx]
                 target_name = self.targets[target_index].name
+                target_overhead = self.targets[target_index].overhead
 
                 # Get the index of the first value in index_to_target that matches
                 # the index of the target.
@@ -445,7 +434,7 @@ class Scheduler(object):
                                          ra=ra, dec=dec, airmass=obs_airmass)
 
                 did_observe = True
-                current_jd += (exposure_quantums[observed_idx]*overhead)/86400.0
+                current_jd += (exposure_quantums[observed_idx]*target_overhead)/86400.0
 
                 break
 
