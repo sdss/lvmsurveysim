@@ -246,10 +246,23 @@ class Scheduler(object):
                 if jd not in plan['JD']:
                     continue
 
+                # TODO: filter pointings for ones that never rise on this night
                 observed += self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
                                                     priorities, coordinates, target_exposure_times, exposure_quantums, 
                                                     min_moon_to_target, max_lunation,
                                                     observed, **kwargs)
+
+                # completed = numpy.where(observed==target_exposure_times)
+                # if len(completed)>0:
+                #     numpy.delete(index_to_target, completed)
+                #     numpy.delete(max_airmass_to_target, completed)
+                #     numpy.delete(priorities, completed)
+                #     numpy.delete(coordinates, completed)
+                #     numpy.delete(target_exposure_times, completed)
+                #     numpy.delete(exposure_quantums, completed)
+                #     numpy.delete(min_moon_to_target, completed)
+                #     numpy.delete(max_lunation, completed)
+                #     numpy.delete(observed, completed)
 
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
@@ -265,7 +278,7 @@ class Scheduler(object):
 
         Return
         ------
-        ~numpy.array with the exposure time added to each tile during this night.
+        ~numpy.array with the exposure time in s added to each tile during this night.
 
         Parameters
         ----------
@@ -320,7 +333,6 @@ class Scheduler(object):
         current_jd = jd0
 
         # get the moon's coordinates and lunation, assume it is constant for the night for speed
-        #moon = astropy.coordinates.get_moon(time=astropy.time.Time((jd0+jd1)/2.0, format='jd'))
         moon = astropy.coordinates.SkyCoord(night_plan['moon_ra'],night_plan['moon_dec'],unit='deg')
         lunation = night_plan['moon_phase']
         # get the distance to the moon
@@ -330,6 +342,7 @@ class Scheduler(object):
         # copy the original priorities since we'll mess with them to prioritize unfinished tiles
         priorities = numpy.copy(target_priorities)
 
+        # the additional exposure time in this night
         new_observed = observed*0.0
 
         # Select targets that are above the max airmass and with good
@@ -358,11 +371,8 @@ class Scheduler(object):
             # Gets valid airmasses
             airmass_ok = ((airmasses_start < max_airmass_to_target) & (airmasses_start > 0)) & ((airmasses_end < max_airmass_to_target) & (airmasses_end > 0))
 
-            # find observations that have nonzero exposure but are incomplete
-            incomplete = (observed+new_observed>0) & (observed+new_observed<target_exposure_times)
-
             # Creates a mask of valid pointings with correct Moon avoidance,
-            # airmass, zenith avoidance and that have not been observed long enough.
+            # airmass, zenith avoidance and that have not been completed.
             valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & ((observed+new_observed)<target_exposure_times))[0]
 
             # if there's nothing to observe, record the time slot as vacant (for record keeping)
@@ -371,16 +381,19 @@ class Scheduler(object):
                 current_jd += (__DEFAULT_TIME_STEP__)/86400.0
                 continue
 
+            # find observations that have nonzero exposure but are incomplete
+            incomplete = (observed+new_observed>0) & (observed+new_observed<target_exposure_times)
+
             # Gets the coordinates and priorities of valid pointings.
             valid_airmasses = airmasses_start[valid_idx]
             valid_priorities = priorities[valid_idx]
-            incomplete = incomplete[valid_idx]
+            valid_incomplete = incomplete[valid_idx]
 
             did_observe = False
 
             # give incomplete observations the highest priority
             maxpriority = valid_priorities.max()
-            valid_priorities[incomplete] += maxpriority+1
+            valid_priorities[valid_incomplete] = maxpriority+1
 
             # Loops starting with pointings with the highest priority.
             for priority in range(valid_priorities.max(), valid_priorities.min() - 1, -1):
@@ -405,9 +418,6 @@ class Scheduler(object):
 
                 # observe it, give it one quantum of exposure
                 new_observed[observed_idx] += exposure_quantums[observed_idx]
-                # if it is incomplete still, increase priority further so that we visit it again right away
-                if observed[observed_idx] + new_observed[observed_idx] < target_exposure_times[observed_idx]:
-                    priorities[observed_idx] = maxpriority+2
 
                 # Gets the parameters of the pointing.
                 ra = coordinates[observed_idx, 0]
@@ -423,6 +433,8 @@ class Scheduler(object):
                 # Get the index of the pointing within its target.
                 pointing_index = observed_idx - target_index_first
 
+                # TODO: add sidereal time to table
+                # sidt = astropy.time.Time(current_jd, format='jd').sidereal_time('mean', longitude=lon)
                 # Update the table with the schedule.
                 self._record_observation(current_jd, observatory,
                                          target_name=target_name,
