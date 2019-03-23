@@ -66,7 +66,10 @@ class Target(object):
         Minimum number of exposures to make a "good visit"
     min_moon_dist : float
         Minimum moon distance between target before observations are called off.
-
+    max_lunation : float
+        The maximum lunation (fraction of moon illuminated, number between 0 and 1)
+    overhead : float
+        The overhead factor per exposure quantum for this target's observing scheme
 
     Attributes
     ----------
@@ -87,6 +90,7 @@ class Target(object):
         self.min_exposures = kwargs.pop('min_exposures', 3)
         self.min_moon_dist = kwargs.pop('min_moon_dist', 90)
         self.max_lunation = kwargs.pop('max_lunation', 1.0)
+        self.overhead = kwargs.pop('overhead', 1.0)
 
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
