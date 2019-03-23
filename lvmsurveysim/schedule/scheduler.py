@@ -331,9 +331,6 @@ class Scheduler(object):
         moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
                             moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
 
-        # copy the original priorities since we'll mess with them to prioritize unfinished tiles
-        priorities = numpy.copy(target_priorities)
-
         # the additional exposure time in this night
         new_observed = observed*0.0
 
@@ -378,7 +375,7 @@ class Scheduler(object):
 
             # Gets the coordinates and priorities of valid pointings.
             valid_airmasses = airmasses_start[valid_idx]
-            valid_priorities = priorities[valid_idx]
+            valid_priorities = target_priorities[valid_idx]
             valid_incomplete = incomplete[valid_idx]
 
             did_observe = False
