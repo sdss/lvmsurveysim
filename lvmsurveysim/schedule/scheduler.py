@@ -335,12 +335,13 @@ class Scheduler(object):
         # the additional exposure time in this night
         new_observed = observed*0.0
 
-        # get the coordinates in radians
+        # get the coordinates in radians, this speeds up then altitude calculation
         ra_rad = numpy.radians(coordinates[:, 0])
         dec_rad = numpy.radians(coordinates[:, 1])
 
-        # convert airmass to altitude
+        # convert airmass to altitude, we'll work in altitude space for efficiency
         min_alt_for_target = 90.0 - numpy.rad2deg(numpy.arccos(1.0/max_airmass_to_target))
+    
         # Select targets that are above the max airmass and with good
         # moon avoidance.
         moon_ok = (moon_to_pointings > target_min_moon_dist) & (lunation<=max_lunation)
@@ -348,14 +349,13 @@ class Scheduler(object):
         # while the current time is before morning twilight ...
         while current_jd < jd1:
 
-            # get the altitude
+             # get the altitude
             alt_start = lvmsurveysim.utils.spherical.get_altitude_rad(
-                        ra_rad, dec_rad, jd=current_jd,
-                        lon=lon, lat=lat)
+                        ra_rad, dec_rad, current_jd, lon, lat)
 
             alt_end = lvmsurveysim.utils.spherical.get_altitude_rad(
-                        ra_rad, dec_rad, jd=current_jd+(exposure_quantums/86400.0),
-                        lon=lon, lat=lat)
+                        ra_rad, dec_rad, current_jd+(exposure_quantums/86400.0),
+                        lon, lat)
 
             # avoid the zenith!
             alt_ok = (alt_start < (90 - __ZENITH_AVOIDANCE__)) & (alt_end < (90 - __ZENITH_AVOIDANCE__))

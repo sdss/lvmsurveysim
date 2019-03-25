@@ -146,7 +146,7 @@ def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
     return alt
 
 
-def get_altitude_rad(ra, dec, jd=None, lst=None, lon=None, lat=None):
+def get_altitude_rad(ra, dec, jd, lon, lat):
     """Returns the altitude of an object from its equatorial coordinates in radians.
     This is a speed-optimized version.
 
@@ -159,8 +159,6 @@ def get_altitude_rad(ra, dec, jd=None, lst=None, lon=None, lat=None):
     jd : float or ~numpy.ndarray
         The Julian Date or an array of dates. The local sidereal time will
         be calculated from these dates using the longitude.
-    lst : float or ~numpy.ndarray
-        The local sidereal time, in hours. Overrides ``jd``.
     lon : float
         The longitude of the location.
     lat : float
@@ -174,24 +172,9 @@ def get_altitude_rad(ra, dec, jd=None, lst=None, lon=None, lat=None):
 
     """
 
-    ra = numpy.atleast_1d(ra)
-    dec = numpy.atleast_1d(dec)
-
-    assert len(ra) == len(dec), 'ra and dec must have the same length.'
-
-    if jd is not None:
-        assert lst is None, 'cannot set jd and lst at the same time.'
-
-        jd = numpy.atleast_1d(jd)
-
-        dd = jd - 2451545.0
-        lmst_rad = numpy.deg2rad((280.46061837 + 360.98564736629 * dd + 0.000388 *
-                                 (dd / 36525.)**2 + lon) % 360)
-
-    if len(lmst_rad) == 1:
-        lmst_rad = numpy.repeat(lmst_rad, len(ra))
-    elif len(lmst_rad) != len(ra):
-        raise ValueError('jd does not have the same length as the coordinates.')
+    dd = jd - 2451545.0
+    lmst_rad = numpy.deg2rad((280.46061837 + 360.98564736629 * dd + 0.000388 *
+                             (dd / 36525.)**2 + lon) % 360)
 
     ha = (lmst_rad - ra)
     lat = numpy.radians(lat)
