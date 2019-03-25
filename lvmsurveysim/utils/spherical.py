@@ -9,6 +9,7 @@
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
 # @Last modified time: 2019-03-12 17:29:13
 
+import numba
 import numpy
 
 
@@ -145,7 +146,7 @@ def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
 
     return alt
 
-
+@numba.jit(nopython=True)
 def get_altitude_rad(ra, dec, jd, lon, lat):
     """Returns the altitude of an object from its equatorial coordinates in radians.
     This is a speed-optimized version.
