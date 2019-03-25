@@ -86,14 +86,14 @@ def get_lst(jd, lon):
 
 
 def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
-    """Returns the altitude of an object from its equatorial coordinates.
+    """Returns the altitude of an object from its equatorial coordinates in degrees.
 
     Parameters
     ----------
     ra : float or ~numpy.ndarray
-        The Right Ascension of the object(s).
+        The Right Ascension of the object(s) in degrees.
     ra : float or ~numpy.ndarray
-        The declination of the object(s).
+        The declination of the object(s) in degrees.
     jd : float or ~numpy.ndarray
         The Julian Date or an array of dates. The local sidereal time will
         be calculated from these dates using the longitude.
@@ -144,3 +144,42 @@ def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
         return 1 / numpy.cos(numpy.radians(90 - alt))
 
     return alt
+
+
+def get_altitude_rad(ra, dec, jd, lon, lat):
+    """Returns the altitude of an object from its equatorial coordinates in radians.
+    This is a speed-optimized version.
+
+    Parameters
+    ----------
+    ra : float or ~numpy.ndarray
+        The Right Ascension of the object(s) in radians.
+    ra : float or ~numpy.ndarray
+        The declination of the object(s) in radians.
+    jd : float or ~numpy.ndarray
+        The Julian Date or an array of dates. The local sidereal time will
+        be calculated from these dates using the longitude.
+    lon : float
+        The longitude of the location.
+    lat : float
+        The latitude of the location.
+    
+    Returns
+    -------
+    altitude : `float` or `~numpy.ndarray`
+        The altitude of the object at the given time. Returns the airmass if
+        ``airmass=True``.
+
+    """
+
+    dd = jd - 2451545.0
+    lmst_rad = numpy.deg2rad((280.46061837 + 360.98564736629 * dd + 0.000388 *
+                             (dd / 36525.)**2 + lon) % 360)
+
+    ha = (lmst_rad - ra)
+    lat = numpy.radians(lat)
+    sin_alt = (numpy.sin(dec) * numpy.sin(lat) +
+               numpy.cos(dec) * numpy.cos(lat) *
+               numpy.cos(ha))
+
+    return numpy.rad2deg(numpy.arcsin(sin_alt))
