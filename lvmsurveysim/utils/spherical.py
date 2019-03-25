@@ -9,9 +9,7 @@
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
 # @Last modified time: 2019-03-12 17:29:13
 
-import numba
 import numpy
-
 
 __all__ = ['great_circle_distance', 'ellipse_bbox', 'get_lst', 'get_altitude']
 
@@ -146,7 +144,6 @@ def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
 
     return alt
 
-@numba.jit(nopython=True)
 def get_altitude_rad(ra, dec, jd, lon, lat):
     """Returns the altitude of an object from its equatorial coordinates in radians.
     This is a speed-optimized version.
@@ -168,9 +165,7 @@ def get_altitude_rad(ra, dec, jd, lon, lat):
     Returns
     -------
     altitude : `float` or `~numpy.ndarray`
-        The altitude of the object at the given time. Returns the airmass if
-        ``airmass=True``.
-
+        The altitude of the object at the given time.
     """
 
     dd = jd - 2451545.0
