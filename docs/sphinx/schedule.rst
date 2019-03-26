@@ -14,5 +14,9 @@ Observing plan
 Scheduler
 ---------
 
-.. automodule:: lvmsurveysim.schedule.scheduler
-    :members:
+.. autoclass:: lvmsurveysim.schedule.scheduler
+    :members: Scheduler
+
+.. autoclass:: lvmsurveysim.schedule.scheduler
+    :members: AltitudeCalculator
+    :special-members: __call__
