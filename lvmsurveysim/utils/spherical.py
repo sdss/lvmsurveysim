@@ -11,8 +11,7 @@
 
 import numpy
 
-__all__ = ['great_circle_distance', 'ellipse_bbox', 'get_lst', 
-           'get_altitude', 'get_altitude_rad']
+__all__ = ['great_circle_distance', 'ellipse_bbox', 'get_lst', 'get_altitude']
 
 
 def great_circle_distance(ra0, dec0, ra1, dec1):
