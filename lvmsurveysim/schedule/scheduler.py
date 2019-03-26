@@ -28,7 +28,7 @@ from .plan import ObservingPlan
 __all__ = ['Scheduler']
 
 __ZENITH_AVOIDANCE__ = config['scheduler']['zenith_avoidance']
-__DEFAULT_TIME_STEP__ = 900 #default time step in s
+__DEFAULT_TIME_STEP__ = config['scheduler']['timestep']
 
 
 class AltitudeCalculator:

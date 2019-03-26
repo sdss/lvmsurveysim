@@ -34,3 +34,4 @@ observing_plan:
 
 scheduler:
     zenith_avoidance: 5
+    timestep: 900
