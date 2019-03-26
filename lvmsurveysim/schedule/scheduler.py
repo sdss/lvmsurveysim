@@ -9,6 +9,7 @@
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
 # @Last modified time: 2019-03-13 11:37:17
 
+#import line_profiler
 import itertools
 
 import astropy
@@ -18,11 +19,11 @@ import numpy
 
 import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
+
 from lvmsurveysim import IFU, config, log
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, plot_ellipse
 
 from .plan import ObservingPlan
-
 
 __all__ = ['Scheduler']
 
@@ -32,6 +33,42 @@ __EXPOSURE_TIME__ = config['scheduler']['exposure_time']
 __OVERHEAD__ = config['scheduler']['overhead']
 __ZENITH_AVOIDANCE__ = config['scheduler']['zenith_avoidance']
 __DEFAULT_TIME_STEP__ = 900 #default time step in s
+
+
+class AltitudeCalculator:
+    """
+    Calculate the altitude of a constant set of objects at some global jd, 
+    or at a unique jd per object.
+
+    This is for efficiency reasons. The intermediate cos/sin arrays of the 
+    coordinates are cached.
+
+    All inputs are in degrees. The output is in degrees.
+    """
+    def __init__(self, ra, dec, lon, lat):
+        assert len(ra) == len(dec), 'ra and dec must have the same length.'
+        self.ra = numpy.deg2rad(numpy.atleast_1d(ra))
+        self.dec = numpy.deg2rad(numpy.atleast_1d(dec))
+        self.sindec = numpy.sin(self.dec)
+        self.cosdec = numpy.cos(self.dec)
+        self.lon = lon   # this stays in degrees
+        self.sinlat = numpy.sin(numpy.radians(lat))
+        self.coslat = numpy.cos(numpy.radians(lat))
+
+#    @profile  # line_profiler ...
+    def __call__(self, jd):
+        """
+        jd: float or ~numpy.array of jd values. If array, it needs to be the same 
+        length as ra, dec
+        """
+        dd = jd - 2451545.0
+        lmst_rad = numpy.deg2rad((280.46061837 + 360.98564736629 * dd + 
+                                  # 0.000388 * (dd / 36525.)**2 +   # 0.1s/century, can bne meglected here
+                                  self.lon) % 360)
+        cosha = numpy.cos(lmst_rad - self.ra)
+        sin_alt = (self.sindec * self.sinlat +
+                   self.cosdec * self.coslat * cosha)
+        return numpy.rad2deg(numpy.arcsin(sin_alt))
 
 
 class Scheduler(object):
@@ -246,32 +283,18 @@ class Scheduler(object):
                 if jd not in plan['JD']:
                     continue
 
-                # TODO: filter pointings for ones that never rise on this night
                 observed += self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
                                                     priorities, coordinates, target_exposure_times, exposure_quantums, 
                                                     min_moon_to_target, max_lunation,
                                                     observed, **kwargs)
-
-                # completed = numpy.where(observed==target_exposure_times)
-                # if len(completed)>0:
-                #     numpy.delete(index_to_target, completed)
-                #     numpy.delete(max_airmass_to_target, completed)
-                #     numpy.delete(priorities, completed)
-                #     numpy.delete(coordinates, completed)
-                #     numpy.delete(target_exposure_times, completed)
-                #     numpy.delete(exposure_quantums, completed)
-                #     numpy.delete(min_moon_to_target, completed)
-                #     numpy.delete(max_lunation, completed)
-                #     numpy.delete(observed, completed)
-
-
+ 
 #    @profile  # line_profiler ...
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
                               coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
                               max_lunation, observed,
                               zenith_avoidance=__ZENITH_AVOIDANCE__):
         """
-        Schedules a single night in a single observatory, new version.
+        Schedules a single night at a single observatory, new version.
 
         This method is not intended to be called directly. Instead, use
         `.run`.
@@ -336,8 +359,7 @@ class Scheduler(object):
         new_observed = observed*0.0
 
         # get the coordinates in radians, this speeds up then altitude calculation
-        ra_rad = numpy.radians(coordinates[:, 0])
-        dec_rad = numpy.radians(coordinates[:, 1])
+        ac = AltitudeCalculator(coordinates[:, 0], coordinates[:, 1], lon, lat)
 
         # convert airmass to altitude, we'll work in altitude space for efficiency
         min_alt_for_target = 90.0 - numpy.rad2deg(numpy.arccos(1.0/max_airmass_to_target))
@@ -349,16 +371,12 @@ class Scheduler(object):
         # while the current time is before morning twilight ...
         while current_jd < jd1:
 
-             # get the altitude
-            alt_start = lvmsurveysim.utils.spherical.get_altitude_rad(
-                        ra_rad, dec_rad, current_jd, lon, lat)
-
-            alt_end = lvmsurveysim.utils.spherical.get_altitude_rad(
-                        ra_rad, dec_rad, current_jd+(exposure_quantums/86400.0),
-                        lon, lat)
+             # get the altitude at the start and end of the proposed exposure
+            alt_start = ac(current_jd)
+            alt_end = ac(current_jd+(exposure_quantums/86400.0))
 
             # avoid the zenith!
-            alt_ok = (alt_start < (90 - __ZENITH_AVOIDANCE__)) & (alt_end < (90 - __ZENITH_AVOIDANCE__))
+            alt_ok = (alt_start < (90 - zenith_avoidance)) & (alt_end < (90 - zenith_avoidance))
 
             # Gets valid airmasses (but we're working in altitude space)
             airmass_ok = ((alt_start > min_alt_for_target) & (alt_end > min_alt_for_target))
