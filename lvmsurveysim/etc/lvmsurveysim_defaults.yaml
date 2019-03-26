@@ -33,8 +33,4 @@ observing_plan:
         equatorial: true
 
 scheduler:
-    max_airmass: 1.5
-    moon_separation: 90
-    exposure_time: 900
-    overhead: 1.33
     zenith_avoidance: 5

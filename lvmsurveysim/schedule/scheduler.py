@@ -27,10 +27,6 @@ from .plan import ObservingPlan
 
 __all__ = ['Scheduler']
 
-__MAX_AIRMASS__ = config['scheduler']['max_airmass']
-__MOON_SEPARATION__ = config['scheduler']['moon_separation']
-__EXPOSURE_TIME__ = config['scheduler']['exposure_time']
-__OVERHEAD__ = config['scheduler']['overhead']
 __ZENITH_AVOIDANCE__ = config['scheduler']['zenith_avoidance']
 __DEFAULT_TIME_STEP__ = 900 #default time step in s
 
