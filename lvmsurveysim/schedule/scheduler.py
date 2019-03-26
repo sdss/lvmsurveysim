@@ -384,7 +384,8 @@ class Scheduler(object):
             # if there's nothing to observe, record the time slot as vacant (for record keeping)
             if len(valid_idx) == 0:
                 self._record_observation(current_jd, observatory, 
-                                         lunation=lunation, lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon))
+                                         lunation=lunation, lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon),
+                                         exptime=__DEFAULT_TIME_STEP__, totaltime=__DEFAULT_TIME_STEP__)
                 current_jd += (__DEFAULT_TIME_STEP__)/86400.0
                 continue
 
@@ -456,7 +457,9 @@ class Scheduler(object):
                 break
 
             if did_observe is False:
-                self._record_observation(current_jd, observatory, exptime=__DEFAULT_TIME_STEP__, totaltime=__DEFAULT_TIME_STEP__)
+                self._record_observation(current_jd, observatory, 
+                                         lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon),
+                                         exptime=__DEFAULT_TIME_STEP__, totaltime=__DEFAULT_TIME_STEP__)
                 current_jd += (__DEFAULT_TIME_STEP__)/86400.0
 
         return new_observed
@@ -494,17 +497,46 @@ class Scheduler(object):
         if observatory:
             unused = unused[unused['observatory'] == observatory]
 
-        if not return_lst:
+        if return_lst:
+            return unused['lst'].data
+        else:
             return unused['JD'].data
 
-        if observatory == 'APO':
-            full_obs_name = 'Apache Point Observatory'
-        elif observatory == 'LCO':
-            full_obs_name = 'Las Campanas Observatory'
-        else:
-            raise ValueError(f'invalid observatory {observatory!r}.')
 
-        location = astropy.coordinates.EarthLocation.of_site(full_obs_name)
+    def print_statistics(self, observatory=None, targets=None):
+        """
+        Prints a summary of observations at a given observatory
 
-        return lvmsurveysim.utils.spherical.get_lst(unused['JD'].data,
-                                                    location.lon.deg)
+        Parameters
+        ----------
+        observatory : str
+            The observatory to filter for.
+        targets : TargetList
+            The targets to summarize. If None, use self.targets
+        """
+        if targets == None: 
+            targets = self.targets
+
+        time_on_target = {}     # time spent exposing target
+        exptime_on_target = {}  # total time (exp + overhead) on target
+        surveytime = 0.0        # total time of survey
+        names = [t.name for t in targets]
+        names.append('-')       # deals with unused time
+
+        for tname in names:
+            tdata = self.schedule[self.schedule['target'] == tname]
+            if observatory:
+                tdata = tdata[tdata['observatory'] == observatory]
+            target_exptime = numpy.sum(tdata['exptime'].data)
+            target_total_time = numpy.sum(tdata['totaltime'].data)
+            exptime_on_target[tname] = target_exptime
+            time_on_target[tname] = target_total_time
+            surveytime += target_total_time
+
+        print('%s :'%(observatory if observatory!=None else 'APO+LCO'))
+        print('%10s\t%7s\t%8s %10s'%('Target', 'tottime/h', 'exptime/h', 'fraction'))
+        print('----------------------------------------------------')
+        for t in names:
+            print('%10s\t%.2f\t\t%.2f\t\t%.2f'%(t if t!='-' else 'unused', time_on_target[t]/3600.0, exptime_on_target[t]/3600.0, time_on_target[t]/surveytime))
+
+
