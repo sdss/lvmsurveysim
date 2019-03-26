@@ -42,9 +42,9 @@ class AltitudeCalculator:
     All inputs are in degrees. The output is in degrees.
     """
     def __init__(self, ra, dec, lon, lat):
-        assert len(ra) == len(dec), 'ra and dec must have the same length.'
         self.ra = numpy.deg2rad(numpy.atleast_1d(ra))
         self.dec = numpy.deg2rad(numpy.atleast_1d(dec))
+        assert len(ra) == len(dec), 'ra and dec must have the same length.'
         self.sindec = numpy.sin(self.dec)
         self.cosdec = numpy.cos(self.dec)
         self.lon = lon   # this stays in degrees
@@ -121,8 +121,8 @@ class Scheduler(object):
 
         self.schedule = astropy.table.Table(
             None, names=['JD', 'observatory', 'target', 'index', 'ra', 'dec',
-                         'pixel', 'nside', 'airmass', 'lunation', 'lst'],
-            dtype=[float, 'S10', 'S20', int, float, float, int, int, float, float, float])
+                         'pixel', 'nside', 'airmass', 'lunation', 'lst', 'exptime', 'totaltime'],
+            dtype=[float, 'S10', 'S20', int, float, float, int, int, float, float, float, float, float])
 
     def __repr__(self):
 
@@ -442,19 +442,21 @@ class Scheduler(object):
 
                 # TODO: add sidereal time to table, sidt = get_lst(current_jd, lon)
                 # Update the table with the schedule.
+                exptime = exposure_quantums[observed_idx]
                 self._record_observation(current_jd, observatory,
                                          target_name=target_name,
                                          pointing_index=pointing_index,
                                          ra=ra, dec=dec, airmass=1.0/numpy.cos(numpy.radians(90.0-obs_alt)),
-                                         lunation=lunation, lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon))
+                                         lunation=lunation, lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon),
+                                         exptime=exptime, totaltime=exptime*target_overhead)
 
                 did_observe = True
-                current_jd += (exposure_quantums[observed_idx]*target_overhead)/86400.0
+                current_jd += exptime*target_overhead/86400.0
 
                 break
 
             if did_observe is False:
-                self._record_observation(current_jd, observatory)
+                self._record_observation(current_jd, observatory, exptime=__DEFAULT_TIME_STEP__, totaltime=__DEFAULT_TIME_STEP__)
                 current_jd += (__DEFAULT_TIME_STEP__)/86400.0
 
         return new_observed
@@ -462,11 +464,11 @@ class Scheduler(object):
 
     def _record_observation(self, jd, observatory, target_name='-',
                             pointing_index=-1, ra=-999., dec=-999.,
-                            airmass=-999., lunation=-999., lst=-999.):
+                            airmass=-999., lunation=-999., lst=-999., exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
         self.schedule.add_row((jd, observatory, target_name, pointing_index,
-                               ra, dec, 0, 0, airmass, lunation, lst))
+                               ra, dec, 0, 0, airmass, lunation, lst, exptime, totaltime))
 
     def get_unused_time(self, observatory, return_lst=False):
         """Returns the unobserved times for an observatory.
