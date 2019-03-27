@@ -53,7 +53,7 @@ class AltitudeCalculator(object):
         self.sinlat = numpy.sin(numpy.radians(lat))
         self.coslat = numpy.cos(numpy.radians(lat))
 
-    def __call__(self, jd):
+    def __call__(self, jd=None, lst=None):
         """Object caller.
 
         Parameters
@@ -61,14 +61,28 @@ class AltitudeCalculator(object):
         jd : float or ~numpy.ndarray
             Scalar or array of JD values. If array, it needs to be the same
             length as ``ra``, ``dec``.
+        lst : float or ~numpy.ndarray
+            Scalar or array of Local Mean Sidereal Time values.
+            If array, it needs to be the same length as ``ra``, ``dec``.
+            Either ``jd`` is provided, this parameter is ignored.
+
+        Returns
+        -------
+        altitude : `float` or `~numpy.ndarray`
+            An array of the same size of the inputs with the altitude of the
+            targets at ``jd`` or ``lst``, in degrees.
 
         """
 
-        dd = jd - 2451545.0
-        lmst_rad = numpy.deg2rad(
-            (280.46061837 + 360.98564736629 * dd +
-             # 0.000388 * (dd / 36525.)**2 +   # 0.1s / century, can be neglected here
-             self.lon) % 360)
+        if jd:
+            dd = jd - 2451545.0
+            lmst_rad = numpy.deg2rad(
+                (280.46061837 + 360.98564736629 * dd +
+                 # 0.000388 * (dd / 36525.)**2 +   # 0.1s / century, can be neglected here
+                 self.lon) % 360)
+        else:
+            lmst_rad = numpy.deg2rad(lst % 24.)
+
         cosha = numpy.cos(lmst_rad - self.ra)
         sin_alt = (self.sindec * self.sinlat +
                    self.cosdec * self.coslat * cosha)
@@ -392,8 +406,8 @@ class Scheduler(object):
             current_lst = lvmsurveysim.utils.spherical.get_lst(current_jd, lon)
 
             # Get the altitude at the start and end of the proposed exposure.
-            alt_start = ac(current_jd)
-            alt_end = ac(current_jd + (exposure_quantums / 86400.0))
+            alt_start = ac(lst=current_lst)
+            alt_end = ac(lst=(current_lst + (exposure_quantums / 3600.)))
 
             # avoid the zenith!
             alt_ok = (alt_start < (90 - zenith_avoidance)) & (alt_end < (90 - zenith_avoidance))
