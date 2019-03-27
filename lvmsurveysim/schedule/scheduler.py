@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 15:39:38
+# @Last modified time: 2019-03-27 15:45:00
 
 import itertools
 
@@ -637,7 +637,7 @@ class Scheduler(object):
         if return_table:
             return stats
 
-    def plot_survey(self, observatory, bin_size=30):
+    def plot_survey(self, observatory, bin_size=30, cumulative=False):
         """Plot the hours spent on target.
 
         Parameters
@@ -646,6 +646,8 @@ class Scheduler(object):
             The observatory to plot.
         bin_size : int
             The number of days in each bin of the plot.
+        cumulative : bool
+            Plots the cumulative sum of hours spent on each target.
 
         """
 
@@ -665,6 +667,9 @@ class Scheduler(object):
             heights, bins = numpy.histogram(tt, bins=b)
             heights = numpy.array(heights, dtype=float)
             heights *= t.exptime * t.n_exposures / 3600.0
+
+            if cumulative:
+                heights = heights.cumsum()
 
             ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '-', label=t.name)
             ax.set_xlabel('JD')
