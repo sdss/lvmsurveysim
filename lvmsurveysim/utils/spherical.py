@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-12 17:29:13
+# @Last modified time: 2019-03-26 19:46:55
 
 import numpy
 
@@ -78,8 +78,9 @@ def get_lst(jd, lon):
 
     dd = jd - 2451545.0
 
-    lmst = ((280.46061837 + 360.98564736629 * dd + 0.000388 *
-            (dd / 36525.)**2 + lon) % 360) / 15.
+    lmst = ((280.46061837 + 360.98564736629 * dd +
+            # 0.000388 * (dd / 36525.)**2 +  # 0.1s / century, can be neglected here
+             lon) % 360) / 15.
 
     return lmst
 

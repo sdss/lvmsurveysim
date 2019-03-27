@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-26 16:10:33
+# @Last modified time: 2019-03-26 21:49:15
 
 import itertools
 
@@ -53,7 +53,7 @@ class AltitudeCalculator(object):
         self.sinlat = numpy.sin(numpy.radians(lat))
         self.coslat = numpy.cos(numpy.radians(lat))
 
-    def __call__(self, jd):
+    def __call__(self, jd=None, lst=None):
         """Object caller.
 
         Parameters
@@ -61,14 +61,28 @@ class AltitudeCalculator(object):
         jd : float or ~numpy.ndarray
             Scalar or array of JD values. If array, it needs to be the same
             length as ``ra``, ``dec``.
+        lst : float or ~numpy.ndarray
+            Scalar or array of Local Mean Sidereal Time values, in hours.
+            If array, it needs to be the same length as ``ra``, ``dec``.
+            Either ``jd`` is provided, this parameter is ignored.
+
+        Returns
+        -------
+        altitude : `float` or `~numpy.ndarray`
+            An array of the same size of the inputs with the altitude of the
+            targets at ``jd`` or ``lst``, in degrees.
 
         """
 
-        dd = jd - 2451545.0
-        lmst_rad = numpy.deg2rad(
-            (280.46061837 + 360.98564736629 * dd +
-             # 0.000388 * (dd / 36525.)**2 +   # 0.1s / century, can be neglected here
-             self.lon) % 360)
+        if jd is not None:
+            dd = jd - 2451545.0
+            lmst_rad = numpy.deg2rad(
+                (280.46061837 + 360.98564736629 * dd +
+                 # 0.000388 * (dd / 36525.)**2 +   # 0.1s / century, can be neglected here
+                 self.lon) % 360)
+        else:
+            lmst_rad = numpy.deg2rad((lst * 15) % 360.)
+
         cosha = numpy.cos(lmst_rad - self.ra)
         sin_alt = (self.sindec * self.sinlat +
                    self.cosdec * self.coslat * cosha)
@@ -128,12 +142,7 @@ class Scheduler(object):
                                                     return_coords=True,
                                                     to_frame='icrs')
 
-        self.schedule = astropy.table.Table(
-            None, names=['JD', 'observatory', 'target', 'index', 'ra', 'dec',
-                         'pixel', 'nside', 'airmass', 'lunation',
-                         'lst', 'exptime', 'totaltime'],
-            dtype=[float, 'S10', 'S20', int, float, float, int, int, float,
-                   float, float, float, float])
+        self.schedule = None
 
     def __repr__(self):
 
@@ -142,6 +151,9 @@ class Scheduler(object):
 
     def save(self, path, overwrite=False):
         """Saves the results to a file as FITS."""
+
+        assert isinstance(self.schedule, astropy.table.Table), \
+            'cannot save empty schedule. Execute Scheduler.run() first.'
 
         self.schedule.meta['targets'] = ','.join(self.targets._names)
         self.schedule.write(path, format='fits', overwrite=overwrite)
@@ -226,6 +238,10 @@ class Scheduler(object):
 
         """
 
+        # Make self.schedule a list so that we can add rows. Later we'll make
+        # this an Astropy Table.
+        self.schedule = []
+
         # Create some master arrays with all the pointings for convenience.
         s = sorted(self.pointings)
 
@@ -300,6 +316,15 @@ class Scheduler(object):
                     exposure_quantums, min_moon_to_target, max_lunation,
                     observed, **kwargs)
 
+        # Convert schedule to Astropy Table.
+        self.schedule = astropy.table.Table(
+            rows=self.schedule,
+            names=['JD', 'observatory', 'target', 'index', 'ra', 'dec',
+                   'pixel', 'nside', 'airmass', 'lunation',
+                   'lst', 'exptime', 'totaltime'],
+            dtype=[float, 'S10', 'S20', int, float, float, int, int, float,
+                   float, float, float, float])
+
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
                            target_priorities, coordinates, target_exposure_times,
                            exposure_quantums, target_min_moon_dist, max_lunation,
@@ -364,15 +389,13 @@ class Scheduler(object):
         # Start at evening twilight
         current_jd = jd0
 
-        # Get the moon's coordinates and lunation, assume it is constant for the night for speed
-        moon = astropy.coordinates.SkyCoord(night_plan['moon_ra'],
-                                            night_plan['moon_dec'], unit='deg')
+        # Get the Moon lunation and distance to targets, assume it is constant
+        # for the night for speed.
+        lunation = night_plan['moon_phase'][0]
 
-        lunation = night_plan['moon_phase']
-
-        # Get the distance to the moon
         moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
-            moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
+            night_plan['moon_ra'], night_plan['moon_dec'],
+            coordinates[:, 0], coordinates[:, 1])
 
         # The additional exposure time in this night
         new_observed = observed * 0.0
@@ -394,8 +417,8 @@ class Scheduler(object):
             current_lst = lvmsurveysim.utils.spherical.get_lst(current_jd, lon)
 
             # Get the altitude at the start and end of the proposed exposure.
-            alt_start = ac(current_jd)
-            alt_end = ac(current_jd + (exposure_quantums / 86400.0))
+            alt_start = ac(lst=current_lst)
+            alt_end = ac(lst=(current_lst + (exposure_quantums / 3600.)))
 
             # avoid the zenith!
             alt_ok = (alt_start < (90 - zenith_avoidance)) & (alt_end < (90 - zenith_avoidance))
@@ -472,7 +495,6 @@ class Scheduler(object):
                 # Get the index of the pointing within its target.
                 pointing_index = observed_idx - target_index_first
 
-                # TODO: add sidereal time to table, sidt = get_lst(current_jd, lon)
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
                 airmass = 1.0 / numpy.cos(numpy.radians(90.0 - obs_alt))
@@ -481,7 +503,8 @@ class Scheduler(object):
                                          pointing_index=pointing_index,
                                          ra=ra, dec=dec,
                                          airmass=airmass,
-                                         lunation=lunation, lst=current_lst,
+                                         lunation=lunation,
+                                         lst=current_lst,
                                          exptime=exptime,
                                          totaltime=exptime * target_overhead)
 
@@ -505,9 +528,9 @@ class Scheduler(object):
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
-        self.schedule.add_row((jd, observatory, target_name, pointing_index,
-                               ra, dec, 0, 0, airmass, lunation, lst, exptime,
-                               totaltime))
+        self.schedule.append((jd, observatory, target_name, pointing_index,
+                              ra, dec, 0, 0, airmass, lunation, lst, exptime,
+                              totaltime))
 
     def get_target_time(self, tname, observatory=None, return_lst=False):
         """Returns the JDs or LSTs for a target at an observatory.
@@ -515,7 +538,7 @@ class Scheduler(object):
         Parameters
         ----------
         tname : str
-            The name of the target. Use '-' for unused time.
+            The name of the target. Use ``'-'`` for unused time.
         observatory : str
             The observatory to filter for.
         return_lst : bool
@@ -525,11 +548,13 @@ class Scheduler(object):
         Returns
         -------
         table : `~numpy.ndarray`
-            An array containing the times the target is observed at an observatory, as JDs.
-            If ``return_lst=True`` returns an array of the corresponding LSTs.
+            An array containing the times the target is observed at an
+            observatory, as JDs. If ``return_lst=True`` returns an array of
+            the corresponding LSTs.
+
         """
 
-        t = self.schedule[self.schedule[tname] == tname]
+        t = self.schedule[self.schedule['target'] == tname]
 
         if observatory:
             t = t[t['observatory'] == observatory]
