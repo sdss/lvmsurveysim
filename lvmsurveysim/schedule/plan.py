@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 13:15:57
+# @Last modified time: 2019-03-27 14:29:27
 
 import datetime
 import warnings
@@ -17,9 +17,13 @@ import astropy
 import astropy.coordinates
 import numpy
 
+from lvmsurveysim import config
+
 
 __all__ = ['ObservingPlan', 'get_moon_data']
 
+
+numpy.random.seed(seed=42)  # For reproducible results
 
 _delta_dt = datetime.timedelta(days=1)
 
@@ -91,6 +95,9 @@ class ObservingPlan(object):
         The altitude in degrees at which to consider that the twilight has
         began or finished. A positive value although it corresponds to a
         depression below the horizon.
+    good_weather : float
+        The fraction of good weather nights. Nights with bad weather will be
+        randomised and indicated in the plan.
 
     Attributes
     ----------
@@ -100,8 +107,8 @@ class ObservingPlan(object):
 
     """
 
-    def __init__(self, start, end=None, format='jd', observatory='APO',
-                 summer_shutdown=None, twilight_alt=15):
+    def __init__(self, start=None, end=None, format='jd', observatory='APO',
+                 summer_shutdown=None, twilight_alt=15, good_weather=None):
 
         if observatory == 'APO':
             full_obs_name = 'Apache Point Observatory'
@@ -123,6 +130,10 @@ class ObservingPlan(object):
             return
 
         self.twilight_alt = twilight_alt
+
+        start = start or config['observing_plan'][observatory]['start_date']
+        end = end or config['observing_plan'][observatory]['end_date']
+        good_weather = good_weather or config['observing_plan'][observatory]['good_weather']
 
         start_date = astropy.time.Time(start, format=format)
         end_date = astropy.time.Time(end, format=format)
@@ -156,11 +167,17 @@ class ObservingPlan(object):
             # runtime significantly and we don't need the extra precision.
             moonpos, moonphase = get_moon_data(astropy.time.Time(midnight, format='jd'))
 
+        # Calculate clear nights
+        if good_weather >= 1:
+            is_clear = numpy.ones(len(jds), dtype=int)
+        else:
+            is_clear = numpy.random.binomial(1, good_weather, size=len(jds))
+
         self.data = astropy.table.Table(
             data=[jds, twilights_jd[:, 0], twilights_jd[:, 1],
-                  moonpos.ra.deg, moonpos.dec.deg, moonphase],
+                  moonpos.ra.deg, moonpos.dec.deg, moonphase, is_clear],
             names=['JD', 'evening_twilight', 'morning_twilight',
-                   'moon_ra', 'moon_dec', 'moon_phase'])
+                   'moon_ra', 'moon_dec', 'moon_phase', 'is_clear'])
 
     def __repr__(self):
 

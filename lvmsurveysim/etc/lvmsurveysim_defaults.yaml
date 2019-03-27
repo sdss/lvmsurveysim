@@ -26,10 +26,12 @@ observing_plan:
     APO:
         start_date: 2459216
         end_date: 2461041
+        good_weather: 0.6
         equatorial: false
     LCO:
         start_date: 2459216
         end_date: 2461041
+        good_weather: 0.6
         equatorial: true
 
 scheduler:

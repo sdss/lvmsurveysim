@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 13:28:30
+# @Last modified time: 2019-03-27 14:34:42
 
 import itertools
 
@@ -309,7 +309,8 @@ class Scheduler(object):
 
             for plan in self.observing_plans:
 
-                if jd not in plan['JD']:
+                # Skips JDs not found in the plan or those that don't have good weather.
+                if jd not in plan['JD'] or plan[plan['JD'] == jd]['is_clear'][0] == 0:
                     continue
 
                 observed += self.schedule_one_night(
