@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-26 16:10:33
+# @Last modified time: 2019-03-26 20:09:40
 
 import itertools
 
@@ -142,12 +142,7 @@ class Scheduler(object):
                                                     return_coords=True,
                                                     to_frame='icrs')
 
-        self.schedule = astropy.table.Table(
-            None, names=['JD', 'observatory', 'target', 'index', 'ra', 'dec',
-                         'pixel', 'nside', 'airmass', 'lunation',
-                         'lst', 'exptime', 'totaltime'],
-            dtype=[float, 'S10', 'S20', int, float, float, int, int, float,
-                   float, float, float, float])
+        self.schedule = None
 
     def __repr__(self):
 
@@ -156,6 +151,9 @@ class Scheduler(object):
 
     def save(self, path, overwrite=False):
         """Saves the results to a file as FITS."""
+
+        assert isinstance(self.schedule, astropy.table.Table), \
+            'cannot save empty schedule. Execute Scheduler.run() first.'
 
         self.schedule.meta['targets'] = ','.join(self.targets._names)
         self.schedule.write(path, format='fits', overwrite=overwrite)
@@ -240,6 +238,10 @@ class Scheduler(object):
 
         """
 
+        # Make self.schedule a list so that we can add rows. Later we'll make
+        # this an Astropy Table.
+        self.schedule = []
+
         # Create some master arrays with all the pointings for convenience.
         s = sorted(self.pointings)
 
@@ -313,6 +315,15 @@ class Scheduler(object):
                     priorities, coordinates, target_exposure_times,
                     exposure_quantums, min_moon_to_target, max_lunation,
                     observed, **kwargs)
+
+        # Convert schedule to Astropy Table.
+        self.schedule = astropy.table.Table(
+            rows=self.schedule,
+            names=['JD', 'observatory', 'target', 'index', 'ra', 'dec',
+                   'pixel', 'nside', 'airmass', 'lunation',
+                   'lst', 'exptime', 'totaltime'],
+            dtype=[float, 'S10', 'S20', int, float, float, int, int, float,
+                   float, float, float, float])
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
                            target_priorities, coordinates, target_exposure_times,
@@ -517,9 +528,9 @@ class Scheduler(object):
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
-        self.schedule.add_row((jd, observatory, target_name, pointing_index,
-                               ra, dec, 0, 0, airmass, lunation, lst, exptime,
-                               totaltime))
+        self.schedule.append((jd, observatory, target_name, pointing_index,
+                              ra, dec, 0, 0, airmass, lunation, lst, exptime,
+                              totaltime))
 
     def get_unused_time(self, observatory, return_lst=False):
         """Returns the unobserved times for an observatory.
