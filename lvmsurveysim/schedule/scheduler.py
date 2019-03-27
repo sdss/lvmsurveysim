@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-26 20:09:40
+# @Last modified time: 2019-03-26 20:15:53
 
 import itertools
 
@@ -538,7 +538,7 @@ class Scheduler(object):
         Parameters
         ----------
         tname : str
-            The name of the target. Use '-' for unused time.
+            The name of the target. Use ``'-'`` for unused time.
         observatory : str
             The observatory to filter for.
         return_lst : bool
@@ -548,8 +548,10 @@ class Scheduler(object):
         Returns
         -------
         table : `~numpy.ndarray`
-            An array containing the times the target is observed at an observatory, as JDs.
-            If ``return_lst=True`` returns an array of the corresponding LSTs.
+            An array containing the times the target is observed at an
+            observatory, as JDs. If ``return_lst=True`` returns an array of
+            the corresponding LSTs.
+
         """
 
         t = self.schedule[self.schedule[tname] == tname]
