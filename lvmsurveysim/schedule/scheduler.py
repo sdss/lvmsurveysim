@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-26 21:49:15
+# @Last modified time: 2019-03-27 11:21:54
 
 import itertools
 
@@ -581,45 +581,47 @@ class Scheduler(object):
         if targets is None:
             targets = self.targets
 
-        time_on_target = {}     # time spent exposing target
-        exptime_on_target = {}  # total time (exp + overhead) on target
-        n_tiles = {}            # total number of tiles in each target
-        tile_area = {}          # area of a single tile
-        target_ntiles = {}      # number of observed tiles
-        surveytime = 0.0        # total time of survey
+        time_on_target = {}          # time spent exposing target
+        exptime_on_target = {}       # total time (exp + overhead) on target
+        tile_area = {}               # area of a single tile
+        target_ntiles = {}           # number of tiles in a target tiling
+        target_ntiles_observed = {}  # number of observed tiles
+        surveytime = 0.0             # total time of survey
         names = [t.name for t in targets]
-        names.append('-')       # deals with unused time
+        names.append('-')            # deals with unused time
 
-        for tname,i in zip(names,range(len(names))):
-            if (tname!='-'):
-                if targets[i].tile_area == None:
-                    targets[i].get_healpix_tiling()
-                tile_area[tname] = targets[i].tile_area
-                n_tiles[tname] = targets[i].n_tiles
-                target_ntiles[tname] = 1.0
+        for tname, i in zip(names, range(len(names))):
+            if (tname != '-'):
+                target = self.targets[i]
+                tile_area[tname] = target.get_pixarea(ifu=self.ifu)
+                target_ntiles[tname] = len(self.pointings[i])
             else:
                 tile_area[tname] = 1.0
-                n_tiles[tname] = 1.0
+                target_ntiles[tname] = 1.0
             tdata = self.schedule[self.schedule['target'] == tname]
             if observatory:
                 tdata = tdata[tdata['observatory'] == observatory]
             target_exptime = numpy.sum(tdata['exptime'].data)
-            target_ntiles[tname] = len(tdata['exptime'].data)
+            target_ntiles_observed[tname] = len(tdata)
             target_total_time = numpy.sum(tdata['totaltime'].data)
             exptime_on_target[tname] = target_exptime
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
-        print('%10s\t%7s\t%8s %10s %10s %10s' % ('Target', 'tottime/h', 'exptime/h', 'timefrac', 'area', 'areafrac'))
+        print('%10s\t%7s\t%8s %10s %10s %10s' % ('Target', 'tottime/h', 'exptime/h',
+                                                 'timefrac', 'area', 'areafrac'))
         print('--------------------------------------------------------------------------------')
         for t in names:
-            print('%10s\t%.2f\t\t%.2f\t\t%.2f\t\t%f\t\t%.2f' % (t if t != '-' else 'unused',
-                                                  time_on_target[t] / 3600.0,
-                                                  exptime_on_target[t] / 3600.0,
+            print('%10s\t%.2f\t\t%.2f\t\t%.2f\t\t%f\t\t%.2f' % (
+                t if t != '-' else 'unused',
+                time_on_target[t] / 3600.0,
+                exptime_on_target[t] / 3600.0,
+                time_on_target[t] / surveytime,
                                                   time_on_target[t] / surveytime, 
-                                                  target_ntiles[t]*tile_area[t], 
-                                                  float(target_ntiles[t])/float(n_tiles[t])))
+                time_on_target[t] / surveytime,
+                target_ntiles[t] * tile_area[t],
+                float(target_ntiles_observed[t]) / float(target_ntiles[t])))
 
     def plot_survey(self, observatory):
         """

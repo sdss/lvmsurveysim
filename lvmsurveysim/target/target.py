@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-26 15:59:30
+# @Last modified time: 2019-03-27 08:48:09
 
 import os
 import pathlib
@@ -76,6 +76,9 @@ class Target(object):
 
     Attributes
     ----------
+    n_tiles : `int`
+        The number of tiles
+
     region : `.Region`
         The `.Region` object associated with this target.
 
@@ -218,8 +221,8 @@ class Target(object):
             pixarea = pixarea.value
 
         self.tile_area = pixarea
-        return lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
 
+        return lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
 
     def get_healpix_tiling(self, pixarea=None, ifu=None, telescope=None,
                            return_coords=False, to_frame=None, inclusive=True):
@@ -269,7 +272,7 @@ class Target(object):
                                                           return_coords=return_coords,
                                                           inclusive=inclusive)
 
-        self.n_tiles = len(pixels[:,0])
+        self.n_tiles = len(pixels[:, 0])
 
         if return_coords:
             coords = astropy.coordinates.SkyCoord(pixels[:, 0], pixels[:, 1],
