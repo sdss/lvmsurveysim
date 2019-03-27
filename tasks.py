@@ -5,7 +5,7 @@
 #
 # @Author: Brian Cherinka
 # @Date:   2017-09-27 11:08:07
-# @Last modified by:   Brian Cherinka
+# @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
 # @Last Modified time: 2017-09-27 11:20:46
 
 from __future__ import print_function, division, absolute_import
@@ -22,7 +22,7 @@ from invoke import Collection, task
 def clean_docs(ctx):
     ''' Cleans up the Sphinx docs '''
     print('Cleaning the docs')
-    ctx.run("rm -rf docs/sphinx/_build")
+    ctx.run("rm -rf docs/sphinx/_build", pty=True)
 
 
 @task(clean_docs)
@@ -30,7 +30,7 @@ def build_docs(ctx):
     ''' Builds the Sphinx docs '''
     print('Building the docs')
     os.chdir('docs/sphinx')
-    ctx.run("make html")
+    ctx.run("make html", pty=True)
 
 
 @task
@@ -38,25 +38,25 @@ def show_docs(ctx):
     """Shows the Sphinx docs"""
     print('Showing the docs')
     os.chdir('docs/sphinx/_build/html')
-    ctx.run('open ./index.html')
+    ctx.run('open ./index.html', pty=True)
 
 
 @task
 def clean(ctx):
     ''' Cleans up the crap before a Pip build '''
     print('Cleaning')
-    ctx.run("rm -rf htmlcov")
-    ctx.run("rm -rf build")
-    ctx.run("rm -rf dist")
-    ctx.run("rm -rf lvmsurveysim.egg-info")
+    ctx.run("rm -rf htmlcov", pty=True)
+    ctx.run("rm -rf build", pty=True)
+    ctx.run("rm -rf dist", pty=True)
+    ctx.run("rm -rf lvmsurveysim.egg-info", pty=True)
 
 
 @task(clean)
 def deploy(ctx):
     ''' Deploy the project to pypi '''
     print('Deploying to Pypi!')
-    ctx.run("python setup.py sdist bdist_wheel --universal")
-    ctx.run("twine upload dist/*")
+    ctx.run("python setup.py sdist bdist_wheel --universal", pty=True)
+    ctx.run("twine upload dist/*", pty=True)
 
 
 # create a collection of tasks
