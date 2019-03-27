@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 13:12:04
+# @Last modified time: 2019-03-26 15:59:30
 
 import os
 import pathlib
@@ -56,7 +56,7 @@ class Target(object):
         The telescope that will observe the target. Must be a string that
         matches a telescope entry in the configuration file or a
         `~lvmsurveysim.telescope.Telescope` instance.
-    max_airmass : float 
+    max_airmass : float
         Maximum air mass to observe the given target
     exptime : float
         Exposure time of an individual pointing
@@ -65,11 +65,14 @@ class Target(object):
     min_exposures : int
         Minimum number of exposures to make a "good visit"
     min_moon_dist : float
-        Minimum moon distance between target before observations are called off.
+        Minimum moon distance between target before observations are
+        called off.
     max_lunation : float
-        The maximum lunation (fraction of moon illuminated, number between 0 and 1)
+        The maximum lunation (fraction of moon illuminated,
+        number between 0 and 1)
     overhead : float
-        The overhead factor per exposure quantum for this target's observing scheme
+        The overhead factor per exposure quantum for this target's observing
+        scheme.
 
     Attributes
     ----------

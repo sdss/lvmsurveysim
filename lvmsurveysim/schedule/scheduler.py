@@ -7,9 +7,8 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 11:37:17
+# @Last modified time: 2019-03-26 16:10:33
 
-#import line_profiler
 import itertools
 
 import astropy
@@ -25,23 +24,26 @@ from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, plot_ellipse
 
 from .plan import ObservingPlan
 
-__all__ = ['Scheduler']
+
+__all__ = ['Scheduler', 'AltitudeCalculator']
 
 __ZENITH_AVOIDANCE__ = config['scheduler']['zenith_avoidance']
 __DEFAULT_TIME_STEP__ = config['scheduler']['timestep']
 
 
-class AltitudeCalculator:
-    """
-    Calculate the altitude of a constant set of objects at some global jd, 
+class AltitudeCalculator(object):
+    """Calculate the altitude of a constant set of objects at some global JD,
     or at a unique jd per object.
 
-    This is for efficiency reasons. The intermediate cos/sin arrays of the 
+    This is for efficiency reasons. The intermediate cos/sin arrays of the
     coordinates are cached.
 
     All inputs are in degrees. The output is in degrees.
+
     """
+
     def __init__(self, ra, dec, lon, lat):
+
         self.ra = numpy.deg2rad(numpy.atleast_1d(ra))
         self.dec = numpy.deg2rad(numpy.atleast_1d(dec))
         assert len(ra) == len(dec), 'ra and dec must have the same length.'
@@ -51,19 +53,26 @@ class AltitudeCalculator:
         self.sinlat = numpy.sin(numpy.radians(lat))
         self.coslat = numpy.cos(numpy.radians(lat))
 
-#    @profile  # line_profiler ...
     def __call__(self, jd):
+        """Object caller.
+
+        Parameters
+        ----------
+        jd : float or ~numpy.ndarray
+            Scalar or array of JD values. If array, it needs to be the same
+            length as ``ra``, ``dec``.
+
         """
-        jd: float or ~numpy.array of jd values. If array, it needs to be the same 
-        length as ra, dec
-        """
+
         dd = jd - 2451545.0
-        lmst_rad = numpy.deg2rad((280.46061837 + 360.98564736629 * dd + 
-                                  # 0.000388 * (dd / 36525.)**2 +   # 0.1s/century, can bne meglected here
-                                  self.lon) % 360)
+        lmst_rad = numpy.deg2rad(
+            (280.46061837 + 360.98564736629 * dd +
+             # 0.000388 * (dd / 36525.)**2 +   # 0.1s / century, can be neglected here
+             self.lon) % 360)
         cosha = numpy.cos(lmst_rad - self.ra)
         sin_alt = (self.sindec * self.sinlat +
                    self.cosdec * self.coslat * cosha)
+
         return numpy.rad2deg(numpy.arcsin(sin_alt))
 
 
@@ -75,7 +84,7 @@ class Scheduler(object):
     targets : ~lvmsurveysim.target.target.TargetList
         The `~lvmsuveysim.target.target.TargetList` object with the list of
         targets to schedule.
-    observing_plan : list of `.ObservingPlan` or None
+    observing_plans : list of `.ObservingPlan` or None
         A list with the `.ObservingPlan` to use (one for each observatory).
         If `None`, the list will be created from the ``observing_plan``
         section in the configuration file.
@@ -121,8 +130,10 @@ class Scheduler(object):
 
         self.schedule = astropy.table.Table(
             None, names=['JD', 'observatory', 'target', 'index', 'ra', 'dec',
-                         'pixel', 'nside', 'airmass', 'lunation', 'lst', 'exptime', 'totaltime'],
-            dtype=[float, 'S10', 'S20', int, float, float, int, int, float, float, float, float, float])
+                         'pixel', 'nside', 'airmass', 'lunation',
+                         'lst', 'exptime', 'totaltime'],
+            dtype=[float, 'S10', 'S20', int, float, float, int, int, float,
+                   float, float, float, float])
 
     def __repr__(self):
 
@@ -216,7 +227,6 @@ class Scheduler(object):
         """
 
         # Create some master arrays with all the pointings for convenience.
-
         s = sorted(self.pointings)
 
         # An array with the length of all the pointings indicating the index
@@ -234,27 +244,32 @@ class Scheduler(object):
                                         len(self.pointings[idx]))
                                         for idx in s])
 
-        # array with the total exposure time for each tile
-        target_exposure_times = numpy.concatenate([numpy.repeat(self.targets[idx].exptime*self.targets[idx].n_exposures, 
-                                            len(self.pointings[idx]))
-                                            for idx in s])
-        
-        # array with exposure quantums (the minimum time to spend on a tile)
-        exposure_quantums = numpy.concatenate([numpy.repeat(self.targets[idx].exptime*self.targets[idx].min_exposures, 
-                                            len(self.pointings[idx]))
-                                            for idx in s])
-                                             
-        # array with the airmass limit for each pointing
-        max_airmass_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
-                                             for idx in s])
+        # Array with the total exposure time for each tile
+        target_exposure_times = numpy.concatenate(
+            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].n_exposures,
+                          len(self.pointings[idx]))
+             for idx in s])
 
-        # array with the airmass limit for each pointing
-        min_moon_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].min_moon_dist, len(self.pointings[idx]))
-                                             for idx in s])
+        # Array with exposure quanta (the minimum time to spend on a tile)
+        exposure_quantums = numpy.concatenate(
+            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].min_exposures,
+                          len(self.pointings[idx]))
+             for idx in s])
 
-        # array with the lunation limit for each pointing
-        max_lunation = numpy.concatenate([numpy.repeat(self.targets[idx].max_lunation, len(self.pointings[idx]))
-                                          for idx in s])
+        # Array with the airmass limit for each pointing
+        max_airmass_to_target = numpy.concatenate(
+            [numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
+             for idx in s])
+
+        # Array with the airmass limit for each pointing
+        min_moon_to_target = numpy.concatenate(
+            [numpy.repeat(self.targets[idx].min_moon_dist, len(self.pointings[idx]))
+             for idx in s])
+
+        # Array with the lunation limit for each pointing
+        max_lunation = numpy.concatenate(
+            [numpy.repeat(self.targets[idx].max_lunation, len(self.pointings[idx]))
+             for idx in s])
 
         # Mask with observed exposure time for each pointing
         observed = numpy.zeros(len(index_to_target), dtype=numpy.float)
@@ -279,25 +294,19 @@ class Scheduler(object):
                 if jd not in plan['JD']:
                     continue
 
-                observed += self.schedule_one_night(jd, plan, index_to_target, max_airmass_to_target,
-                                                    priorities, coordinates, target_exposure_times, exposure_quantums, 
-                                                    min_moon_to_target, max_lunation,
-                                                    observed, **kwargs)
- 
-#    @profile  # line_profiler ...
-    def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, target_priorities,
-                              coordinates, target_exposure_times, exposure_quantums, target_min_moon_dist,
-                              max_lunation, observed,
-                              zenith_avoidance=__ZENITH_AVOIDANCE__):
-        """
-        Schedules a single night at a single observatory, new version.
+                observed += self.schedule_one_night(
+                    jd, plan, index_to_target, max_airmass_to_target,
+                    priorities, coordinates, target_exposure_times,
+                    exposure_quantums, min_moon_to_target, max_lunation,
+                    observed, **kwargs)
 
-        This method is not intended to be called directly. Instead, use
-        `.run`.
+    def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
+                           target_priorities, coordinates, target_exposure_times,
+                           exposure_quantums, target_min_moon_dist, max_lunation,
+                           observed, zenith_avoidance=__ZENITH_AVOIDANCE__):
+        """Schedules a single night at a single observatory.
 
-        Return
-        ------
-        ~numpy.array with the exposure time in s added to each tile during this night.
+        This method is not intended to be called directly. Instead, use `.run`.
 
         Parameters
         ----------
@@ -315,21 +324,32 @@ class Scheduler(object):
             The coordinates of each one of the pointings, in the ICRS frame.
             The ordering of the coordinates is the same as in ``target_index``.
         target_exposure_times : ~numpy.ndarray
-            An array with the length of all pointings with total desired exposure time in s for each tile.
+            An array with the length of all pointings with total desired
+            exposure time in s for each tile.
         exposure_quantums : ~numpy.ndarray
-            An array with the length of all pointings with exposure time in s to schedule for each visit.
+            An array with the length of all pointings with exposure time in
+            seconds to schedule for each visit.
         observed : ~numpy.ndarray
-            A float array that carries the executed exposure time for each tile.
+            A float array that carries the executed exposure time for each
+            tile.
         max_airmass : float
-            The maximum airmass to allow. 
+            The maximum airmass to allow.
         moon_separation : float
-            The minimum allowed Moon separation. 
+            The minimum allowed Moon separation.
         max_lunation : float
-            The maximum allowed moon illumination fraction. 
+            The maximum allowed moon illumination fraction.
         zenith_avoidance : float
             Degrees around the zenith/pole in which we should not observe.
             Defaults to the value ``scheduler.zenith_avoidance``.
+
+        Returns
+        -------
+        exposure_times : `~numpy.ndarray`
+            Array with the exposure times in seconds added to each tile during
+            this night.
+
         """
+
         observatory = plan.observatory
 
         lon = plan.location.lon.deg
@@ -341,35 +361,41 @@ class Scheduler(object):
         jd0 = night_plan['evening_twilight'][0]
         jd1 = night_plan['morning_twilight'][0]
 
-        # start at evening twilight
+        # Start at evening twilight
         current_jd = jd0
 
-        # get the moon's coordinates and lunation, assume it is constant for the night for speed
-        moon = astropy.coordinates.SkyCoord(night_plan['moon_ra'],night_plan['moon_dec'],unit='deg')
+        # Get the moon's coordinates and lunation, assume it is constant for the night for speed
+        moon = astropy.coordinates.SkyCoord(night_plan['moon_ra'],
+                                            night_plan['moon_dec'], unit='deg')
+
         lunation = night_plan['moon_phase']
-        # get the distance to the moon
+
+        # Get the distance to the moon
         moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
-                            moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
+            moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
 
-        # the additional exposure time in this night
-        new_observed = observed*0.0
+        # The additional exposure time in this night
+        new_observed = observed * 0.0
 
-        # get the coordinates in radians, this speeds up then altitude calculation
+        # Get the coordinates in radians, this speeds up then altitude calculation
         ac = AltitudeCalculator(coordinates[:, 0], coordinates[:, 1], lon, lat)
 
         # convert airmass to altitude, we'll work in altitude space for efficiency
-        min_alt_for_target = 90.0 - numpy.rad2deg(numpy.arccos(1.0/max_airmass_to_target))
-    
+        min_alt_for_target = 90.0 - numpy.rad2deg(numpy.arccos(1.0 / max_airmass_to_target))
+
         # Select targets that are above the max airmass and with good
         # moon avoidance.
-        moon_ok = (moon_to_pointings > target_min_moon_dist) & (lunation<=max_lunation)
+        moon_ok = (moon_to_pointings > target_min_moon_dist) & (lunation <= max_lunation)
 
-        # while the current time is before morning twilight ...
+        # While the current time is before morning twilight ...
         while current_jd < jd1:
 
-             # get the altitude at the start and end of the proposed exposure
+            # Get current LST
+            current_lst = lvmsurveysim.utils.spherical.get_lst(current_jd, lon)
+
+            # Get the altitude at the start and end of the proposed exposure.
             alt_start = ac(current_jd)
-            alt_end = ac(current_jd+(exposure_quantums/86400.0))
+            alt_end = ac(current_jd + (exposure_quantums / 86400.0))
 
             # avoid the zenith!
             alt_ok = (alt_start < (90 - zenith_avoidance)) & (alt_end < (90 - zenith_avoidance))
@@ -377,20 +403,25 @@ class Scheduler(object):
             # Gets valid airmasses (but we're working in altitude space)
             airmass_ok = ((alt_start > min_alt_for_target) & (alt_end > min_alt_for_target))
 
+            # Gets pointings that haven't been completely observed
+            exptime_ok = (observed + new_observed) < target_exposure_times
+
             # Creates a mask of valid pointings with correct Moon avoidance,
             # airmass, zenith avoidance and that have not been completed.
-            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & ((observed+new_observed)<target_exposure_times))[0]
+            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & exptime_ok)[0]
 
-            # if there's nothing to observe, record the time slot as vacant (for record keeping)
+            # If there's nothing to observe, record the time slot as vacant (for record keeping)
             if len(valid_idx) == 0:
-                self._record_observation(current_jd, observatory, 
-                                         lunation=lunation, lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon),
-                                         exptime=__DEFAULT_TIME_STEP__, totaltime=__DEFAULT_TIME_STEP__)
-                current_jd += (__DEFAULT_TIME_STEP__)/86400.0
+                self._record_observation(current_jd, observatory,
+                                         lunation=lunation, lst=current_lst,
+                                         exptime=__DEFAULT_TIME_STEP__,
+                                         totaltime=__DEFAULT_TIME_STEP__)
+                current_jd += __DEFAULT_TIME_STEP__ / 86400.0
                 continue
 
-            # find observations that have nonzero exposure but are incomplete
-            incomplete = (observed+new_observed>0) & (observed+new_observed<target_exposure_times)
+            # Find observations that have nonzero exposure but are incomplete
+            incomplete = ((observed + new_observed > 0) &
+                          (observed + new_observed < target_exposure_times))
 
             # Gets the coordinates and priorities of valid pointings.
             valid_alt = alt_start[valid_idx]
@@ -399,8 +430,8 @@ class Scheduler(object):
 
             did_observe = False
 
-            # give incomplete observations the highest priority
-            valid_priorities[valid_incomplete] = maxpriority+1
+            # Give incomplete observations the highest priority
+            valid_priorities[valid_incomplete] = maxpriority + 1
 
             # Loops starting with pointings with the highest priority.
             for priority in range(valid_priorities.max(), valid_priorities.min() - 1, -1):
@@ -410,13 +441,13 @@ class Scheduler(object):
                 # master list).
                 valid_priority_idx = numpy.where(valid_priorities == priority)[0]
 
-                # if there's nothing to do at the current priority, try the next lower
+                # If there's nothing to do at the current priority, try the next lower
                 if len(valid_priority_idx) == 0:
                     continue
 
                 valid_alt_priority = valid_alt[valid_priority_idx]
 
-                # Gets the pointing with the smallest airmass.
+                # Gets the pointing with the highest altitude.
                 obs_alt_idx = valid_alt_priority.argmax()
                 obs_alt = valid_alt_priority[obs_alt_idx]
 
@@ -444,34 +475,39 @@ class Scheduler(object):
                 # TODO: add sidereal time to table, sidt = get_lst(current_jd, lon)
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
+                airmass = 1.0 / numpy.cos(numpy.radians(90.0 - obs_alt))
                 self._record_observation(current_jd, observatory,
                                          target_name=target_name,
                                          pointing_index=pointing_index,
-                                         ra=ra, dec=dec, airmass=1.0/numpy.cos(numpy.radians(90.0-obs_alt)),
-                                         lunation=lunation, lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon),
-                                         exptime=exptime, totaltime=exptime*target_overhead)
+                                         ra=ra, dec=dec,
+                                         airmass=airmass,
+                                         lunation=lunation, lst=current_lst,
+                                         exptime=exptime,
+                                         totaltime=exptime * target_overhead)
 
                 did_observe = True
-                current_jd += exptime*target_overhead/86400.0
+                current_jd += exptime * target_overhead / 86400.0
 
                 break
 
             if did_observe is False:
-                self._record_observation(current_jd, observatory, 
-                                         lst=lvmsurveysim.utils.spherical.get_lst(current_jd, lon),
-                                         exptime=__DEFAULT_TIME_STEP__, totaltime=__DEFAULT_TIME_STEP__)
-                current_jd += (__DEFAULT_TIME_STEP__)/86400.0
+                self._record_observation(current_jd, observatory,
+                                         lst=current_lst,
+                                         exptime=__DEFAULT_TIME_STEP__,
+                                         totaltime=__DEFAULT_TIME_STEP__)
+                current_jd += (__DEFAULT_TIME_STEP__) / 86400.0
 
         return new_observed
 
-
     def _record_observation(self, jd, observatory, target_name='-',
                             pointing_index=-1, ra=-999., dec=-999.,
-                            airmass=-999., lunation=-999., lst=-999., exptime=0., totaltime=0.):
+                            airmass=-999., lunation=-999., lst=-999.,
+                            exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
         self.schedule.add_row((jd, observatory, target_name, pointing_index,
-                               ra, dec, 0, 0, airmass, lunation, lst, exptime, totaltime))
+                               ra, dec, 0, 0, airmass, lunation, lst, exptime,
+                               totaltime))
 
     def get_target_time(self, tname, observatory=None, return_lst=False):
         """Returns the JDs or LSTs for a target at an observatory.
@@ -503,19 +539,19 @@ class Scheduler(object):
         else:
             return t['JD'].data
 
-
     def print_statistics(self, observatory=None, targets=None):
-        """
-        Prints a summary of observations at a given observatory
+        """Prints a summary of observations at a given observatory.
 
         Parameters
         ----------
         observatory : str
             The observatory to filter for.
-        targets : TargetList
-            The targets to summarize. If None, use self.targets
+        targets : `~lvmsurveysim.target.TargetList`
+            The targets to summarize. If `None`, use ``self.targets``.
+
         """
-        if targets == None: 
+
+        if targets is None:
             targets = self.targets
 
         time_on_target = {}     # time spent exposing target
@@ -534,10 +570,11 @@ class Scheduler(object):
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
-        print('%s :'%(observatory if observatory!=None else 'APO+LCO'))
-        print('%10s\t%7s\t%8s %10s'%('Target', 'tottime/h', 'exptime/h', 'fraction'))
+        print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
+        print('%10s\t%7s\t%8s %10s' % ('Target', 'tottime/h', 'exptime/h', 'fraction'))
         print('----------------------------------------------------')
         for t in names:
-            print('%10s\t%.2f\t\t%.2f\t\t%.2f'%(t if t!='-' else 'unused', time_on_target[t]/3600.0, exptime_on_target[t]/3600.0, time_on_target[t]/surveytime))
-
-
+            print('%10s\t%.2f\t\t%.2f\t\t%.2f' % (t if t != '-' else 'unused',
+                                                  time_on_target[t] / 3600.0,
+                                                  exptime_on_target[t] / 3600.0,
+                                                  time_on_target[t] / surveytime))
