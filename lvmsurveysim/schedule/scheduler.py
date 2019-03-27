@@ -554,7 +554,7 @@ class Scheduler(object):
 
         """
 
-        t = self.schedule[self.schedule[tname] == tname]
+        t = self.schedule[self.schedule['target'] == tname]
 
         if observatory:
             t = t[t['observatory'] == observatory]
