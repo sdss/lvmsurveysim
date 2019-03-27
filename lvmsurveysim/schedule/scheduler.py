@@ -22,6 +22,8 @@ import lvmsurveysim.utils.spherical
 from lvmsurveysim import IFU, config, log
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, plot_ellipse
 
+import matplotlib.pyplot as plt
+
 from .plan import ObservingPlan
 
 
@@ -618,3 +620,21 @@ class Scheduler(object):
                                                   time_on_target[t] / surveytime, 
                                                   target_ntiles[t]*tile_area[t], 
                                                   float(target_ntiles[t])/float(n_tiles[t])))
+
+    def plot_survey(self, observatory):
+        """
+        plot the hours spent on target.
+        """
+        fig,ax = plt.subplots()
+        for t in self.targets:
+            tt = self.get_target_time(t.name, observatory=observatory)
+            b = numpy.linspace(2459216.0, 2461041.0, num=5*12)
+            heights, bins = numpy.histogram(tt,bins=b)
+            heights = numpy.array(heights, dtype=float)
+            heights *= t.exptime*t.n_exposures/3600.0
+            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '-', label=t.name)
+            ax.set_xlabel('JD')
+            ax.set_ylabel('hours on target per 30 days')
+            ax.set_title(observatory)
+        ax.legend()
+        fig.show()
