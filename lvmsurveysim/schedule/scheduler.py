@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 12:39:31
+# @Last modified time: 2019-03-27 13:28:30
 
 import itertools
 
@@ -605,7 +605,7 @@ class Scheduler(object):
             if observatory:
                 tdata = tdata[tdata['observatory'] == observatory]
             target_exptime = numpy.sum(tdata['exptime'].data)
-            target_ntiles_observed[tname] = len(tdata)/target_nvisits[tname]
+            target_ntiles_observed[tname] = len(tdata) / target_nvisits[tname]
             target_total_time = numpy.sum(tdata['totaltime'].data)
             exptime_on_target[tname] = target_exptime
             time_on_target[tname] = target_total_time
@@ -624,19 +624,39 @@ class Scheduler(object):
                 target_ntiles[t] * tile_area[t],
                 float(target_ntiles_observed[t]) / float(target_ntiles[t])))
 
-    def plot_survey(self, observatory):
-        """Plot the hours spent on target."""
+    def plot_survey(self, observatory, bin_size=30):
+        """Plot the hours spent on target.
 
-        fig,ax = plt.subplots()
+        Parameters
+        ----------
+        observatory : str
+            The observatory to plot.
+        bin_size : int
+            The number of days in each bin of the plot.
+
+        """
+
+        assert self.schedule is not None, 'you still have not run a simulation.'
+
+        fig, ax = plt.subplots()
+
         for t in self.targets:
+
             tt = self.get_target_time(t.name, observatory=observatory)
-            b = numpy.linspace(2459216.0, 2461041.0, num=5*12)
-            heights, bins = numpy.histogram(tt,bins=b)
+
+            min_jd = numpy.min(self.schedule['JD'])
+            max_jd = numpy.max(self.schedule['JD'])
+
+            b = numpy.arange(min_jd, max_jd + bin_size, bin_size)
+
+            heights, bins = numpy.histogram(tt, bins=b)
             heights = numpy.array(heights, dtype=float)
-            heights *= t.exptime*t.n_exposures/3600.0
+            heights *= t.exptime * t.n_exposures / 3600.0
+
             ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '-', label=t.name)
             ax.set_xlabel('JD')
             ax.set_ylabel('hours on target per 30 days')
             ax.set_title(observatory)
+
         ax.legend()
         fig.show()
