@@ -484,7 +484,6 @@ class Scheduler(object):
                 # Get the index of the pointing within its target.
                 pointing_index = observed_idx - target_index_first
 
-                # TODO: add sidereal time to table, sidt = get_lst(current_jd, lon)
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
                 airmass = 1.0 / numpy.cos(numpy.radians(90.0 - obs_alt))
@@ -493,7 +492,8 @@ class Scheduler(object):
                                          pointing_index=pointing_index,
                                          ra=ra, dec=dec,
                                          airmass=airmass,
-                                         lunation=lunation, lst=current_lst,
+                                         lunation=lunation,
+                                         lst=current_lst,
                                          exptime=exptime,
                                          totaltime=exptime * target_overhead)
 
