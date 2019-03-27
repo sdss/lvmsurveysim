@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 11:21:54
+# @Last modified time: 2019-03-27 12:39:31
 
 import itertools
 
@@ -492,7 +492,7 @@ class Scheduler(object):
 
                 # Get the index of the first value in index_to_target that matches
                 # the index of the target.
-                target_index_first = numpy.nonzero(target_index == target_index)[0][0]
+                target_index_first = numpy.nonzero(index_to_target == target_index)[0][0]
 
                 # Get the index of the pointing within its target.
                 pointing_index = observed_idx - target_index_first
@@ -625,9 +625,8 @@ class Scheduler(object):
                 float(target_ntiles_observed[t]) / float(target_ntiles[t])))
 
     def plot_survey(self, observatory):
-        """
-        plot the hours spent on target.
-        """
+        """Plot the hours spent on target."""
+
         fig,ax = plt.subplots()
         for t in self.targets:
             tt = self.get_target_time(t.name, observatory=observatory)
