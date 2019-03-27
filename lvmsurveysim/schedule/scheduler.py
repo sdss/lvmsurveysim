@@ -586,6 +586,7 @@ class Scheduler(object):
         tile_area = {}               # area of a single tile
         target_ntiles = {}           # number of tiles in a target tiling
         target_ntiles_observed = {}  # number of observed tiles
+        target_nvisits = {}          # number of visits for each tile
         surveytime = 0.0             # total time of survey
         names = [t.name for t in targets]
         names.append('-')            # deals with unused time
@@ -595,14 +596,16 @@ class Scheduler(object):
                 target = self.targets[i]
                 tile_area[tname] = target.get_pixarea(ifu=self.ifu)
                 target_ntiles[tname] = len(self.pointings[i])
+                target_nvisits[tname] = float(target.n_exposures / target.min_exposures)
             else:
                 tile_area[tname] = 1.0
                 target_ntiles[tname] = 1.0
+                target_nvisits[tname] = 1.0
             tdata = self.schedule[self.schedule['target'] == tname]
             if observatory:
                 tdata = tdata[tdata['observatory'] == observatory]
             target_exptime = numpy.sum(tdata['exptime'].data)
-            target_ntiles_observed[tname] = len(tdata)
+            target_ntiles_observed[tname] = len(tdata)/target_nvisits[tname]
             target_total_time = numpy.sum(tdata['totaltime'].data)
             exptime_on_target[tname] = target_exptime
             time_on_target[tname] = target_total_time
@@ -617,8 +620,6 @@ class Scheduler(object):
                 t if t != '-' else 'unused',
                 time_on_target[t] / 3600.0,
                 exptime_on_target[t] / 3600.0,
-                time_on_target[t] / surveytime,
-                                                  time_on_target[t] / surveytime, 
                 time_on_target[t] / surveytime,
                 target_ntiles[t] * tile_area[t],
                 float(target_ntiles_observed[t]) / float(target_ntiles[t])))
