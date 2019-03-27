@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 08:48:09
+# @Last modified time: 2019-03-27 11:01:22
 
 import os
 import pathlib
@@ -76,9 +76,6 @@ class Target(object):
 
     Attributes
     ----------
-    n_tiles : `int`
-        The number of tiles
-
     region : `.Region`
         The `.Region` object associated with this target.
 
@@ -97,8 +94,6 @@ class Target(object):
         self.min_moon_dist = kwargs.pop('min_moon_dist', 90)
         self.max_lunation = kwargs.pop('max_lunation', 1.0)
         self.overhead = kwargs.pop('overhead', 1.0)
-        self.tile_area = None
-        self.n_tiles = None
 
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
@@ -183,7 +178,8 @@ class Target(object):
         return cls(region_type, coords, name=name, **target)
 
     def get_pixarea(self, pixarea=None, ifu=None, telescope=None):
-        """Gets the size of the tile in square degrees"""
+        """Gets the size of the tile in square degrees."""
+
         telescope = telescope or self.telescope
 
         if ifu is None:
@@ -199,28 +195,12 @@ class Target(object):
             pixarea *= ifu.n_fibres
             pixarea = pixarea.value
 
-        self.tile_area = pixarea
         return pixarea
 
     def _get_nside(self, pixarea=None, ifu=None, telescope=None):
         """Gets the ``nside`` for a pixarea or IFU/telescope configuration."""
 
-        telescope = telescope or self.telescope
-
-        if ifu is None:
-            ifu = IFU.from_config()
-            warnings.warn(f'target {self.name}: no IFU provided. '
-                          f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
-
-        assert pixarea is not None or (ifu is not None and telescope is not None), \
-            'either pixarea or ifu and telescope need to be defined.'
-
-        if pixarea is None:
-            pixarea = (ifu.fibre_size / 2. * telescope.plate_scale).to('degree')**2 * numpy.pi
-            pixarea *= ifu.n_fibres
-            pixarea = pixarea.value
-
-        self.tile_area = pixarea
+        pixarea = pixarea or self.get_pixarea(ifu=ifu, telescope=telescope)
 
         return lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
 
@@ -271,8 +251,6 @@ class Target(object):
         pixels = lvmsurveysim.utils.healpix.tile_geometry(self.region.shapely, nside,
                                                           return_coords=return_coords,
                                                           inclusive=inclusive)
-
-        self.n_tiles = len(pixels[:, 0])
 
         if return_coords:
             coords = astropy.coordinates.SkyCoord(pixels[:, 0], pixels[:, 1],
