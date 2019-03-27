@@ -556,25 +556,40 @@ class Scheduler(object):
 
         time_on_target = {}     # time spent exposing target
         exptime_on_target = {}  # total time (exp + overhead) on target
+        n_tiles = {}            # total number of tiles in each target
+        tile_area = {}          # area of a single tile
+        target_ntiles = {}      # number of observed tiles
         surveytime = 0.0        # total time of survey
         names = [t.name for t in targets]
         names.append('-')       # deals with unused time
 
-        for tname in names:
+        for tname,i in zip(names,range(len(names))):
+            if (tname!='-'):
+                if targets[i].tile_area == None:
+                    targets[i].get_healpix_tiling()
+                tile_area[tname] = targets[i].tile_area
+                n_tiles[tname] = targets[i].n_tiles
+                target_ntiles[tname] = 1.0
+            else:
+                tile_area[tname] = 1.0
+                n_tiles[tname] = 1.0
             tdata = self.schedule[self.schedule['target'] == tname]
             if observatory:
                 tdata = tdata[tdata['observatory'] == observatory]
             target_exptime = numpy.sum(tdata['exptime'].data)
+            target_ntiles[tname] = len(tdata['exptime'].data)
             target_total_time = numpy.sum(tdata['totaltime'].data)
             exptime_on_target[tname] = target_exptime
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
-        print('%10s\t%7s\t%8s %10s' % ('Target', 'tottime/h', 'exptime/h', 'fraction'))
-        print('----------------------------------------------------')
+        print('%10s\t%7s\t%8s %10s %10s %10s' % ('Target', 'tottime/h', 'exptime/h', 'timefrac', 'area', 'areafrac'))
+        print('--------------------------------------------------------------------------------')
         for t in names:
-            print('%10s\t%.2f\t\t%.2f\t\t%.2f' % (t if t != '-' else 'unused',
+            print('%10s\t%.2f\t\t%.2f\t\t%.2f\t\t%f\t\t%.2f' % (t if t != '-' else 'unused',
                                                   time_on_target[t] / 3600.0,
                                                   exptime_on_target[t] / 3600.0,
-                                                  time_on_target[t] / surveytime))
+                                                  time_on_target[t] / surveytime, 
+                                                  target_ntiles[t]*tile_area[t], 
+                                                  float(target_ntiles[t])/float(n_tiles[t])))
