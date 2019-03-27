@@ -364,15 +364,13 @@ class Scheduler(object):
         # Start at evening twilight
         current_jd = jd0
 
-        # Get the moon's coordinates and lunation, assume it is constant for the night for speed
-        moon = astropy.coordinates.SkyCoord(night_plan['moon_ra'],
-                                            night_plan['moon_dec'], unit='deg')
+        # Get the Moon lunation and distance to targets, assume it is constant
+        # for the night for speed.
+        lunation = night_plan['moon_phase'][0]
 
-        lunation = night_plan['moon_phase']
-
-        # Get the distance to the moon
         moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
-            moon.ra.deg, moon.dec.deg, coordinates[:, 0], coordinates[:, 1])
+            night_plan['moon_ra'], night_plan['moon_dec'],
+            coordinates[:, 0], coordinates[:, 1])
 
         # The additional exposure time in this night
         new_observed = observed * 0.0
