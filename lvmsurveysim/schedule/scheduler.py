@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-26 20:15:53
+# @Last modified time: 2019-03-26 21:49:15
 
 import itertools
 
@@ -62,7 +62,7 @@ class AltitudeCalculator(object):
             Scalar or array of JD values. If array, it needs to be the same
             length as ``ra``, ``dec``.
         lst : float or ~numpy.ndarray
-            Scalar or array of Local Mean Sidereal Time values.
+            Scalar or array of Local Mean Sidereal Time values, in hours.
             If array, it needs to be the same length as ``ra``, ``dec``.
             Either ``jd`` is provided, this parameter is ignored.
 
@@ -81,7 +81,7 @@ class AltitudeCalculator(object):
                  # 0.000388 * (dd / 36525.)**2 +   # 0.1s / century, can be neglected here
                  self.lon) % 360)
         else:
-            lmst_rad = numpy.deg2rad(lst % 24.)
+            lmst_rad = numpy.deg2rad((lst * 15) % 360.)
 
         cosha = numpy.cos(lmst_rad - self.ra)
         sin_alt = (self.sindec * self.sinlat +
