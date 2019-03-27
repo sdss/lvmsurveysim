@@ -473,11 +473,13 @@ class Scheduler(object):
         self.schedule.add_row((jd, observatory, target_name, pointing_index,
                                ra, dec, 0, 0, airmass, lunation, lst, exptime, totaltime))
 
-    def get_unused_time(self, observatory, return_lst=False):
-        """Returns the unobserved times for an observatory.
+    def get_target_time(self, tname, observatory=None, return_lst=False):
+        """Returns the JDs or LSTs for a target at an observatory.
 
         Parameters
         ----------
+        tname : str
+            The name of the target. Use '-' for unused time.
         observatory : str
             The observatory to filter for.
         return_lst : bool
@@ -487,20 +489,19 @@ class Scheduler(object):
         Returns
         -------
         table : `~numpy.ndarray`
-            An array containing the unused times at an observatory, as JDs.
+            An array containing the times the target is observed at an observatory, as JDs.
             If ``return_lst=True`` returns an array of the corresponding LSTs.
-
         """
 
-        unused = self.schedule[self.schedule['target'] == '-']
+        t = self.schedule[self.schedule[tname] == tname]
 
         if observatory:
-            unused = unused[unused['observatory'] == observatory]
+            t = t[t['observatory'] == observatory]
 
         if return_lst:
-            return unused['lst'].data
+            return t['lst'].data
         else:
-            return unused['JD'].data
+            return t['JD'].data
 
 
     def print_statistics(self, observatory=None, targets=None):
