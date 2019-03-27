@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 14:34:42
+# @Last modified time: 2019-03-27 15:39:38
 
 import itertools
 
@@ -567,7 +567,7 @@ class Scheduler(object):
         else:
             return t['JD'].data
 
-    def print_statistics(self, observatory=None, targets=None):
+    def print_statistics(self, observatory=None, targets=None, return_table=False):
         """Prints a summary of observations at a given observatory.
 
         Parameters
@@ -576,11 +576,15 @@ class Scheduler(object):
             The observatory to filter for.
         targets : `~lvmsurveysim.target.TargetList`
             The targets to summarize. If `None`, use ``self.targets``.
+        return_table : bool
+            If `True`, return a `~astropy.table.Table` with the results.
 
         """
 
         if targets is None:
             targets = self.targets
+
+        names = [t.name for t in targets]
 
         time_on_target = {}          # time spent exposing target
         exptime_on_target = {}       # total time (exp + overhead) on target
@@ -589,22 +593,25 @@ class Scheduler(object):
         target_ntiles_observed = {}  # number of observed tiles
         target_nvisits = {}          # number of visits for each tile
         surveytime = 0.0             # total time of survey
-        names = [t.name for t in targets]
         names.append('-')            # deals with unused time
 
         for tname, i in zip(names, range(len(names))):
+
             if (tname != '-'):
                 target = self.targets[i]
                 tile_area[tname] = target.get_pixarea(ifu=self.ifu)
                 target_ntiles[tname] = len(self.pointings[i])
                 target_nvisits[tname] = float(target.n_exposures / target.min_exposures)
             else:
-                tile_area[tname] = 1.0
-                target_ntiles[tname] = 1.0
-                target_nvisits[tname] = 1.0
+                tile_area[tname] = -999
+                target_ntiles[tname] = -999
+                target_nvisits[tname] = -999
+
             tdata = self.schedule[self.schedule['target'] == tname]
+
             if observatory:
                 tdata = tdata[tdata['observatory'] == observatory]
+
             target_exptime = numpy.sum(tdata['exptime'].data)
             target_ntiles_observed[tname] = len(tdata) / target_nvisits[tname]
             target_total_time = numpy.sum(tdata['totaltime'].data)
@@ -612,18 +619,23 @@ class Scheduler(object):
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
+        rows = [(t if t != '-' else 'unused',
+                 time_on_target[t] / 3600.0 if t != '-' else -999,
+                 exptime_on_target[t] / 3600.0 if t != '-' else -999,
+                 time_on_target[t] / surveytime,
+                 target_ntiles[t] * tile_area[t] if t != '-' else -999,
+                 float(target_ntiles_observed[t]) / float(target_ntiles[t]) if t != '-' else -999)
+                for t in names]
+
+        stats = astropy.table.Table(rows=rows,
+                                    names=['Target', 'tottime/h', 'exptime/h',
+                                           'timefrac', 'area', 'areafrac'])
+
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
-        print('%10s\t%7s\t%8s %10s %10s %10s' % ('Target', 'tottime/h', 'exptime/h',
-                                                 'timefrac', 'area', 'areafrac'))
-        print('--------------------------------------------------------------------------------')
-        for t in names:
-            print('%10s\t%.2f\t\t%.2f\t\t%.2f\t\t%f\t\t%.2f' % (
-                t if t != '-' else 'unused',
-                time_on_target[t] / 3600.0,
-                exptime_on_target[t] / 3600.0,
-                time_on_target[t] / surveytime,
-                target_ntiles[t] * tile_area[t],
-                float(target_ntiles_observed[t]) / float(target_ntiles[t])))
+        stats.pprint(max_lines=-1, max_width=-1)
+
+        if return_table:
+            return stats
 
     def plot_survey(self, observatory, bin_size=30):
         """Plot the hours spent on target.
