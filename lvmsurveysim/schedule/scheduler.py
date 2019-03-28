@@ -622,7 +622,7 @@ class Scheduler(object):
                  numpy.around(time_on_target[t] / 3600.0, decimals=2),
                  numpy.around(exptime_on_target[t] / 3600.0, decimals=2),
                  numpy.around(time_on_target[t] / surveytime, decimals=2),
-                 numpy.around(target_ntiles[t] * tile_area[t] if t != '-' else -999, decimals=2),
+                 numpy.around(target_ntiles_observed[t] * tile_area[t] if t != '-' else -999, decimals=2),
                  numpy.around(float(target_ntiles_observed[t]) / float(target_ntiles[t]) if t != '-' else -999, decimals=2))
                 for t in names]
 
