@@ -682,7 +682,7 @@ class Scheduler(object):
         ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '--', label='Unused')
 
         ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
-        ax.set_ylabel('hours on target per 30 days')
+        ax.set_ylabel('hours on target')
         ax.set_title(observatory)
         ax.legend()
         fig.show()
