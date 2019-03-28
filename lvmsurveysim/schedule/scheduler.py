@@ -567,7 +567,7 @@ class Scheduler(object):
         else:
             return t['JD'].data
 
-    def print_statistics(self, observatory='BOTH', targets=None, return_table=False):
+    def print_statistics(self, observatory=None, targets=None, return_table=False):
         """Prints a summary of observations at a given observatory.
 
         Parameters
@@ -605,30 +605,29 @@ class Scheduler(object):
             else:
                 tile_area[tname] = -999
                 target_ntiles[tname] = -999
-                target_nvisits[tname] = -999
+                target_nvisits[tname] = 1
 
             tdata = self.schedule[self.schedule['target'] == tname]
-
             if observatory:
                 tdata = tdata[tdata['observatory'] == observatory]
 
-            target_exptime = numpy.sum(tdata['exptime'].data)
+            exptime_on_target[tname] = numpy.sum(tdata['exptime'].data)
             target_ntiles_observed[tname] = len(tdata) / target_nvisits[tname]
             target_total_time = numpy.sum(tdata['totaltime'].data)
-            exptime_on_target[tname] = target_exptime
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
         rows = [(t if t != '-' else 'unused',
-                 time_on_target[t] / 3600.0 if t != '-' else -999,
-                 exptime_on_target[t] / 3600.0 if t != '-' else -999,
+                 target_ntiles_observed[t],
+                 time_on_target[t] / 3600.0,
+                 exptime_on_target[t] / 3600.0,
                  time_on_target[t] / surveytime,
                  target_ntiles[t] * tile_area[t] if t != '-' else -999,
                  float(target_ntiles_observed[t]) / float(target_ntiles[t]) if t != '-' else -999)
                 for t in names]
 
         stats = astropy.table.Table(rows=rows,
-                                    names=['Target', 'tottime/h', 'exptime/h',
+                                    names=['Target', 'tiles', 'tottime/h', 'exptime/h',
                                            'timefrac', 'area', 'areafrac'])
 
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
