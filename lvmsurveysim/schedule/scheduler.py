@@ -637,7 +637,7 @@ class Scheduler(object):
         if return_table:
             return stats
 
-    def plot_survey(self, observatory, bin_size=30, cumulative=False):
+    def plot_survey(self, observatory, bin_size=30, cumulative=False, lst=False):
         """Plot the hours spent on target.
 
         Parameters
@@ -652,15 +652,19 @@ class Scheduler(object):
         """
 
         assert self.schedule is not None, 'you still have not run a simulation.'
+        if lst:
+            bin_size = 1. if bin_size==30 else bin_size
 
         fig, ax = plt.subplots()
-        min_jd = numpy.min(self.schedule['JD'])
-        max_jd = numpy.max(self.schedule['JD'])
-        b = numpy.arange(min_jd, max_jd + bin_size, bin_size)
+        min_b = numpy.min(self.schedule['JD'])-2451545.0 if not lst else 0.0
+        max_b = numpy.max(self.schedule['JD'])-2451545.0 if not lst else 24.0
+        b = numpy.arange(min_b, max_b + bin_size, bin_size)
 
         for t in self.targets:
             # plot each target
-            tt = self.get_target_time(t.name, observatory=observatory)
+            tt = self.get_target_time(t.name, observatory=observatory, return_lst=lst)
+            if not lst:
+                tt -= 2451545.0
             heights, bins = numpy.histogram(tt, bins=b)
             heights = numpy.array(heights, dtype=float)
             heights *= t.exptime * t.n_exposures / 3600.0
@@ -669,7 +673,7 @@ class Scheduler(object):
             ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '-', label=t.name)
 
         # deal with unused time
-        tt = self.get_target_time('-', observatory=observatory)
+        tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
         heights, bins = numpy.histogram(tt, bins=b)
         heights = numpy.array(heights, dtype=float)
         heights *= __DEFAULT_TIME_STEP__ / 3600.0
@@ -677,7 +681,7 @@ class Scheduler(object):
             heights = heights.cumsum()
         ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '--', label='Unused')
 
-        ax.set_xlabel('JD')
+        ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
         ax.set_ylabel('hours on target per 30 days')
         ax.set_title(observatory)
         ax.legend()
