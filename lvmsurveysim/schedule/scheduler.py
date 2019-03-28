@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 15:45:00
+# @Last modified time: 2019-03-28 12:47:15
 
 import itertools
 
@@ -629,14 +629,17 @@ class Scheduler(object):
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
-        rows = [(t if t != '-' else 'unused',
-                 numpy.around(target_ntiles_observed[t], decimals=2),
-                 numpy.around(time_on_target[t] / 3600.0, decimals=2),
-                 numpy.around(exptime_on_target[t] / 3600.0, decimals=2),
-                 numpy.around(time_on_target[t] / surveytime, decimals=2),
-                 numpy.around(target_ntiles_observed[t] * tile_area[t] if t != '-' else -999, decimals=2),
-                 numpy.around(float(target_ntiles_observed[t]) / float(target_ntiles[t]) if t != '-' else -999, decimals=2))
-                for t in names]
+        rows = [
+            (t if t != '-' else 'unused',
+             numpy.around(target_ntiles_observed[t], decimals=2),
+             numpy.around(time_on_target[t] / 3600.0, decimals=2),
+             numpy.around(exptime_on_target[t] / 3600.0, decimals=2),
+             numpy.around(time_on_target[t] / surveytime, decimals=2),
+             numpy.around(target_ntiles_observed[t] * tile_area[t], decimals=2)
+             if t != '-' else -999,
+             numpy.around(float(target_ntiles_observed[t]) / float(target_ntiles[t]), decimals=2)
+             if t != '-' else -999)
+            for t in names]
 
         stats = astropy.table.Table(rows=rows,
                                     names=['Target', 'tiles', 'tottime/h', 'exptime/h',
@@ -664,12 +667,13 @@ class Scheduler(object):
         """
 
         assert self.schedule is not None, 'you still have not run a simulation.'
+
         if lst:
-            bin_size = 1. if bin_size==30. else bin_size
+            bin_size = 1. if bin_size == 30. else bin_size
 
         fig, ax = plt.subplots()
-        min_b = numpy.min(self.schedule['JD'])-2451545.0 if not lst else 0.0
-        max_b = numpy.max(self.schedule['JD'])-2451545.0 if not lst else 24.0
+        min_b = numpy.min(self.schedule['JD']) - 2451545.0 if not lst else 0.0
+        max_b = numpy.max(self.schedule['JD']) - 2451545.0 if not lst else 24.0
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
 
         for t in self.targets:
@@ -694,7 +698,8 @@ class Scheduler(object):
         ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '--', label='Unused')
 
         ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
-        ax.set_ylabel('hours on target / %.f %s'%((bin_size, 'days') if not lst else (bin_size, 'h')))
+        ax.set_ylabel('hours on target / %.f %s' % ((bin_size, 'days')
+                      if not lst else (bin_size, 'h')))
         ax.set_title(observatory)
         ax.legend()
         fig.show()
