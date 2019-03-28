@@ -161,17 +161,29 @@ class Scheduler(object):
         self.schedule.write(path, format='fits', overwrite=overwrite)
 
     @classmethod
-    def load(cls, path):
-        """Creates a new instance from a schedule file."""
+    def load(cls, path, targets, observing_plans=None):
+        """Creates a new instance from a schedule file.
+
+        Parameters
+        ----------
+        path : str or ~pathlib.Path
+            The path to the schedule file.
+        targets : ~lvmsurveysim.target.target.TargetList or path-like
+            The `~lvmsurveysim.target.target.TargetList` object associated
+            with the schedule file or a path to the target list to load.
+        observing_plans : list of `.ObservingPlan` or None
+            A list with the `.ObservingPlan` to use (one for each observatory).
+
+        """
 
         schedule = astropy.table.Table.read(path)
 
-        target_names = schedule.meta['TARGETS'].split(',')
-        targets = lvmsurveysim.target.TargetList(
-            [lvmsurveysim.target.Target.from_list(target_name)
-             for target_name in target_names])
+        if not isinstance(targets, lvmsurveysim.target.TargetList):
+            targets = lvmsurveysim.target.TargetList.from_list(targets)
 
-        scheduler = cls(targets, observing_plans=[])
+        observing_plans = observing_plans or []
+
+        scheduler = cls(targets, observing_plans=observing_plans)
         scheduler.schedule = schedule
 
         return scheduler
