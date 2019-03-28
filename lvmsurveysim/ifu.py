@@ -18,6 +18,7 @@ import astropy.units
 
 from lvmsurveysim import config
 
+from lvmsurveysim.target.region import Region
 
 seaborn.set()
 current_palette = seaborn.color_palette()
@@ -293,79 +294,79 @@ class IFU(object):
 
         return subifus
 
-    # def get_tile_grid(self, region, scale):
-    #     """Returns a grid of positions that tile a region with this IFU.
+    def get_tile_grid(self, region, scale):
+        """Returns a grid of positions that tile a region with this IFU.
 
-    #     Parameters
-    #     ----------
-    #     region : ~shapely.geometry.polygon.Polygon
-    #         The Shapely region to tile. It is assumed that x coordinates are RA
-    #         and y is Declination, both in degrees.
-    #     scale : float
-    #         The scale in degrees per mm.
+        Parameters
+        ----------
+        region : ~shapely.geometry.polygon.Polygon
+            The Shapely region to tile. It is assumed that x coordinates are RA
+            and y is Declination, both in degrees.
+        scale : float
+            The scale in degrees per mm.
 
-    #     """
+        """
 
-    #     if isinstance(scale, astropy.units.Quantity):
-    #         scale = scale.to('degree/mm').value
+        if isinstance(scale, astropy.units.Quantity):
+            scale = scale.to('degree/mm').value
 
-    #     if isinstance(region, Region):
-    #         region_shapely = region.shapely
-    #     elif isinstance(region, shapely.geometry.Polygon):
-    #         region_shapely = region
-    #     else:
-    #         raise ValueError(f'invalid region type: {type(region)}.')
+        if isinstance(region, Region):
+            region_shapely = region.shapely
+        elif isinstance(region, shapely.geometry.Polygon):
+            region_shapely = region
+        else:
+            raise ValueError(f'invalid region type: {type(region)}.')
 
-    #     # Determine the centroid and bounds of the region
-    #     centroid = numpy.array(region_shapely.centroid)
-    #     ra0, dec0, ra1, dec1 = region_shapely.bounds
+        # Determine the centroid and bounds of the region
+        centroid = numpy.array(region_shapely.centroid)
+        ra0, dec0, ra1, dec1 = region_shapely.bounds
 
-    #     # The size of the grid in RA and Dec, in degrees.
-    #     size_ra = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
-    #     size_dec = numpy.abs(dec1 - dec0)
+        # The size of the grid in RA and Dec, in degrees.
+        size_ra = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
+        size_dec = numpy.abs(dec1 - dec0)
 
-    #     # Calculates the radius and apotheme of each subifu in degrees on the sky
-    #     n_rows = self.subifus[0].n_rows
-    #     rr_deg = n_rows * self.fibre_size / 1000 * scale / 2.
-    #     aa_deg = numpy.sqrt(3) / 2. * rr_deg
+        # Calculates the radius and apotheme of each subifu in degrees on the sky
+        n_rows = self.subifus[0].n_rows
+        rr_deg = n_rows * self.fibre_size / 1000 * scale / 2.
+        aa_deg = numpy.sqrt(3) / 2. * rr_deg
 
-    #     # The separation between grid points in RA and Dec
-    #     delta_ra = 3 * rr_deg
-    #     delta_dec = aa_deg
+        # The separation between grid points in RA and Dec
+        delta_ra = 3 * rr_deg
+        delta_dec = aa_deg
 
-    #     # Calculates the initial positions of the grid points in RA and Dec.
-    #     ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra, delta_ra)
-    #     dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec, delta_dec)
+        # Calculates the initial positions of the grid points in RA and Dec.
+        ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
+        dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec.value, delta_dec.value)
 
-    #     points = numpy.zeros((len(dec_pos), len(ra_pos), 2))
+        points = numpy.zeros((len(dec_pos), len(ra_pos), 2))
 
-    #     # Offset each other row in RA by 1.5R
-    #     points[:, :, 0] = ra_pos
-    #     points[:, :, 0][1::2] += (1.5 * rr_deg)
+        # Offset each other row in RA by 1.5R
+        points[:, :, 0] = ra_pos
+        points[:, :, 0][1::2] += (1.5 * rr_deg.value)
 
-    #     # Set declination values
-    #     points[:, :, 1] = dec_pos[numpy.newaxis].T
-    #     points[:, :, 1] += centroid[1]
+        # Set declination values
+        points[:, :, 1] = dec_pos[numpy.newaxis].T
+        points[:, :, 1] += centroid[1]
 
-    #     # The separations in the RA axis must be converted to RA using the
-    #     # local declination
-    #     points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
-    #     points[:, :, 0] += centroid[0]
+        # The separations in the RA axis must be converted to RA using the
+        # local declination
+        points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
+        points[:, :, 0] += centroid[0]
 
-    #     # Reshape into a 2D list of points.
-    #     points = points.reshape((-1, 2))
+        # Reshape into a 2D list of points.
+        points = points.reshape((-1, 2))
 
-    #     # For each grid position create a Shapely circle with the radius of the IFU.
-    #     points_shapely = list(
-    #         map(lambda point: shapely.geometry.Point(point[0],
-    #                                                  point[1]).buffer(2. * rr_deg),
-    #             points))
+        # For each grid position create a Shapely circle with the radius of the IFU.
+        points_shapely = list(
+            map(lambda point: shapely.geometry.Point(point[0],
+                                                     point[1]).buffer(2. * rr_deg.value),
+                points))
 
-    #     # Check what grid points would overlap with the region if occupied by an IFU.
-    #     inside = list(map(region_shapely.intersects, points_shapely))
-    #     points_inside = points[inside]
+        # Check what grid points would overlap with the region if occupied by an IFU.
+        inside = list(map(region_shapely.intersects, points_shapely))
+        points_inside = points[inside]
 
-    #     return points_inside
+        return points_inside
 
     def plot(self, show_fibres=False, filled=True):
         """Plots the IFU."""
