@@ -567,7 +567,7 @@ class Scheduler(object):
         else:
             return t['JD'].data
 
-    def print_statistics(self, observatory=None, targets=None, return_table=False):
+    def print_statistics(self, observatory='BOTH', targets=None, return_table=False):
         """Prints a summary of observations at a given observatory.
 
         Parameters
@@ -654,27 +654,31 @@ class Scheduler(object):
         assert self.schedule is not None, 'you still have not run a simulation.'
 
         fig, ax = plt.subplots()
+        min_jd = numpy.min(self.schedule['JD'])
+        max_jd = numpy.max(self.schedule['JD'])
+        b = numpy.arange(min_jd, max_jd + bin_size, bin_size)
 
         for t in self.targets:
-
+            # plot each target
             tt = self.get_target_time(t.name, observatory=observatory)
-
-            min_jd = numpy.min(self.schedule['JD'])
-            max_jd = numpy.max(self.schedule['JD'])
-
-            b = numpy.arange(min_jd, max_jd + bin_size, bin_size)
-
             heights, bins = numpy.histogram(tt, bins=b)
             heights = numpy.array(heights, dtype=float)
             heights *= t.exptime * t.n_exposures / 3600.0
-
             if cumulative:
                 heights = heights.cumsum()
-
             ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '-', label=t.name)
-            ax.set_xlabel('JD')
-            ax.set_ylabel('hours on target per 30 days')
-            ax.set_title(observatory)
 
+        # deal with unused time
+        tt = self.get_target_time('-', observatory=observatory)
+        heights, bins = numpy.histogram(tt, bins=b)
+        heights = numpy.array(heights, dtype=float)
+        heights *= __DEFAULT_TIME_STEP__ / 3600.0
+        if cumulative:
+            heights = heights.cumsum()
+        ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '--', label='Unused')
+
+        ax.set_xlabel('JD')
+        ax.set_ylabel('hours on target per 30 days')
+        ax.set_title(observatory)
         ax.legend()
         fig.show()
