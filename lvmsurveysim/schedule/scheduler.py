@@ -618,17 +618,18 @@ class Scheduler(object):
             surveytime += target_total_time
 
         rows = [(t if t != '-' else 'unused',
-                 target_ntiles_observed[t],
-                 time_on_target[t] / 3600.0,
-                 exptime_on_target[t] / 3600.0,
-                 time_on_target[t] / surveytime,
-                 target_ntiles[t] * tile_area[t] if t != '-' else -999,
-                 float(target_ntiles_observed[t]) / float(target_ntiles[t]) if t != '-' else -999)
+                 numpy.around(target_ntiles_observed[t], decimals=2),
+                 numpy.around(time_on_target[t] / 3600.0, decimals=2),
+                 numpy.around(exptime_on_target[t] / 3600.0, decimals=2),
+                 numpy.around(time_on_target[t] / surveytime, decimals=2),
+                 numpy.around(target_ntiles[t] * tile_area[t] if t != '-' else -999, decimals=2),
+                 numpy.around(float(target_ntiles_observed[t]) / float(target_ntiles[t]) if t != '-' else -999, decimals=2))
                 for t in names]
 
         stats = astropy.table.Table(rows=rows,
                                     names=['Target', 'tiles', 'tottime/h', 'exptime/h',
-                                           'timefrac', 'area', 'areafrac'])
+                                           'timefrac', 'area', 'areafrac'],
+                                    dtype=('S8', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
 
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
         stats.pprint(max_lines=-1, max_width=-1)
