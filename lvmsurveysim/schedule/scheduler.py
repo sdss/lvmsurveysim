@@ -637,7 +637,7 @@ class Scheduler(object):
         if return_table:
             return stats
 
-    def plot_survey(self, observatory, bin_size=30, cumulative=False, lst=False):
+    def plot_survey(self, observatory, bin_size=30., cumulative=False, lst=False):
         """Plot the hours spent on target.
 
         Parameters
@@ -653,7 +653,7 @@ class Scheduler(object):
 
         assert self.schedule is not None, 'you still have not run a simulation.'
         if lst:
-            bin_size = 1. if bin_size==30 else bin_size
+            bin_size = 1. if bin_size==30. else bin_size
 
         fig, ax = plt.subplots()
         min_b = numpy.min(self.schedule['JD'])-2451545.0 if not lst else 0.0
@@ -682,7 +682,7 @@ class Scheduler(object):
         ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '--', label='Unused')
 
         ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
-        ax.set_ylabel('hours on target')
+        ax.set_ylabel('hours on target / %.f %s'%((bin_size, 'days') if not lst else (bin_size, 'h')))
         ax.set_title(observatory)
         ax.legend()
         fig.show()
