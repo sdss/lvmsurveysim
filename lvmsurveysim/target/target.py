@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-28 20:09:09
+# @Last modified time: 2019-03-28 20:42:46
 
 import os
 import pathlib
@@ -408,6 +408,8 @@ class TargetList(list):
 
     def __init__(self, targets=None, target_file=None):
 
+        self.filename = None
+
         if targets:
 
             self._names = [target.name for target in targets]
@@ -422,6 +424,8 @@ class TargetList(list):
                 target_file = pathlib.Path(target_file)
 
             assert target_file.exists()
+
+            self.filename = target_file
 
             targets_dict = yaml.load(open(str(target_file)), Loader=yaml.FullLoader)
 
