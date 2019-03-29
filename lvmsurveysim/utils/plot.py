@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-29 01:09:52
+# @Last modified time: 2019-03-29 01:23:34
 
 import matplotlib.patches
 import matplotlib.pyplot as plt
@@ -24,23 +24,28 @@ __all__ = ['get_axes', 'transform_patch_mollweide', 'convert_to_mollweide', 'plo
 __MOLLWEIDE_ORIGIN__ = 120
 
 
-def get_axes(projection='rectangular', frame='icrs'):
+def get_axes(projection='rectangular', frame='icrs', ylim=None):
     """Returns axes for a particular projection.
 
-    Parameters:
-        projection ({'rectangular', 'mollweide'}):
-            The type of projection of the axes returned. Either `rectangular`
-            for a normal, cartesian, projection, or
-            `mollweide <https://en.wikipedia.org/wiki/Mollweide_projection>`_.
-        frame : str
-            The reference frame of the axes. Must be one of
-            `~lvmsurveysim.target._VALID_FRAMES`. Used to define
-            the axis labels.
+    Parameters
+    ----------
+    projection : str
+        The type of projection of the axes returned. Either ``'rectangular'``
+        for a normal, cartesian, projection, or
+        `mollweide <https://en.wikipedia.org/wiki/Mollweide_projection>`_.
+    frame : str
+        The reference frame of the axes. Must be one of
+        `~lvmsurveysim.target._VALID_FRAMES`. Used to define
+        the axis labels.
+    ylim : tuple
+        The range to be used to limit the y-axis. Only relevant if
+        ``projection='rectangular'``. If `None`, ``(-90, 90)`` will be used.
 
-    Returns:
-        fig, ax:
-            The new matplotlib `~matplotlib.figure.Figure` and
-            `~matplotlig.axes.Axes` objects for the selected projection.
+    Returns
+    -------
+    figax
+        The new matplotlib `~matplotlib.figure.Figure` and
+        `~matplotlig.axes.Axes` objects for the selected projection.
 
     """
 
@@ -53,7 +58,11 @@ def get_axes(projection='rectangular', frame='icrs'):
             ax = fig.add_subplot(111)
 
             ax.set_xlim(360, 0)
-            ax.set_ylim(-20, 80)
+
+            if ylim:
+                ax.set_ylim(**ylim)
+            else:
+                ax.set_ylim(-90, 90)
 
         elif projection == 'mollweide':
             fig = plt.figure(figsize=(10, 5))
