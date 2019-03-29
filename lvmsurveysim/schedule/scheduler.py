@@ -7,14 +7,13 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-28 23:57:25
+# @Last modified time: 2019-03-29 01:13:52
 
 import itertools
 import os
 
 import astropy
 import cycler
-import healpy
 import matplotlib.pyplot as plt
 import numpy
 
@@ -22,7 +21,7 @@ import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
 from lvmsurveysim import IFU, config, log
 from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
-from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, plot_ellipse
+from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide
 
 from .plan import ObservingPlan
 
@@ -223,7 +222,7 @@ class Scheduler(object):
 
         return scheduler
 
-    def plot(self, observatory=None):
+    def plot(self, observatory=None, projection='mollweide'):
         """Plots the observed pointings.
 
         Parameters
@@ -231,14 +230,21 @@ class Scheduler(object):
         observatory : str
             Plot only the points for that observatory. Otherwise, plots all
             the pointings.
+        projection : str
+            The projection to use, either ``'mollweide'`` or ``'rectangular'``.
+
+        Returns
+        -------
+        figure : `matplotlib.figure.Figure`
+            The figure with the plot.
 
         """
 
         color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
 
-        fig, ax = get_axes(projection='mollweide')
+        fig, ax = get_axes(projection=projection)
 
-        data = self.schedule[self.schedule['ra'] > 0.]
+        data = self.schedule[self.schedule['target'] != '-']
 
         if observatory:
             data = data[data['observatory'] == observatory]
@@ -247,14 +253,23 @@ class Scheduler(object):
 
             target = self.targets[ii]
             name = target.name
-            nside = target._get_nside(ifu=self.ifu)
-
-            radius = healpy.max_pixrad(nside, degrees=True)
 
             target_data = data[data['target'] == name]
 
-            plot_ellipse(ax, target_data['ra'], target_data['dec'],
-                         width=radius, origin=__MOLLWEIDE_ORIGIN__, **sty)
+            patches = [self.ifu.get_patch(scale=target.telescope.plate_scale,
+                                          centre=[pointing['ra'], pointing['dec']],
+                                          edgecolor='None', linewidth=0.0,
+                                          facecolor=sty['bgcolor'])[0]
+                       for pointing in target_data]
+
+            if projection == 'mollweide':
+                patches = [transform_patch_mollweide(ax, patch,
+                                                     origin=__MOLLWEIDE_ORIGIN__,
+                                                     patch_centre=target_data['ra'][ii])
+                           for ii, patch in enumerate(patches)]
+
+            for patch in patches:
+                ax.add_patch(patch)
 
             if observatory is not None:
                 ax.set_title(f'Observatory: {observatory}')
