@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-28 23:47:59
+# @Last modified time: 2019-03-28 23:57:25
 
 import itertools
 import os
@@ -670,10 +670,10 @@ class Scheduler(object):
              numpy.around(time_on_target[t] / 3600.0, decimals=2),
              numpy.around(exptime_on_target[t] / 3600.0, decimals=2),
              numpy.around(time_on_target[t] / surveytime, decimals=2),
-             numpy.around(target_ntiles_observed[t] * tile_area[t], decimals=2)
-             if t != '-' else -999,
-             numpy.around(float(target_ntiles_observed[t]) / float(target_ntiles[t]), decimals=2)
-             if t != '-' else -999)
+             numpy.around(target_ntiles_observed[t] * tile_area[t],
+                          decimals=2) if t != '-' else -999,
+             numpy.around(float(target_ntiles_observed[t]) / float(target_ntiles[t]),
+                          decimals=2) if t != '-' else -999)
             for t in names]
 
         stats = astropy.table.Table(rows=rows,
