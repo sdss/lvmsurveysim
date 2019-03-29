@@ -7,22 +7,22 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-28 20:18:01
+# @Last modified time: 2019-03-28 20:59:43
 
 import itertools
+import os
 
 import astropy
 import cycler
 import healpy
+import matplotlib.pyplot as plt
 import numpy
 
 import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
-
 from lvmsurveysim import IFU, config, log
+from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, plot_ellipse
-
-import matplotlib.pyplot as plt
 
 from .plan import ObservingPlan
 
@@ -165,13 +165,15 @@ class Scheduler(object):
         assert isinstance(self.schedule, astropy.table.Table), \
             'cannot save empty schedule. Execute Scheduler.run() first.'
 
-        self.schedule.meta['targets'] = ','.join(self.targets._names)
+        targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
+        self.schedule.meta['targfile'] = targfile
+
         self.schedule.meta['tiletype'] = self.tiling_type
 
         self.schedule.write(path, format='fits', overwrite=overwrite)
 
     @classmethod
-    def load(cls, path, targets, observing_plans=None):
+    def load(cls, path, targets=None, observing_plans=None):
         """Creates a new instance from a schedule file.
 
         Parameters
@@ -180,7 +182,9 @@ class Scheduler(object):
             The path to the schedule file.
         targets : ~lvmsurveysim.target.target.TargetList or path-like
             The `~lvmsurveysim.target.target.TargetList` object associated
-            with the schedule file or a path to the target list to load.
+            with the schedule file or a path to the target list to load. If
+            `None`, the ``TARGFILE`` value stored in the schedule file will be
+            used, if possible.
         observing_plans : list of `.ObservingPlan` or None
             A list with the `.ObservingPlan` to use (one for each observatory).
 
@@ -188,15 +192,33 @@ class Scheduler(object):
 
         schedule = astropy.table.Table.read(path)
 
+        targfile = schedule.meta.get('TARGFILE', 'NA')
+        targets = targets or targfile
+
         if not isinstance(targets, lvmsurveysim.target.TargetList):
-            targets = lvmsurveysim.target.TargetList.from_list(targets)
+            assert targets is not None and targets != 'NA', \
+                'invalid or unavailable target file path.'
+
+            if not os.path.exists(targets):
+                raise LVMSurveySimError(
+                    f'the target file {targets!r} does not exists. '
+                    'Please, call load with a targets parameter.')
+
+            targets = lvmsurveysim.target.TargetList(target_file=targets)
 
         observing_plans = observing_plans or []
 
-        tiling_type = schedule.meta['TILETYPE']
+        tiling_type = schedule.meta.get('TILETYPE', None)
+        if tiling_type is None:
+            tiling_type = 'hexagonal'
+            log.warning('No TILETYPE found in schedule file. '
+                        'Assuming hexagonal tiling.',
+                        LVMSurveySimWarning)
+
         healpix_tiling = True if tiling_type == 'healpix' else False
 
-        scheduler = cls(targets, observing_plans=observing_plans, healpix_tiling=healpix_tiling)
+        scheduler = cls(targets, observing_plans=observing_plans,
+                        healpix_tiling=healpix_tiling)
         scheduler.schedule = schedule
 
         return scheduler
