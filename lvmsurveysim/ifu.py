@@ -203,8 +203,13 @@ class SubIFU(object):
         if centre:
             assert scale is not None, 'cannot define a centre without scale.'
             centre = numpy.array(centre)
-            vertices[:, 0] /= numpy.cos(numpy.deg2rad(centre[1]))
-            vertices += centre
+
+            # Calculate declinations first so that we can scale RA for
+            # all the vertices.
+            decs = vertices[:, 1] + centre[1]
+            ras = vertices[:, 0] / numpy.cos(numpy.deg2rad(decs)) + centre[0]
+
+            vertices = numpy.array([ras, decs]).T
 
         return matplotlib.patches.Polygon(vertices, **kwargs)
 
