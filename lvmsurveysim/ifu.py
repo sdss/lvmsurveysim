@@ -16,9 +16,9 @@ import seaborn
 import shapely.geometry
 import astropy.units
 
+import lvmsurveysim
 from lvmsurveysim import config
 
-from lvmsurveysim.target.region import Region
 
 seaborn.set()
 current_palette = seaborn.color_palette()
@@ -310,7 +310,7 @@ class IFU(object):
         if isinstance(scale, astropy.units.Quantity):
             scale = scale.to('degree/mm').value
 
-        if isinstance(region, Region):
+        if isinstance(region, lvmsurveysim.target.Region):
             region_shapely = region.shapely
         elif isinstance(region, shapely.geometry.Polygon):
             region_shapely = region
