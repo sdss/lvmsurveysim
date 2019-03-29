@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-27 11:01:22
+# @Last modified time: 2019-03-28 20:09:09
 
 import os
 import pathlib
@@ -21,12 +21,12 @@ import seaborn
 import yaml
 
 import lvmsurveysim.utils.healpix
+from lvmsurveysim.ifu import IFU
 from lvmsurveysim.utils import plot as lvm_plot
 
 from . import _VALID_FRAMES
 from .. import config
 from ..exceptions import LVMSurveySimWarning
-from ..ifu import IFU
 from ..telescope import Telescope
 from .region import Region
 
@@ -204,6 +204,49 @@ class Target(object):
 
         return lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
 
+    def get_tiling(self, ifu=None, telescope=None, to_frame=None):
+        """Tessellates the target region and returns a list of tile centres.
+
+        Parameters
+        ----------
+        ifu : ~lvmsurveysim.tiling.IFU
+            The IFU used for tiling the region. If not provided, the default
+            one is used.
+        telescope : ~lvmsurveysim.telescope.Telescope
+            The telescope on which the IFU is mounted. Defaults to the object
+            ``telescope`` attribute.
+        to_frame : str
+            If ``return_coords``, the reference frame in which the coordinates
+            should be returned. If `None`, defaults to the region internal
+            reference frame.
+
+
+        Returns
+        -------
+        pixels : `~astropy.coordinates.SkyCoord`
+            A list of `~astropy.coordinates.SkyCoord` with the list of
+            tile centre coordinates.
+
+        """
+
+        telescope = telescope or self.telescope
+
+        if ifu is None:
+            ifu = IFU.from_config()
+            warnings.warn(f'target {self.name}: no IFU provided. '
+                          f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
+
+        plate_scale = telescope.plate_scale
+
+        coords = ifu.get_tile_grid(self.region, plate_scale)
+        coords = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1],
+                                              frame=self.frame, unit='deg')
+
+        if to_frame:
+            coords = coords.transform_to(to_frame)
+
+        return coords
+
     def get_healpix_tiling(self, pixarea=None, ifu=None, telescope=None,
                            return_coords=False, to_frame=None, inclusive=True):
         """Tessellates the target region and returns a list of HealPix pixels.
@@ -231,7 +274,6 @@ class Target(object):
             Whether to return pixels that only partially overlap with the
             target region. Note that this is only approximated (see the
             explanation in `~lvmsurveysim.utils.healpix.tile_geometry`).
-
 
         Returns
         -------
@@ -266,8 +308,8 @@ class Target(object):
 
         return self.region.plot(*args, **kwargs)
 
-    def plot_healpix(self, coords=None, ifu=None, frame=None, fig=None,
-                     use_healpy=False, **kwargs):
+    def plot_tiling(self, coords=None, ifu=None, frame=None, fig=None,
+                    healpix_tiling=False, use_healpy=False, **kwargs):
         """Plots the region as HealPix pixels.
 
         Parameters
@@ -284,6 +326,9 @@ class Target(object):
         ax : ~matplotlib.axes.Axes
             A Matplotlib `~matplotlib.axes.Axes` object to use. Otherwise, a
             new one will be created.
+        healpix_tiling : bool
+            Whether to use the HealPix tiling (i.e., call
+            `.get_healpix_tiling`) instead of the normal tiling.
         use_healpy : bool
             If `True`, uses the Healpy Mollweide plotting system.
         kwargs : dict
@@ -300,8 +345,11 @@ class Target(object):
         frame = frame or self.frame
 
         if coords is None:
-            coords = self.get_healpix_tiling(ifu=ifu, return_coords=True,
-                                             to_frame=frame)
+            if healpix_tiling:
+                coords = self.get_healpix_tiling(ifu=ifu, return_coords=True,
+                                                 to_frame=frame)
+            else:
+                coords = self.get_tiling(ifu=ifu, to_frame=frame)
 
         if frame == 'icrs':
             lon, lat = coords.ra.deg, coords.dec.deg
@@ -389,6 +437,27 @@ class TargetList(list):
 
         return self[self._names.index(name)]
 
+    def get_tiling(self, **kwargs):
+        """Gets the tile centres for all the targets in the set.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Parameters to be passed to `.Target.get_tiling`.
+
+        Returns
+        -------
+        tiling : dict
+            A dictionary in which the key is the index of the target in the
+            `.TargetList` and its value the output of
+            `.Target.get_tiling` called with ``kwarg`` parameters
+            (i.e., either a `~astropy.coordinates.SkyCoord` object with the
+            position of the tile centres).
+
+        """
+
+        return {ii: self[ii].get_tiling(**kwargs) for ii in range(len(self))}
+
     def get_healpix_tiling(self, **kwargs):
         """Gets the HealPix coverage for all the targets in the set.
 
@@ -411,7 +480,7 @@ class TargetList(list):
 
         return {ii: self[ii].get_healpix_tiling(**kwargs) for ii in range(len(self))}
 
-    def plot_healpix(self, frame='icrs', **kwargs):
+    def plot_tiling(self, frame='icrs', **kwargs):
         """Plots all the target pixels in a single Mollweide projection.
 
         Parameters
@@ -434,11 +503,11 @@ class TargetList(list):
 
         zorder = 100
 
-        fig = self[0].plot_healpix(frame=frame, zorder=zorder, **kwargs)
+        fig = self[0].plot_tiling(frame=frame, zorder=zorder, **kwargs)
 
         if len(self) > 1:
             for target in self[1:]:
                 zorder -= 1
-                fig = target.plot_healpix(fig=fig, frame=frame, zorder=zorder, **kwargs)
+                fig = target.plot_tiling(fig=fig, frame=frame, zorder=zorder, **kwargs)
 
         return fig
