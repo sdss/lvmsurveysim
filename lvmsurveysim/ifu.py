@@ -168,16 +168,45 @@ class SubIFU(object):
         self.polygon = shapely.affinity.translate(self.polygon, hor, ver)
         self.centre = numpy.array(self.polygon.centroid.coords)[0]
 
-    def get_patch(self, filled=False):
-        """Returns a matplotlib patch for the sub-IFU."""
+    def get_patch(self, scale=None, centre=None, **kwargs):
+        """Returns a matplotlib patch for the sub-IFU.
 
-        colour = current_palette[self.id_subifu - 1]
-        colour_alpha = tuple(list(colour) + [0.3])
+        Parameters
+        ----------
+        scale : ~astropy.units.Quantity or float
+            The plate scale to be used to convert the IFU to on-sky distances.
+            Either a `astropy.units.Quantity` or a value in degrees/mm.
+        centre : list
+            The coordinates of the centre of the IFU on the sky.
+        kwargs : dict
+            Parameters to be passed to `~matplotlib.patches.Polygon` when
+            creating the patch.
 
-        return matplotlib.patches.Polygon(self.polygon.exterior.coords,
-                                          edgecolor=colour,
-                                          facecolor=colour_alpha if filled else 'None',
-                                          lw=2)
+        Returns
+        -------
+        path : `~matplotlib.patches.Polygon`
+            A Matplotlib patch with the sub-ifu. If scale and centre are
+            passed, the coordinates of the patch are on-sky.
+
+        """
+
+        if scale is not None and isinstance(scale, astropy.units.Quantity):
+            scale = scale.to('degree/mm').value
+
+        vertices = numpy.array(self.polygon.exterior.coords)
+
+        if scale:
+            # Calculates the radius in degrees on the sky
+            rr_deg = self.n_rows * self.fibre_size.to('mm').value * scale / 2.
+            vertices *= rr_deg * 2
+
+        if centre:
+            assert scale is not None, 'cannot define a centre without scale.'
+            centre = numpy.array(centre)
+            vertices[:, 0] /= numpy.cos(numpy.deg2rad(centre[1]))
+            vertices += centre
+
+        return matplotlib.patches.Polygon(vertices, **kwargs)
 
     def get_patch_collection(self, ax):
         """Returns a collection of fibre patches."""
@@ -293,6 +322,18 @@ class IFU(object):
             n_subifu += 1
 
         return subifus
+
+    def get_patch(self, **kwargs):
+        """Returns a matplotlib patch for the IFU.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Parameters to be passed to `.SubIFU.get_patch`.
+
+        """
+
+        return [subifu.get_patch(**kwargs) for subifu in self.subifus]
 
     def get_tile_grid(self, region, scale):
         """Returns a grid of positions that tile a region with this IFU.
