@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 15:05:29
+# @Last modified time: 2019-03-29 01:09:52
 
 import matplotlib.patches
 import matplotlib.pyplot as plt
@@ -110,7 +110,7 @@ def convert_to_mollweide(coords):
     return coords
 
 
-def transform_patch_mollweide(ax, patch, patch_centre=None):
+def transform_patch_mollweide(ax, patch, patch_centre=None, origin=None):
     """Applies a transformation to the patch for the Mollweide projection.
 
     The Mollweide projection assumes the plotted values are in radians. In
@@ -132,6 +132,8 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
             The RA value that will be used to determine the direction of the
             translation applied. If not defined, the best possible translation
             will be automatically determined.
+        origin (float):
+            The central value of the x-axis in the Mollweide projection.
 
     Returns:
         patch (`~matplotlib.patches.Patch`):
@@ -150,6 +152,8 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
 
     """
 
+    origin = origin or __MOLLWEIDE_ORIGIN__
+
     trans_to_rads = matplotlib.transforms.Affine2D().scale(numpy.pi / 180, numpy.pi / 180)
     trans_reflect = matplotlib.transforms.Affine2D(numpy.array([[-1, 0, 0],
                                                                 [0, 1, 0],
@@ -162,11 +166,11 @@ def transform_patch_mollweide(ax, patch, patch_centre=None):
 
     # Calculates the best possible translation to match the tick labels.
     if patch_centre is None:
-        translation = __MOLLWEIDE_ORIGIN__
-    elif patch_centre < (-180 + __MOLLWEIDE_ORIGIN__) % 360:
-        translation = __MOLLWEIDE_ORIGIN__
+        translation = origin
+    elif patch_centre < (-180 + origin) % 360:
+        translation = origin
     else:
-        translation = __MOLLWEIDE_ORIGIN__ + 360
+        translation = origin + 360
 
     trans_origin = matplotlib.transforms.Affine2D().translate(numpy.radians(translation), 0)
 
