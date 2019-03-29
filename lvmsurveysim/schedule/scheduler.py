@@ -663,7 +663,7 @@ class Scheduler(object):
             target_total_time = numpy.sum(tdata['totaltime'].data)
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
-        print(target_ntiles_observed, target_ntiles)
+            
         rows = [
             (t if t != '-' else 'unused',
              numpy.around(target_ntiles_observed[t], decimals=2),
