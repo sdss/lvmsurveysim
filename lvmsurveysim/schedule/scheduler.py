@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-28 12:47:15
+# @Last modified time: 2019-03-28 20:18:01
 
 import itertools
 
@@ -107,6 +107,9 @@ class Scheduler(object):
     ifu : ~lvmsurveysim.ifu.IFU
         The `~lvmsurveysim.ifu.IFU` to use. Defaults to the one from the
         configuration file.
+    healpix_tiling : bool
+        Whether to use the HealPix tiling method or the normal, hexagonal
+        tiling.
 
     Attributes
     ----------
@@ -123,7 +126,7 @@ class Scheduler(object):
 
     """
 
-    def __init__(self, targets, observing_plans=None, ifu=None):
+    def __init__(self, targets, observing_plans=None, ifu=None, healpix_tiling=False):
 
         if observing_plans is None:
             observing_plans = self._create_observing_plans()
@@ -140,9 +143,14 @@ class Scheduler(object):
         self.targets = targets
         self.ifu = ifu or IFU.from_config()
 
-        self.pointings = targets.get_healpix_tiling(ifu=self.ifu,
-                                                    return_coords=True,
-                                                    to_frame='icrs')
+        if healpix_tiling:
+            self.pointings = targets.get_healpix_tiling(ifu=self.ifu,
+                                                        return_coords=True,
+                                                        to_frame='icrs')
+        else:
+            self.pointings = targets.get_tiling(ifu=self.ifu, to_frame='icrs')
+
+        self.tiling_type = 'hexagonal' if healpix_tiling is False else 'healpix'
 
         self.schedule = None
 
@@ -158,6 +166,8 @@ class Scheduler(object):
             'cannot save empty schedule. Execute Scheduler.run() first.'
 
         self.schedule.meta['targets'] = ','.join(self.targets._names)
+        self.schedule.meta['tiletype'] = self.tiling_type
+
         self.schedule.write(path, format='fits', overwrite=overwrite)
 
     @classmethod
@@ -183,7 +193,10 @@ class Scheduler(object):
 
         observing_plans = observing_plans or []
 
-        scheduler = cls(targets, observing_plans=observing_plans)
+        tiling_type = schedule.meta['TILETYPE']
+        healpix_tiling = True if tiling_type == 'healpix' else False
+
+        scheduler = cls(targets, observing_plans=observing_plans, healpix_tiling=healpix_tiling)
         scheduler.schedule = schedule
 
         return scheduler
@@ -628,7 +641,7 @@ class Scheduler(object):
             target_total_time = numpy.sum(tdata['totaltime'].data)
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
-
+        print(target_ntiles_observed, target_ntiles)
         rows = [
             (t if t != '-' else 'unused',
              numpy.around(target_ntiles_observed[t], decimals=2),
