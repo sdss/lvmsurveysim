@@ -175,7 +175,7 @@ class SubIFU(object):
         ----------
         scale : ~astropy.units.Quantity or float
             The plate scale to be used to convert the IFU to on-sky distances.
-            Either a `astropy.units.Quantity` or a value in degrees/mm.
+            Either a `~astropy.units.Quantity` or a value in degrees/mm.
         centre : list
             The coordinates of the centre of the IFU on the sky.
         kwargs : dict
