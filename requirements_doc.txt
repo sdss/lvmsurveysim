@@ -3,6 +3,6 @@
 sphinx>=1.6.0
 recommonmark>=0.4.0
 sphinxcontrib-fulltoc>=1.2
-sphinx-click
+sphinx-click>=2.0.1
 m2r>=0.1.12
 releases>=1.6.1

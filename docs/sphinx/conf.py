@@ -37,7 +37,7 @@ extensions = [
     'sphinx.ext.todo', 'sphinx.ext.viewcode', 'sphinx.ext.imgmath',
     'IPython.sphinxext.ipython_console_highlighting',
     'IPython.sphinxext.ipython_directive',
-    'sphinx.ext.intersphinx', 'releases']
+    'sphinx.ext.intersphinx', 'releases', 'sphinx_click.ext']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
