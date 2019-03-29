@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-28 20:59:43
+# @Last modified time: 2019-03-28 23:47:59
 
 import itertools
 import os
@@ -663,7 +663,7 @@ class Scheduler(object):
             target_total_time = numpy.sum(tdata['totaltime'].data)
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
-            
+
         rows = [
             (t if t != '-' else 'unused',
              numpy.around(target_ntiles_observed[t], decimals=2),
@@ -705,6 +705,7 @@ class Scheduler(object):
 
         if lst:
             bin_size = 1. if bin_size == 30. else bin_size
+            assert cumulative is False, 'cumulative cannot be used with lst=True.'
 
         fig, ax = plt.subplots()
         min_b = (numpy.min(self.schedule['JD']) - 2451545.0) if not lst else 0.0
@@ -714,6 +715,8 @@ class Scheduler(object):
         for t in self.targets:
             # plot each target
             tt = self.get_target_time(t.name, observatory=observatory, return_lst=lst)
+            if len(tt) == 0:
+                continue
             if not lst:
                 tt -= 2451545.0
             heights, bins = numpy.histogram(tt, bins=b)
