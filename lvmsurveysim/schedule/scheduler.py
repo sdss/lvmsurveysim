@@ -723,6 +723,7 @@ class Scheduler(object):
             assert cumulative is False, 'cumulative cannot be used with lst=True.'
 
         fig, ax = plt.subplots()
+        ax.set_prop_cycle(color=['r', 'g', 'b', 'c', 'm', 'y'], linestyle=['-', '--', '-.', ':', '--', '-'])
         min_b = (numpy.min(self.schedule['JD']) - 2451545.0) if not lst else 0.0
         max_b = (numpy.max(self.schedule['JD']) - 2451545.0) if not lst else 24.0
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
@@ -739,7 +740,7 @@ class Scheduler(object):
             heights *= t.exptime * t.n_exposures / 3600.0
             if cumulative:
                 heights = heights.cumsum()
-            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '-', label=t.name)
+            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=t.name)
 
         # deal with unused time
         tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
@@ -750,7 +751,7 @@ class Scheduler(object):
         heights *= __DEFAULT_TIME_STEP__ / 3600.0
         if cumulative:
             heights = heights.cumsum()
-        ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, '--', label='Unused')
+        ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, ':', color='k', label='Unused')
 
         ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
         ax.set_ylabel('hours on target / %.f %s' % ((bin_size, 'days')
