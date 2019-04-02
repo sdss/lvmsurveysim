@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-29 11:54:59
+# @Last modified time: 2019-04-02 14:27:30
 
 import itertools
 import os
@@ -722,9 +722,13 @@ class Scheduler(object):
             bin_size = 1. if bin_size == 30. else bin_size
             assert cumulative is False, 'cumulative cannot be used with lst=True.'
 
-        fig, ax = plt.subplots()
-        ax.set_prop_cycle(color=[    'r', 'g', 'b',   'c', 'm',  'y',  'b', 'g', 'm',   'y'], 
+        fig, ax = plt.subplots(figsize=(12, 8))
+        # Leaves a margin on the right to put the legend
+        fig.subplots_adjust(right=0.65 if ncols == 2 else 0.8)
+
+        ax.set_prop_cycle(color=[    'r', 'g', 'b',   'c', 'm',  'y',  'b', 'g', 'm',   'y'],
                           linestyle=['-', '--', '-.', ':', '--', '-.', ':', '-.', '--', '-'])
+
         min_b = (numpy.min(self.schedule['JD']) - 2451545.0) if not lst else 0.0
         max_b = (numpy.max(self.schedule['JD']) - 2451545.0) if not lst else 24.0
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
@@ -758,5 +762,5 @@ class Scheduler(object):
         ax.set_ylabel('hours on target / %.f %s' % ((bin_size, 'days')
                       if not lst else (bin_size, 'h')))
         ax.set_title(observatory)
-        ax.legend()
+        ax.legend(bbox_to_anchor=(1.05, 1.1))  # Move legend outside the plot
         fig.show()
