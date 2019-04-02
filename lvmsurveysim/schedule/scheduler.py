@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 14:27:30
+# @Last modified time: 2019-04-02 14:28:13
 
 import itertools
 import os
@@ -702,7 +702,8 @@ class Scheduler(object):
         if return_table:
             return stats
 
-    def plot_survey(self, observatory, bin_size=30., cumulative=False, lst=False):
+    def plot_survey(self, observatory, bin_size=30., targets=None,
+                    cumulative=False, lst=False):
         """Plot the hours spent on target.
 
         Parameters
@@ -711,12 +712,27 @@ class Scheduler(object):
             The observatory to plot.
         bin_size : int
             The number of days in each bin of the plot.
+        targets : list
+            A list with the names of the targets to plot. If empty, plots all
+            targets.
         cumulative : bool
             Plots the cumulative sum of hours spent on each target.
+        lst : bool
+            Whether to bin the used time by LST instead of JD.
+
+        Return
+        ------
+        fig : `~matplotlib.figure.Figure`
+            The Matplotlib figure of the plot.
 
         """
 
         assert self.schedule is not None, 'you still have not run a simulation.'
+
+        if not targets:
+            targets = [target.name for target in self.targets]
+
+        ncols = 2 if len(targets) > 15 else 1
 
         if lst:
             bin_size = 1. if bin_size == 30. else bin_size
@@ -733,9 +749,10 @@ class Scheduler(object):
         max_b = (numpy.max(self.schedule['JD']) - 2451545.0) if not lst else 24.0
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
 
-        for t in self.targets:
+        for tname in targets:
+            t = self.targets.get_target(tname)
             # plot each target
-            tt = self.get_target_time(t.name, observatory=observatory, return_lst=lst)
+            tt = self.get_target_time(tname, observatory=observatory, return_lst=lst)
             if len(tt) == 0:
                 continue
             if not lst:
@@ -762,5 +779,9 @@ class Scheduler(object):
         ax.set_ylabel('hours on target / %.f %s' % ((bin_size, 'days')
                       if not lst else (bin_size, 'h')))
         ax.set_title(observatory)
-        ax.legend(bbox_to_anchor=(1.05, 1.1))  # Move legend outside the plot
-        fig.show()
+
+        # Move legend outside the plot
+        ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0),
+                  ncol=ncols)
+
+        return fig
