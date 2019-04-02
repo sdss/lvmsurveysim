@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 14:28:36
+# @Last modified time: 2019-04-02 14:29:14
 
 import itertools
 import os
@@ -703,7 +703,7 @@ class Scheduler(object):
             return stats
 
     def plot_survey(self, observatory, bin_size=30., targets=None,
-                    cumulative=False, lst=False):
+                    cumulative=False, lst=False, show_unused=True):
         """Plot the hours spent on target.
 
         Parameters
@@ -715,10 +715,15 @@ class Scheduler(object):
         targets : list
             A list with the names of the targets to plot. If empty, plots all
             targets.
-        cumulative : bool
-            Plots the cumulative sum of hours spent on each target.
+        cumulative : bool or str
+            If `True`, plots the cumulative sum of hours spent on each target.
+            If ``'target'``, it plots the cumulative on-target hours normalised
+            by the total hours needed to observe the target. If ``'survey'``,
+            plots the cumulative hours normalised by the total survey hours.
         lst : bool
             Whether to bin the used time by LST instead of JD.
+        show_unused : bool
+            Display the unused time.
 
         Return
         ------
@@ -750,7 +755,10 @@ class Scheduler(object):
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
 
         for tname in targets:
+
             t = self.targets.get_target(tname)
+            tindex = [target.name for target in self.targets].index(tname)
+
             # plot each target
             tt = self.get_target_time(tname, observatory=observatory, return_lst=lst)
             if len(tt) == 0:
@@ -760,8 +768,19 @@ class Scheduler(object):
             heights, bins = numpy.histogram(tt, bins=b)
             heights = numpy.array(heights, dtype=float)
             heights *= t.exptime * t.n_exposures / 3600.0
-            if cumulative:
+
+            if cumulative is not False:
                 heights = heights.cumsum()
+
+            if cumulative == 'target':
+                ntot = len(self.pointings[tindex]) * t.exptime * t.n_exposures / 3600.
+                heights /= ntot
+                show_unused = False
+            elif cumulative == 'survey':
+                ntot = numpy.sum(self.schedule['exptime']) / 3600.
+                heights /= ntot
+                show_unused = False
+
             ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=t.name)
 
         # deal with unused time
@@ -773,15 +792,21 @@ class Scheduler(object):
         heights *= __DEFAULT_TIME_STEP__ / 3600.0
         if cumulative:
             heights = heights.cumsum()
-        ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, ':', color='k', label='Unused')
+
+        if show_unused:
+            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, ':', color='k', label='Unused')
 
         ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
 
-        if not cumulative:
-            ax.set_ylabel('hours on target / %.f %s' % ((bin_size, 'days')
+        if cumulative is False:
+            ax.set_ylabel('Hours on target / %.f %s' % ((bin_size, 'days')
                           if not lst else (bin_size, 'h')))
-        else:
-            ax.set_ylabel('hours on target [cumulative]')
+        elif cumulative is True:
+            ax.set_ylabel('Hours on target [cumulative]')
+        elif cumulative == 'target':
+            ax.set_ylabel('Fraction of target completed')
+        elif cumulative == 'survey':
+            ax.set_ylabel('Fraction of survey time spent on target')
 
         ax.set_title(observatory)
 
