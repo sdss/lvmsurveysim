@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 14:29:14
+# @Last modified time: 2019-04-02 14:45:28
 
 import itertools
 import os
@@ -747,7 +747,7 @@ class Scheduler(object):
         # Leaves a margin on the right to put the legend
         fig.subplots_adjust(right=0.65 if ncols == 2 else 0.8)
 
-        ax.set_prop_cycle(color=[    'r', 'g', 'b',   'c', 'm',  'y',  'b', 'g', 'm',   'y'],
+        ax.set_prop_cycle(color=['r', 'g', 'b', 'c', 'm', 'y', 'b', 'g', 'm', 'y'],
                           linestyle=['-', '--', '-.', ':', '--', '-.', ':', '-.', '--', '-'])
 
         min_b = (numpy.min(self.schedule['JD']) - 2451545.0) if not lst else 0.0
