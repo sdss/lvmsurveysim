@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 15:50:41
+# @Last modified time: 2019-04-02 15:53:52
 
 import itertools
 import os
@@ -720,6 +720,7 @@ class Scheduler(object):
             If ``'target'``, it plots the cumulative on-target hours normalised
             by the total hours needed to observe the target. If ``'survey'``,
             plots the cumulative hours normalised by the total survey hours.
+            When ``cumulative`` is not `False`, ``bin_size`` is set to 1.
         lst : bool
             Whether to bin the used time by LST instead of JD.
         show_unused : bool
