@@ -723,7 +723,8 @@ class Scheduler(object):
             assert cumulative is False, 'cumulative cannot be used with lst=True.'
 
         fig, ax = plt.subplots()
-        ax.set_prop_cycle(color=['r', 'g', 'b', 'c', 'm', 'y'], linestyle=['-', '--', '-.', ':', '--', '-'])
+        ax.set_prop_cycle(color=[    'r', 'g', 'b',   'c', 'm',  'y',  'b', 'g', 'm',   'y'], 
+                          linestyle=['-', '--', '-.', ':', '--', '-.', ':', '-.', '--', '-'])
         min_b = (numpy.min(self.schedule['JD']) - 2451545.0) if not lst else 0.0
         max_b = (numpy.max(self.schedule['JD']) - 2451545.0) if not lst else 24.0
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
