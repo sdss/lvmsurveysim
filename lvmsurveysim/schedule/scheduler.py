@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 15:53:52
+# @Last modified time: 2019-04-02 16:04:14
 
 import itertools
 import os
@@ -702,14 +702,15 @@ class Scheduler(object):
         if return_table:
             return stats
 
-    def plot_survey(self, observatory, bin_size=30., targets=None,
-                    cumulative=False, lst=False, show_unused=True):
+    def plot_survey(self, observatory=None, bin_size=30., targets=None,
+                    cumulative=False, lst=False, show_unused=True,
+                    skip_fast=False):
         """Plot the hours spent on target.
 
         Parameters
         ----------
         observatory : str
-            The observatory to plot.
+            The observatory to plot. If `None`, all observatories.
         bin_size : int
             The number of days in each bin of the plot.
         targets : list
@@ -725,6 +726,9 @@ class Scheduler(object):
             Whether to bin the used time by LST instead of JD.
         show_unused : bool
             Display the unused time.
+        skip_fast : bool
+            If set, do not plot targets that complete in the first 20% of the
+            survey.
 
         Return
         ------
@@ -773,16 +777,22 @@ class Scheduler(object):
             heights = numpy.array(heights, dtype=float)
             heights *= t.exptime * t.min_exposures / 3600.0
 
+            target_tot_time = len(self.pointings[tindex]) * t.exptime * t.n_exposures / 3600.
+
+            if skip_fast:
+                completion = heights.cumsum() / target_tot_time
+                if numpy.quantile(completion, 0.2) >= 1:
+                    continue
+
             if cumulative is not False:
                 heights = heights.cumsum()
 
             if cumulative == 'target':
-                ntot = len(self.pointings[tindex]) * t.exptime * t.n_exposures / 3600.
-                heights /= ntot
+                heights /= target_tot_time
                 show_unused = False
             elif cumulative == 'survey':
-                ntot = numpy.sum(self.schedule['exptime']) / 3600.
-                heights /= ntot
+                tot_survey = numpy.sum(self.schedule['exptime']) / 3600.
+                heights /= tot_survey
                 show_unused = False
 
             ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=t.name)
@@ -812,7 +822,7 @@ class Scheduler(object):
         elif cumulative == 'survey':
             ax.set_ylabel('Fraction of survey time spent on target')
 
-        ax.set_title(observatory)
+        ax.set_title(observatory if observatory is not None else 'APO+LCO')
 
         # Move legend outside the plot
         ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0),
