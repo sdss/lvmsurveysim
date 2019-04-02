@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 14:45:28
+# @Last modified time: 2019-04-02 15:35:29
 
 import itertools
 import os
@@ -767,7 +767,7 @@ class Scheduler(object):
                 tt -= 2451545.0
             heights, bins = numpy.histogram(tt, bins=b)
             heights = numpy.array(heights, dtype=float)
-            heights *= t.exptime * t.n_exposures / 3600.0
+            heights *= t.exptime * t.min_exposures / 3600.0
 
             if cumulative is not False:
                 heights = heights.cumsum()
