@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 14:28:13
+# @Last modified time: 2019-04-02 14:28:36
 
 import itertools
 import os
@@ -776,8 +776,13 @@ class Scheduler(object):
         ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, ':', color='k', label='Unused')
 
         ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
-        ax.set_ylabel('hours on target / %.f %s' % ((bin_size, 'days')
-                      if not lst else (bin_size, 'h')))
+
+        if not cumulative:
+            ax.set_ylabel('hours on target / %.f %s' % ((bin_size, 'days')
+                          if not lst else (bin_size, 'h')))
+        else:
+            ax.set_ylabel('hours on target [cumulative]')
+
         ax.set_title(observatory)
 
         # Move legend outside the plot
