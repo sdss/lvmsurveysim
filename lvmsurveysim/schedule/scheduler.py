@@ -23,7 +23,7 @@ from lvmsurveysim import IFU, config, log
 from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide
 
-from .plan import ObservingPlan
+from lvmsurveysim.schedule.plan import ObservingPlan
 
 
 __all__ = ['Scheduler', 'AltitudeCalculator']
@@ -157,6 +157,44 @@ class Scheduler(object):
 
         return (f'<Scheduler (observing_plans={len(self.observing_plans)}, '
                 f'n_target={len(self.pointings)})>')
+
+    def remove_overlap(self):
+        import shapely.ops
+        import shapely.vectorized
+
+        self.overlap = {}
+        
+        #sort priorities.
+        s = sorted(self.pointings)
+        
+        # Create an array of pointing to priority, one per target
+        priorities = numpy.array([self.targets[idx].priority
+                                        for idx in s])
+
+        # Save the names... why not
+        names = numpy.array([self.targets[idx].name
+                                        for idx in s])
+
+        sorted_indecies = numpy.argsort(priorities)[::-1]
+
+        for idx in s:
+            """ I should just use repeat, but this is a lazy way to create an initial mask where all values are true of the correct length"""
+            self.overlap[self.targets[idx].name] = {}
+            self.overlap[self.targets[idx].name]['global_no_overlap'] = self.pointings[idx] == self.pointings[idx]
+
+        for i_i, i in enumerate(sorted_indecies[:-1]):
+            """ i has the highest priority because of the [::-1] reversal of the priority list"""
+            for j in sorted_indecies[i_i+1:]:
+                """j has a lower priority. So we are masking j with i"""
+                if self.targets[i].region.shapely.intersects(self.targets[j].region.shapely):
+                    """ For book keepign, keep an individual record of which objects overlap with a given target"""
+                    a_x = self.pointings[j][:].ra
+                    a_y = self.pointings[j][:].dec
+                    self.overlap[names[j]][names[i]] = numpy.logical_not(shapely.vectorized.contains(self.targets[i].region.shapely, a_x, a_y))
+
+                    """ For fuctional use, create a global overlap mask, to be used when scheduling"""
+                    self.overlap[names[j]]['global_no_overlap'] = self.overlap[names[j]]['global_no_overlap'] * self.overlap[names[j]][names[i]]
+
 
     def save(self, path, overwrite=False):
         """Saves the results to a file as FITS."""
@@ -308,6 +346,10 @@ class Scheduler(object):
 
         # Create some master arrays with all the pointings for convenience.
         s = sorted(self.pointings)
+
+        remove_overlap_flag = True
+        if remove_overlap_flag == True:
+            self.remove_overlap()
 
         # An array with the length of all the pointings indicating the index
         # of the target it correspond to.
