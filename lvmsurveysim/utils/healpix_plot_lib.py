@@ -37,7 +37,11 @@ def healpix_shader(data,
 
     color_list = []
     for mask_i in range(len(masks)):
-        cmap = cmaps[mask_i]
+        if mask_i <= len(cmaps) -1:
+            cmap = cmaps[mask_i]
+        else:
+            #Use the last cmap
+            cmap = cmaps[-1]
         color_list.append(plt.get_cmap(cmap)(np.linspace(0.,1,128)))
 
     colors = np.vstack(color_list)
@@ -67,11 +71,11 @@ def healpix_shader(data,
     # add the offset to the data to push it into to each color range
     if scale is not False:
         for i in range(len(masks)):
-            normalized_I[masks[i]] = I[masks[i]].copy()*scale[i] + i * norm
+            normalized_I[masks[i]] = I[masks[i]].copy()*scale[i] + min(i, len(cmaps)-1) * norm
 
     else:
         for i in range(len(masks)):
-            normalized_I[masks[i]] = I[masks[i]].copy() + i * norm
+            normalized_I[masks[i]] = I[masks[i]].copy() + min(i, len(cmaps)-1) * norm
 
     # I could add all the masks here and plot the un-masked values in grey scale.
 

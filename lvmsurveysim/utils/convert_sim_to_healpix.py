@@ -25,7 +25,7 @@ def convert(params):
     hp = HEALPix(nside=params['nside'], order=image_order, frame=Galactic())
 
     schedule = astropy.table.Table.read(params["file"])
-    target_names = schedule.meta['TARGETS'].split(',')
+    target_names = list(np.unique(schedule['target'])[1:])
     targets = yaml.load(open(os.environ['LVMCORE_DIR']+"/surveydesign/targets.yaml"), Loader=yaml.FullLoader)
 
 
@@ -93,15 +93,14 @@ if __name__ == "__main__":
 
     colors =[]
     masks = []
-    colors_available = ["copper","Blues", "Blues", "Blues", "Blues"]
-    scale = [1, 1, 1, 1, 1]
+    colors_available = ["copper","Greens","Blues"]
 
     healpix_dictionary["high_res_priorities"] = healpy.pixelfunc.ud_grade(healpix_dictionary['priorities'], image_nside, power=0.0)
     for priority_i, priority in enumerate(healpix_dictionary['priority_levels']):
         masks.append(healpix_dictionary['high_res_priorities'] == priority)
-        colors.append(colors_available[priority_i])
-
-    
+        if priority_i <= len(colors_available) -1:
+            colors.append(colors_available[priority_i])
+            
     image_data = np.array(image_hdu_list[1].data.tolist())[:,0]
     hp = HEALPix(nside=params['nside'], order=image_order, frame=Galactic())
 
@@ -110,7 +109,7 @@ if __name__ == "__main__":
     log_I_max = 2.0
     log_I_min = -1.0
 
-    healpix_shader(log_I, masks, cmaps=colors, scale=scale, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="shaded_MW.png", gui=True)
+    healpix_shader(log_I, masks, cmaps=colors, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="shaded_MW.png", gui=True)
     
 
 
