@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-02 16:04:14
+# @Last modified time: 2019-04-03 11:59:13
 
 import itertools
 import os
@@ -24,6 +24,12 @@ from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide
 
 from .plan import ObservingPlan
+
+
+try:
+    import mpld3
+except ImportError:
+    mpld3 = None
 
 
 __all__ = ['Scheduler', 'AltitudeCalculator']
@@ -704,7 +710,7 @@ class Scheduler(object):
 
     def plot_survey(self, observatory=None, bin_size=30., targets=None,
                     cumulative=False, lst=False, show_unused=True,
-                    skip_fast=False):
+                    skip_fast=False, show_mpld3=False):
         """Plot the hours spent on target.
 
         Parameters
@@ -729,6 +735,9 @@ class Scheduler(object):
         skip_fast : bool
             If set, do not plot targets that complete in the first 20% of the
             survey.
+        show_mpld3 : bool
+            If `True`, opens a browser window with an interactive version of
+            the plot.
 
         Return
         ------
@@ -808,7 +817,8 @@ class Scheduler(object):
             heights = heights.cumsum()
 
         if show_unused:
-            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, ':', color='k', label='Unused')
+            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, ':',
+                    color='k', label='Unused')
 
         ax.set_xlabel('JD - 2451545.0' if not lst else 'LST / h')
 
@@ -824,8 +834,32 @@ class Scheduler(object):
 
         ax.set_title(observatory if observatory is not None else 'APO+LCO')
 
+        if show_mpld3:
+
+            if mpld3 is None:
+                raise ImportError('show_mpld3 requires installing the mpld3 package.')
+
+            handles, labels = ax.get_legend_handles_labels()
+
+            # Resize the figure depending on the number of targets so that the
+            # legend is not cut off.
+            vsize = len(labels) / 8 * 2.5
+            vsize = vsize if vsize > 8 else 8
+
+            fig.set_size_inches(12, vsize)
+
+            interactive_legend = mpld3.plugins.InteractiveLegendPlugin(
+                handles, labels,
+                start_visible=False, alpha_unsel=0.4, alpha_over=1.7)
+
+            mpld3.plugins.connect(fig, interactive_legend)
+
+            mpld3.show()
+
+            # Restore figsize
+            fig.set_size_inches(12, 8)
+
         # Move legend outside the plot
-        ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0),
-                  ncol=ncols)
+        ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0), ncol=ncols)
 
         return fig
