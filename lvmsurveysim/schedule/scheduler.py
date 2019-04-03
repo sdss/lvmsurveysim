@@ -7,23 +7,24 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-03 14:25:53
+# @Last modified time: 2019-04-03 17:29:01
 
 import itertools
 import os
+import warnings
 
 import astropy
 import cycler
 import matplotlib.pyplot as plt
 import numpy
+import shapely.vectorized
 
 import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
 from lvmsurveysim import IFU, config, log
 from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
-from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide
-
 from lvmsurveysim.schedule.plan import ObservingPlan
+from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide
 
 
 try:
@@ -115,9 +116,15 @@ class Scheduler(object):
     healpix_tiling : bool
         Whether to use the HealPix tiling method or the normal, hexagonal
         tiling.
+    remove_overlap : bool
+        If set, removes pointings in regions that overlap with other regions
+        with higher priority.
 
     Attributes
     ----------
+    overlap : dict
+        A dictionary with the masks of pointing overlaps between regions, and
+        the global no overlap mask for each region.
     pointings : dict
         A dictionary with the pointings for each one of the targets in
         ``targets``. It is the direct result of calling
@@ -131,7 +138,8 @@ class Scheduler(object):
 
     """
 
-    def __init__(self, targets, observing_plans=None, ifu=None, healpix_tiling=False):
+    def __init__(self, targets, observing_plans=None, ifu=None,
+                 healpix_tiling=False, remove_overlap=True):
 
         if observing_plans is None:
             observing_plans = self._create_observing_plans()
@@ -157,6 +165,21 @@ class Scheduler(object):
 
         self.tiling_type = 'hexagonal' if healpix_tiling is False else 'healpix'
 
+        # Calculate overlap but don't apply the masks
+        self.overlap = self.get_overlap()
+
+        # Remove pointings that overlap with other regions.
+        if remove_overlap:
+
+            for ii in self.pointings:
+                tname = self.targets[ii].name
+
+                self.pointings[ii] = self.pointings[ii][self.overlap[tname]['global_no_overlap']]
+
+                if len(self.pointings[ii]) == 0:
+                    warnings.warn(f'target {tname} completely overlaps with other '
+                                'targets with higher priority.', LVMSurveySimWarning)
+
         self.schedule = None
 
     def __repr__(self):
@@ -164,43 +187,49 @@ class Scheduler(object):
         return (f'<Scheduler (observing_plans={len(self.observing_plans)}, '
                 f'n_target={len(self.pointings)})>')
 
-    def remove_overlap(self):
-        import shapely.ops
-        import shapely.vectorized
+    def get_overlap(self):
+        """Returns a dictionary of masks with the overlap between regions."""
 
-        self.overlap = {}
-        
-        #sort priorities.
+        overlap = {}
+
+        # Sort priorities.
         s = sorted(self.pointings)
-        
+
         # Create an array of pointing to priority, one per target
-        priorities = numpy.array([self.targets[idx].priority
-                                        for idx in s])
+        priorities = numpy.array([self.targets[idx].priority for idx in s])
 
-        # Save the names... why not
-        names = numpy.array([self.targets[idx].name
-                                        for idx in s])
+        # Save the names ... why not
+        names = numpy.array([self.targets[idx].name for idx in s])
 
-        sorted_indecies = numpy.argsort(priorities)[::-1]
+        sorted_indices = numpy.argsort(priorities)[::-1]
 
+        # Initialise the overlap dictionaries. Set the global_no_overlap to
+        # True for all the pointings in the target tiling
         for idx in s:
-            """ I should just use repeat, but this is a lazy way to create an initial mask where all values are true of the correct length"""
-            self.overlap[self.targets[idx].name] = {}
-            self.overlap[self.targets[idx].name]['global_no_overlap'] = self.pointings[idx] == self.pointings[idx]
+            name = self.targets[idx].name
+            overlap[name] = {}
+            overlap[name]['global_no_overlap'] = numpy.ones(len(self.pointings[idx]),
+                                                            dtype=numpy.bool)
 
-        for i_i, i in enumerate(sorted_indecies[:-1]):
-            """ i has the highest priority because of the [::-1] reversal of the priority list"""
-            for j in sorted_indecies[i_i+1:]:
-                """j has a lower priority. So we are masking j with i"""
+        for i_i, i in enumerate(sorted_indices[:-1]):
+            # i has the highest priority because of the [::-1] reversal of the priority list
+            for j in sorted_indices[i_i + 1:]:
+                # j has a lower priority. So we are masking j with i
                 if self.targets[i].region.shapely.intersects(self.targets[j].region.shapely):
-                    """ For book keepign, keep an individual record of which objects overlap with a given target"""
+
+                    # For book keeping, keep an individual record of which
+                    # objects overlap with a given target
+
                     a_x = self.pointings[j][:].ra
                     a_y = self.pointings[j][:].dec
-                    self.overlap[names[j]][names[i]] = numpy.logical_not(shapely.vectorized.contains(self.targets[i].region.shapely, a_x, a_y))
 
-                    """ For fuctional use, create a global overlap mask, to be used when scheduling"""
-                    self.overlap[names[j]]['global_no_overlap'] = self.overlap[names[j]]['global_no_overlap'] * self.overlap[names[j]][names[i]]
+                    overlap[names[j]][names[i]] = numpy.logical_not(
+                        shapely.vectorized.contains(self.targets[i].region.shapely, a_x, a_y))
 
+                    # For functional use, create a global overlap mask, to be used when scheduling
+                    overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[i]]
+
+        return overlap
 
     def save(self, path, overwrite=False):
         """Saves the results to a file as FITS."""
@@ -254,9 +283,8 @@ class Scheduler(object):
         tiling_type = schedule.meta.get('TILETYPE', None)
         if tiling_type is None:
             tiling_type = 'hexagonal'
-            log.warning('No TILETYPE found in schedule file. '
-                        'Assuming hexagonal tiling.',
-                        LVMSurveySimWarning)
+            warnings.warn('No TILETYPE found in schedule file. '
+                          'Assuming hexagonal tiling.', LVMSurveySimWarning)
 
         healpix_tiling = True if tiling_type == 'healpix' else False
 
@@ -352,10 +380,6 @@ class Scheduler(object):
 
         # Create some master arrays with all the pointings for convenience.
         s = sorted(self.pointings)
-
-        remove_overlap_flag = True
-        if remove_overlap_flag == True:
-            self.remove_overlap()
 
         # An array with the length of all the pointings indicating the index
         # of the target it correspond to.
