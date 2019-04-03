@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-03 11:59:13
+# @Last modified time: 2019-04-03 14:25:53
 
 import itertools
 import os
@@ -848,6 +848,10 @@ class Scheduler(object):
 
             fig.set_size_inches(12, vsize)
 
+            # Adjust the bottom of the plot so that it does not vertically
+            # grow too much with figure size.
+            fig.subplots_adjust(bottom=0.2 + 0.15 * vsize / 8)
+
             interactive_legend = mpld3.plugins.InteractiveLegendPlugin(
                 handles, labels,
                 start_visible=False, alpha_unsel=0.4, alpha_over=1.7)
@@ -856,8 +860,9 @@ class Scheduler(object):
 
             mpld3.show()
 
-            # Restore figsize
+            # Restore figsize and margins
             fig.set_size_inches(12, 8)
+            fig.subplots_adjust(bottom=0.1)
 
         # Move legend outside the plot
         ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0), ncol=ncols)
