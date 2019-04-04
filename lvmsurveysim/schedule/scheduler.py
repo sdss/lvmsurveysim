@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-04 15:04:59
+# @Last modified time: 2019-04-04 17:49:06
 
 import itertools
 import os
@@ -796,8 +796,9 @@ class Scheduler(object):
             return stats
 
     def plot_survey(self, observatory=None, bin_size=30., targets=None,
-                    cumulative=False, lst=False, show_unused=True,
-                    skip_fast=False, show_mpld3=False):
+                    use_groups=False, use_primary_group=True,
+                    show_ungrouped=True, cumulative=False, lst=False,
+                    show_unused=True, skip_fast=False, show_mpld3=False):
         """Plot the hours spent on target.
 
         Parameters
@@ -809,6 +810,15 @@ class Scheduler(object):
         targets : list
             A list with the names of the targets to plot. If empty, plots all
             targets.
+        use_groups : bool
+            If set, the targets are grouped together using the
+            ``Target.groups`` list.
+        use_primary_group : bool
+            If `True`, a target will only be added to its primary group (the
+            first one in the group list). Only used when ``use_groups=True``.
+        show_ungrouped : bool
+            If `True`, targets that don't belong to any group are plotted
+            individually. Only used when ``use_groups=True``.
         cumulative : bool or str
             If `True`, plots the cumulative sum of hours spent on each target.
             If ``'target'``, it plots the cumulative on-target hours normalised
@@ -851,47 +861,76 @@ class Scheduler(object):
         # Leaves a margin on the right to put the legend
         fig.subplots_adjust(right=0.65 if ncols == 2 else 0.8)
 
-        ax.set_prop_cycle(color=['r', 'g', 'b', 'c', 'm', 'y', 'g', 'b', 'c', 'm', 'y', 'r', 'b', 'c', 'm', 'y', 'r', 'g', 'c', 'm', 'y', 'r', 'g', 'b', ],
-                          linestyle=['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':'])
+        ax.set_prop_cycle(color=['r', 'g', 'b', 'c', 'm', 'y', 'g', 'b', 'c', 'm', 'y', 'r', 'b',
+                                 'c', 'm', 'y', 'r', 'g', 'c', 'm', 'y', 'r', 'g', 'b', ],
+                          linestyle=['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.',
+                                     ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--',
+                                     '-.', ':'])
 
         min_b = (numpy.min(self.schedule['JD']) - 2451545.0) if not lst else 0.0
         max_b = (numpy.max(self.schedule['JD']) - 2451545.0) if not lst else 24.0
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
 
-        for tname in targets:
+        # Creates a list of groups to plot. If use_groups=False, this is just
+        # the list of targets.
+        if not use_groups:
+            groups = [target.name for target in self.targets]
+        else:
+            groups = self.targets.list_groups()
+            # Adds the ungrouped targets.
+            if show_ungrouped:
+                for target in self.targets:
+                    if len(target.groups) == 0:
+                        groups.append(target.name)
 
-            t = self.targets.get_target(tname)
-            tindex = [target.name for target in self.targets].index(tname)
+        for group in groups:
 
-            # plot each target
-            tt = self.get_target_time(tname, observatory=observatory, return_lst=lst)
-            if len(tt) == 0:
-                continue
-            if not lst:
-                tt -= 2451545.0
-            heights, bins = numpy.histogram(tt, bins=b)
-            heights = numpy.array(heights, dtype=float)
-            heights *= t.exptime * t.min_exposures / 3600.0
+            # Cumulated group heights
+            group_heights = numpy.zeros(len(b) - 1, dtype=numpy.float)
 
-            target_tot_time = len(self.pointings[tindex]) * t.exptime * t.n_exposures / 3600.
+            # If we are not using groups or the "group" name is the
+            # one of an ungrouped target.
+            if not use_groups or group in self.targets._names:
+                targets = [group]
+            else:
+                targets = self.targets.get_group_targets(group, primary=use_primary_group)
 
-            if skip_fast:
-                completion = heights.cumsum() / target_tot_time
-                if numpy.quantile(completion, 0.2) >= 1:
+            for tname in targets:
+
+                t = self.targets.get_target(tname)
+                tindex = [target.name for target in self.targets].index(tname)
+
+                # plot each target
+                tt = self.get_target_time(tname, observatory=observatory, return_lst=lst)
+                if len(tt) == 0:
                     continue
+                if not lst:
+                    tt -= 2451545.0
+                heights, bins = numpy.histogram(tt, bins=b)
+                heights = numpy.array(heights, dtype=float)
+                heights *= t.exptime * t.min_exposures / 3600.0
 
-            if cumulative is not False:
-                heights = heights.cumsum()
+                target_tot_time = len(self.pointings[tindex]) * t.exptime * t.n_exposures / 3600.
 
-            if cumulative == 'target':
-                heights /= target_tot_time
-                show_unused = False
-            elif cumulative == 'survey':
-                tot_survey = numpy.sum(self.schedule['exptime']) / 3600.
-                heights /= tot_survey
-                show_unused = False
+                if skip_fast:
+                    completion = heights.cumsum() / target_tot_time
+                    if numpy.quantile(completion, 0.2) >= 1:
+                        continue
 
-            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=t.name)
+                if cumulative is not False:
+                    heights = heights.cumsum()
+
+                if cumulative == 'target':
+                    heights /= target_tot_time
+                    show_unused = False
+                elif cumulative == 'survey':
+                    tot_survey = numpy.sum(self.schedule['exptime']) / 3600.
+                    heights /= tot_survey
+                    show_unused = False
+
+                group_heights += heights
+
+            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=group)
 
         # deal with unused time
         tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
