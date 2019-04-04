@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-04 11:50:10
+# @Last modified time: 2019-04-04 17:40:19
 
 import os
 import pathlib
@@ -94,7 +94,7 @@ class Target(object):
         self.min_moon_dist = kwargs.pop('min_moon_dist', 90)
         self.max_lunation = kwargs.pop('max_lunation', 1.0)
         self.overhead = kwargs.pop('overhead', 1.0)
-        self.group = kwargs.pop('group', [])
+        self.groups = kwargs.pop('group', [])
 
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
@@ -441,6 +441,42 @@ class TargetList(list):
         """Returns the target whose name correspond to ``name``."""
 
         return self[self._names.index(name)]
+
+    def get_group_targets(self, group, primary=True):
+        """Returns the targets that are in a group.
+
+        Parameters
+        ----------
+        group : str
+            The group name.
+        primary : bool
+            Return only the target if ``group`` is the primary group to which
+            the target belongs (i.e., the first one in the list).
+
+        Returns
+        -------
+        targets : `list`
+            A list of target names that are included in ``group``.
+
+        """
+
+        targets = []
+
+        for target in self:
+            if group in target.groups:
+                if (primary and group == target.groups[0]) or (not primary):
+                    targets.append(target.name)
+
+        return targets
+
+    def list_groups(self):
+        """Returns a list of all the groups for all the targets in the list."""
+
+        groups = []
+        for target in self:
+            groups += target.groups
+
+        return list(set(groups))
 
     def get_tiling(self, **kwargs):
         """Gets the tile centres for all the targets in the set.
