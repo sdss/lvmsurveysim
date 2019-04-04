@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-03 17:29:01
+# @Last modified time: 2019-04-04 15:04:59
 
 import itertools
 import os
@@ -178,7 +178,7 @@ class Scheduler(object):
 
                 if len(self.pointings[ii]) == 0:
                     warnings.warn(f'target {tname} completely overlaps with other '
-                                'targets with higher priority.', LVMSurveySimWarning)
+                                  'targets with higher priority.', LVMSurveySimWarning)
 
         self.schedule = None
 
@@ -213,21 +213,42 @@ class Scheduler(object):
 
         for i_i, i in enumerate(sorted_indices[:-1]):
             # i has the highest priority because of the [::-1] reversal of the priority list
+
             for j in sorted_indices[i_i + 1:]:
                 # j has a lower priority. So we are masking j with i
-                if self.targets[i].region.shapely.intersects(self.targets[j].region.shapely):
 
-                    # For book keeping, keep an individual record of which
-                    # objects overlap with a given target
+                shapely_i = self.targets[i].region.shapely
+                # shapely_j = self.targets[j].region.shapely
 
-                    a_x = self.pointings[j][:].ra
-                    a_y = self.pointings[j][:].dec
+                # We'd like to do this but shapely_i and shapely_j may be in
+                # different coordinate frames so for now we just check all
+                # regions against each other.
+                # TODO: add a Region.transform_to method to convert to a different frame.
+                # if shapely_i.intersects(shapely_j):
 
-                    overlap[names[j]][names[i]] = numpy.logical_not(
-                        shapely.vectorized.contains(self.targets[i].region.shapely, a_x, a_y))
+                # For book keeping, keep an individual record of which
+                # objects overlap with a given target
 
-                    # For functional use, create a global overlap mask, to be used when scheduling
-                    overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[i]]
+                lon_j = self.pointings[j][:].ra
+                lat_j = self.pointings[j][:].dec
+
+                # All pointings are in ICRS but the regions can be in
+                # galactic so we need to convert the pointings to the
+                # region frame.
+                if self.targets[i].frame == 'galactic':
+
+                    coords_j = astropy.coordinates.SkyCoord(ra=lon_j, dec=lat_j,
+                                                            frame='icrs', unit='deg')
+                    coords_j_gal = coords_j.transform_to('galactic')
+
+                    lon_j = coords_j_gal.l.deg
+                    lat_j = coords_j_gal.b.deg
+
+                overlap[names[j]][names[i]] = numpy.logical_not(
+                    shapely.vectorized.contains(shapely_i, lon_j, lat_j))
+
+                # For functional use, create a global overlap mask, to be used when scheduling
+                overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[i]]
 
         return overlap
 
