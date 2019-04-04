@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-28 20:42:46
+# @Last modified time: 2019-04-04 11:50:10
 
 import os
 import pathlib
@@ -94,6 +94,7 @@ class Target(object):
         self.min_moon_dist = kwargs.pop('min_moon_dist', 90)
         self.max_lunation = kwargs.pop('max_lunation', 1.0)
         self.overhead = kwargs.pop('overhead', 1.0)
+        self.group = kwargs.pop('group', [])
 
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
