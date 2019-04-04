@@ -851,8 +851,8 @@ class Scheduler(object):
         # Leaves a margin on the right to put the legend
         fig.subplots_adjust(right=0.65 if ncols == 2 else 0.8)
 
-        ax.set_prop_cycle(color=['r', 'g', 'b', 'c', 'm', 'y', 'b', 'g', 'm', 'y'],
-                          linestyle=['-', '--', '-.', ':', '--', '-.', ':', '-.', '--', '-'])
+        ax.set_prop_cycle(color=['r', 'g', 'b', 'c', 'm', 'y', 'g', 'b', 'c', 'm', 'y', 'r', 'b', 'c', 'm', 'y', 'r', 'g', 'c', 'm', 'y', 'r', 'g', 'b', ],
+                          linestyle=['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':'])
 
         min_b = (numpy.min(self.schedule['JD']) - 2451545.0) if not lst else 0.0
         max_b = (numpy.max(self.schedule['JD']) - 2451545.0) if not lst else 24.0
