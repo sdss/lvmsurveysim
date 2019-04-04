@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-04 17:49:06
+# @Last modified time: 2019-04-04 17:56:10
 
 import itertools
 import os
@@ -871,8 +871,8 @@ class Scheduler(object):
         max_b = (numpy.max(self.schedule['JD']) - 2451545.0) if not lst else 24.0
         b = numpy.arange(min_b, max_b + bin_size, bin_size)
 
-        # Creates a list of groups to plot. If use_groups=False, this is just
-        # the list of targets.
+        # Creates a list of groups to plot. If use_groups=False,
+        # this is just the list of targets.
         if not use_groups:
             groups = [target.name for target in self.targets]
         else:
@@ -888,8 +888,8 @@ class Scheduler(object):
             # Cumulated group heights
             group_heights = numpy.zeros(len(b) - 1, dtype=numpy.float)
 
-            # If we are not using groups or the "group" name is the
-            # one of an ungrouped target.
+            # If we are not using groups or the "group"
+            # name is that of an ungrouped target.
             if not use_groups or group in self.targets._names:
                 targets = [group]
             else:
