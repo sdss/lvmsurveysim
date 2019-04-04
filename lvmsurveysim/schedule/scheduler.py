@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-04 17:56:10
+# @Last modified time: 2019-04-04 23:28:39
 
 import itertools
 import os
@@ -902,10 +902,13 @@ class Scheduler(object):
 
                 # plot each target
                 tt = self.get_target_time(tname, observatory=observatory, return_lst=lst)
+
                 if len(tt) == 0:
                     continue
+
                 if not lst:
                     tt -= 2451545.0
+
                 heights, bins = numpy.histogram(tt, bins=b)
                 heights = numpy.array(heights, dtype=float)
                 heights *= t.exptime * t.min_exposures / 3600.0
@@ -930,7 +933,10 @@ class Scheduler(object):
 
                 group_heights += heights
 
-            ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=group)
+            # Only plot the heights if they are not zero. This prevents
+            # targets that are not observed at an observatory to be displayed.
+            if numpy.sum(group_heights) > 0:
+                ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=group)
 
         # deal with unused time
         tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
