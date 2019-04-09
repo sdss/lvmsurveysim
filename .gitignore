@@ -104,3 +104,6 @@ ENV/
 .vscode
 *launch.json
 settings.json
+schedule_load.py
+schedule_run.py
+lvmsurveysim_results.fits
