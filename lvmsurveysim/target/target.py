@@ -107,6 +107,8 @@ class Target(object):
         self.frame = self.region.frame
 
         self.tiles = None
+        self.tile_priorities = None
+
 
     def __repr__(self):
 
@@ -225,7 +227,7 @@ class Target(object):
 
         """
 
-        # don't recompute if we have cached tiles and we're not foced to
+        # return cached values unless told not to
         if self.tiles is not None:
             if force_retile is False:
                 return self.tiles
@@ -244,11 +246,14 @@ class Target(object):
         if to_frame:
             tiles = tiles.transform_to(to_frame)
 
+        # cache the new tiles and invalidate the priorities
         self.tiles = tiles
+        self.tile_priorities = None
+
         return tiles
 
 
-    def get_tile_priorities(self):
+    def get_tile_priorities(self, force_retile=False):
         """
         Return an array with tile priorities according to the tiling
         strategy defined for this target.
@@ -258,6 +263,11 @@ class Target(object):
         priorities: ~numpy.array
         array of lentgh of number of tiles with the prioritiy for each tile.
         """
+
+        # return cached values unless told not to
+        if self.tile_priorities is not None:
+            if force_retile is False:
+                return self.tile_priorities
 
         if self.tiling_strategy == 'lowest_airmass':
             return numpy.ones(len(self.tiles), dtype=int)
