@@ -104,6 +104,8 @@ class Target(object):
 
         self.frame = self.region.frame
 
+        self.tiles = None
+
     def __repr__(self):
 
         return (f'<Target (name={self.name!r}, telescope={self.telescope.name!r}, '
@@ -194,7 +196,7 @@ class Target(object):
 
         return pixarea
 
-    def get_tiling(self, ifu=None, telescope=None, to_frame=None):
+    def get_tiling(self, ifu=None, telescope=None, to_frame=None, force_retile=False):
         """Tessellates the target region and returns a list of tile centres.
 
         Parameters
@@ -209,7 +211,9 @@ class Target(object):
             If ``return_coords``, the reference frame in which the coordinates
             should be returned. If `None`, defaults to the region internal
             reference frame.
-
+        force_retile : bool
+            Force recalculation of the tiles. Tiles are cached once calculated
+            and the cached ones are returned unless this flag is set.
 
         Returns
         -------
@@ -219,6 +223,11 @@ class Target(object):
 
         """
 
+        # don't recompute if we have cached tiles and we're not foced to
+        if self.tiles is not None:
+            if force_retile is False:
+                return self.tiles
+
         telescope = telescope or self.telescope
 
         if ifu is None:
@@ -226,22 +235,22 @@ class Target(object):
             warnings.warn(f'target {self.name}: no IFU provided. '
                           f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
 
-        plate_scale = telescope.plate_scale
-
-        coords = ifu.get_tile_grid(self.region, plate_scale)
-        coords = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1],
+        tiles = ifu.get_tile_grid(self.region, telescope.plate_scale)
+        tiles = astropy.coordinates.SkyCoord(tiles[:, 0], tiles[:, 1],
                                               frame=self.frame, unit='deg')
 
         if to_frame:
-            coords = coords.transform_to(to_frame)
+            tiles = tiles.transform_to(to_frame)
 
-        return coords
+        self.tiles = tiles
+        return tiles
 
 
     def plot(self, *args, **kwargs):
         """Plots the region. An alias for ``.Region.plot``."""
 
         return self.region.plot(*args, **kwargs)
+
 
     def plot_tiling(self, coords=None, ifu=None, frame=None, fig=None, **kwargs):
         """Plots the tiles within the region.
