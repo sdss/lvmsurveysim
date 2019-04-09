@@ -460,12 +460,31 @@ class TargetList(list):
             A dictionary in which the key is the index of the target in the
             `.TargetList` and its value the output of
             `.Target.get_tiling` called with ``kwarg`` parameters
-            (i.e., either a `~astropy.coordinates.SkyCoord` object with the
+            (i.e., a `~astropy.coordinates.SkyCoord` object with the
             position of the tile centres).
 
         """
 
         return {ii: self[ii].get_tiling(**kwargs) for ii in range(len(self))}
+
+    def get_tile_priorities(self, **kwargs):
+        """Gets the tile priorities for all the targets in the set.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Parameters to be passed to `.Target.get_tile_priorities`.
+
+        Returns
+        -------
+        tiling : dict
+            A dictionary in which the key is the index of the target in the
+            `.TargetList` and its value the output of
+            `.Target.get_tile_priorities` called with ``kwarg`` parameters.
+
+        """
+
+        return {ii: self[ii].get_tile_priorities(**kwargs) for ii in range(len(self))}
 
     def plot_tiling(self, frame='icrs', **kwargs):
         """Plots all the target pixels in a single Mollweide projection.
