@@ -14,17 +14,13 @@ import pathlib
 import warnings
 
 import astropy
-import healpy
-import matplotlib.pyplot
 import numpy
 import seaborn
 import yaml
 
-import lvmsurveysim.utils.healpix
 from lvmsurveysim.ifu import IFU
 from lvmsurveysim.utils import plot as lvm_plot
 
-from . import _VALID_FRAMES
 from .. import config
 from ..exceptions import LVMSurveySimWarning
 from ..telescope import Telescope
@@ -198,13 +194,6 @@ class Target(object):
 
         return pixarea
 
-    def _get_nside(self, pixarea=None, ifu=None, telescope=None):
-        """Gets the ``nside`` for a pixarea or IFU/telescope configuration."""
-
-        pixarea = pixarea or self.get_pixarea(ifu=ifu, telescope=telescope)
-
-        return lvmsurveysim.utils.healpix.get_minimum_nside_pixarea(pixarea)
-
     def get_tiling(self, ifu=None, telescope=None, to_frame=None):
         """Tessellates the target region and returns a list of tile centres.
 
@@ -248,76 +237,20 @@ class Target(object):
 
         return coords
 
-    def get_healpix_tiling(self, pixarea=None, ifu=None, telescope=None,
-                           return_coords=False, to_frame=None, inclusive=True):
-        """Tessellates the target region and returns a list of HealPix pixels.
-
-        Parameters
-        ----------
-        pixarea : float
-            Desired area of the HealPix pixel, in square degrees. The HealPix
-            order that produces a pixel of size equal or smaller than
-            ``pixarea`` will be used.
-        ifu : ~lvmsurveysim.tiling.IFU
-            The IFU used for tiling the region. If not provided, the default
-            one is used.
-        telescope : ~lvmsurveysim.telescope.Telescope
-            The telescope on which the IFU is mounted. Defaults to the object
-            ``telescope`` attribute.
-        return_coords : bool
-            If `True`, returns the coordinates of the included pixels instead
-            of their value.
-        to_frame : str
-            If ``return_coords``, the reference frame in which the coordinates
-            should be returned. If `None`, defaults to the region internal
-            reference frame.
-        inclusive : bool
-            Whether to return pixels that only partially overlap with the
-            target region. Note that this is only approximated (see the
-            explanation in `~lvmsurveysim.utils.healpix.tile_geometry`).
-
-        Returns
-        -------
-        pixels : `numpy.ndarray` or `~astropy.coordinates.SkyCoord`
-            A list of HealPix pixels that tile this target. Only pixels whose
-            centre is contained in the region are included. If
-            ``return_coords=True``, returns a `~astropy.coordinates.SkyCoord`
-            with the list of coordinates.
-
-        """
-
-        if to_frame is not None:
-            assert to_frame in _VALID_FRAMES, 'invalid frame'
-
-        nside = self._get_nside(pixarea=pixarea, ifu=ifu, telescope=telescope)
-
-        pixels = lvmsurveysim.utils.healpix.tile_geometry(self.region.shapely, nside,
-                                                          return_coords=return_coords,
-                                                          inclusive=inclusive)
-
-        if return_coords:
-            coords = astropy.coordinates.SkyCoord(pixels[:, 0], pixels[:, 1],
-                                                  frame=self.frame, unit='deg')
-            if to_frame is not None:
-                coords = coords.transform_to(to_frame)
-            return coords
-
-        return pixels
 
     def plot(self, *args, **kwargs):
         """Plots the region. An alias for ``.Region.plot``."""
 
         return self.region.plot(*args, **kwargs)
 
-    def plot_tiling(self, coords=None, ifu=None, frame=None, fig=None,
-                    healpix_tiling=False, use_healpy=False, **kwargs):
-        """Plots the region as HealPix pixels.
+    def plot_tiling(self, coords=None, ifu=None, frame=None, fig=None, **kwargs):
+        """Plots the tiles within the region.
 
         Parameters
         ----------
         coords : astropy.coordinates.SkyCoord
             A list of `~astropy.coordinates.SkyCoord` to plot. If not provided,
-            `~.Target.get_healpix` will be called with the options below.
+            `~.Target.get_tiling` will be called with the options below.
         ifu : ~lvmsurveysim.tiling.IFU
             The IFU used for tiling the region. If not provided, the default
             one is used.
@@ -327,14 +260,8 @@ class Target(object):
         ax : ~matplotlib.axes.Axes
             A Matplotlib `~matplotlib.axes.Axes` object to use. Otherwise, a
             new one will be created.
-        healpix_tiling : bool
-            Whether to use the HealPix tiling (i.e., call
-            `.get_healpix_tiling`) instead of the normal tiling.
-        use_healpy : bool
-            If `True`, uses the Healpy Mollweide plotting system.
         kwargs : dict
-            Parameters to be passed to `~matplotlib.axes.scatter` (or
-            `~healpy.visufunc.mollview` if ``use_healpix=True``).
+            Parameters to be passed to `~matplotlib.axes.scatter`.
 
         Returns
         -------
@@ -346,37 +273,12 @@ class Target(object):
         frame = frame or self.frame
 
         if coords is None:
-            if healpix_tiling:
-                coords = self.get_healpix_tiling(ifu=ifu, return_coords=True,
-                                                 to_frame=frame)
-            else:
-                coords = self.get_tiling(ifu=ifu, to_frame=frame)
+            coords = self.get_tiling(ifu=ifu, to_frame=frame)
 
         if frame == 'icrs':
             lon, lat = coords.ra.deg, coords.dec.deg
         elif frame == 'galactic':
             lon, lat = coords.l.deg, coords.b.deg
-
-        if use_healpy:
-
-            if 'fig' not in kwargs:
-                kwargs['fig'] = matplotlib.pyplot.Figure()
-
-            # Convert coordinates to pixels.
-            nside = self._get_nside(ifu=ifu)
-            pixels = healpy.ang2pix(nside, lon, lat, nest=True, lonlat=True)
-
-            npix = numpy.zeros(healpy.nside2npix(nside)) + kwargs.pop('value', 1)
-            mask = numpy.ones(healpy.nside2npix(nside), dtype=numpy.bool)
-            mask[pixels] = False
-
-            healmap = healpy.ma(npix)
-            healmap.mask = mask
-
-            healpy.mollview(healmap.filled(), nest=True, cbar=False, hold=True, **kwargs)
-            healpy.graticule(dpar=30, dmer=30)
-
-            return kwargs['fig']
 
         if fig is None:
             fig, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
@@ -499,28 +401,6 @@ class TargetList(list):
 
         return {ii: self[ii].get_tiling(**kwargs) for ii in range(len(self))}
 
-    def get_healpix_tiling(self, **kwargs):
-        """Gets the HealPix coverage for all the targets in the set.
-
-        Parameters
-        ----------
-        kwargs : dict
-            Parameters to be passed to `.Target.get_healpix_tiling`.
-
-        Returns
-        -------
-        tiling : dict
-            A dictionary in which the key is the index of the target in the
-            `.TargetList` and its value the output of
-            `.Target.get_healpix_tiling` called with ``kwarg`` parameters
-            (i.e., either an array of HealPix pixels at ``nside`` resolution
-            or a `~astropy.coordinates.SkyCoord` object with the position of
-            the pixel centres).
-
-        """
-
-        return {ii: self[ii].get_healpix_tiling(**kwargs) for ii in range(len(self))}
-
     def plot_tiling(self, frame='icrs', **kwargs):
         """Plots all the target pixels in a single Mollweide projection.
 
@@ -530,8 +410,8 @@ class TargetList(list):
             The coordinate frame to which all the pixel centres will be
             converted.
         kwargs : dict
-            Parameters to be passed to `.Target.plot_healpix`. By default, each
-            target will be plotted on a different colour.
+            Parameters to be passed to `.Target.plot_tiling`. By default, each
+            target will be plotted in a different colour.
 
         Returns
         -------

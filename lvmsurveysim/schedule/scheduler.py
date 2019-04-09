@@ -113,9 +113,6 @@ class Scheduler(object):
     ifu : ~lvmsurveysim.ifu.IFU
         The `~lvmsurveysim.ifu.IFU` to use. Defaults to the one from the
         configuration file.
-    healpix_tiling : bool
-        Whether to use the HealPix tiling method or the normal, hexagonal
-        tiling.
     remove_overlap : bool
         If set, removes pointings in regions that overlap with other regions
         with higher priority.
@@ -128,18 +125,16 @@ class Scheduler(object):
     pointings : dict
         A dictionary with the pointings for each one of the targets in
         ``targets``. It is the direct result of calling
-        `TargetList.get_healpix_tiling
-        <lvmsurveysim.target.target.TargetList.get_healpix_tiling>`.
+        `TargetList.get_tiling
+        <lvmsurveysim.target.target.TargetList.get_tiling>`.
     schedule : ~astropy.table.Table
         An astropy table with the results of the scheduling. Includes
         information about the JD of each observation, the target observed,
-        the index of the pointing in the target tiling, coordinates, and
-        HealPix pixel.
+        the index of the pointing in the target tiling, coordinates, etc.
 
     """
 
-    def __init__(self, targets, observing_plans=None, ifu=None,
-                 healpix_tiling=False, remove_overlap=True):
+    def __init__(self, targets, observing_plans=None, ifu=None, remove_overlap=True):
 
         if observing_plans is None:
             observing_plans = self._create_observing_plans()
@@ -156,14 +151,8 @@ class Scheduler(object):
         self.targets = targets
         self.ifu = ifu or IFU.from_config()
 
-        if healpix_tiling:
-            self.pointings = targets.get_healpix_tiling(ifu=self.ifu,
-                                                        return_coords=True,
-                                                        to_frame='icrs')
-        else:
-            self.pointings = targets.get_tiling(ifu=self.ifu, to_frame='icrs')
-
-        self.tiling_type = 'hexagonal' if healpix_tiling is False else 'healpix'
+        self.pointings = targets.get_tiling(ifu=self.ifu, to_frame='icrs')
+        self.tiling_type = 'hexagonal'
 
         # Calculate overlap but don't apply the masks
         self.overlap = self.get_overlap()
@@ -307,10 +296,7 @@ class Scheduler(object):
             warnings.warn('No TILETYPE found in schedule file. '
                           'Assuming hexagonal tiling.', LVMSurveySimWarning)
 
-        healpix_tiling = True if tiling_type == 'healpix' else False
-
-        scheduler = cls(targets, observing_plans=observing_plans,
-                        healpix_tiling=healpix_tiling)
+        scheduler = cls(targets, observing_plans=observing_plans)
         scheduler.schedule = schedule
 
         return scheduler
