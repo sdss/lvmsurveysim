@@ -20,6 +20,7 @@ import yaml
 
 from lvmsurveysim.ifu import IFU
 from lvmsurveysim.utils import plot as lvm_plot
+import lvmsurveysim.utils.spherical
 
 from .. import config
 from ..exceptions import LVMSurveySimWarning
@@ -91,6 +92,7 @@ class Target(object):
         self.max_lunation = kwargs.pop('max_lunation', 1.0)
         self.overhead = kwargs.pop('overhead', 1.0)
         self.groups = kwargs.pop('group', [])
+        self.tiling_strategy = kwargs.pop('tiling_strategy', 'lowest_airmass')
 
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
@@ -244,6 +246,49 @@ class Target(object):
 
         self.tiles = tiles
         return tiles
+
+
+    def get_tile_priorities(self):
+        """
+        Return an array with tile priorities according to the tiling
+        strategy defined for this target.
+
+        Returns
+        -------
+        priorities: ~numpy.array
+        array of lentgh of number of tiles with the prioritiy for each tile.
+        """
+
+        if self.tiling_strategy == 'lowest_airmass':
+            return numpy.ones(len(self.tiles), dtype=int)
+        elif self.tiling_strategy == 'center_first':
+            return self.center_first_priorities_()
+        else:
+            raise ValueError(f'invalid tiling strategy: {self.tiling_strategy}.')
+
+
+    def center_first_priorities_(self):
+        """
+        Return an array with tile priorities according for the center-first
+        tiling strategy. Tiles are prioritized according to the distance from
+        the region barycenter. Priorities are equal along lines of constant distance
+        from the barycenter, quantized in units of the tile diamter.
+
+        Returns
+        -------
+        priorities: ~numpy.array
+        array of lentgh of number of tiles with the prioritiy for each tile.
+        """
+        r, d = self.tiles.ra.deg, self.tiles.dec.deg
+
+        # TODO: proper calculation of barycenter on the sphere!
+        rc = numpy.average(r)
+        dc = numpy.average(d)
+        dist = lvmsurveysim.utils.spherical.great_circle_distance(r, d, rc, dc)
+        field = numpy.sqrt(self.get_pixarea()/numpy.pi) # TODO: better way to get field size!!!
+
+        p = numpy.floor(dist/field).astype(int)
+        return numpy.max(p)-p+1  # invert since priorities increase with value
 
 
     def plot(self, *args, **kwargs):
