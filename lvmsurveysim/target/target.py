@@ -270,11 +270,13 @@ class Target(object):
                 return self.tile_priorities
 
         if self.tiling_strategy == 'lowest_airmass':
-            return numpy.ones(len(self.tiles), dtype=int)
+            self.tile_priorities = numpy.ones(len(self.tiles), dtype=int)
         elif self.tiling_strategy == 'center_first':
-            return self.center_first_priorities_()
+            self.tile_priorities = self.center_first_priorities_()
         else:
             raise ValueError(f'invalid tiling strategy: {self.tiling_strategy}.')
+
+        return self.tile_priorities
 
 
     def center_first_priorities_(self):
