@@ -152,6 +152,7 @@ class Scheduler(object):
         self.ifu = ifu or IFU.from_config()
 
         self.pointings = targets.get_tiling(ifu=self.ifu, to_frame='icrs')
+        self.tile_priorities = targets.get_tile_priorities()
         self.tiling_type = 'hexagonal'
 
         # Calculate overlap but don't apply the masks
@@ -163,7 +164,9 @@ class Scheduler(object):
             for ii in self.pointings:
                 tname = self.targets[ii].name
 
+                # remove the overlapping tiles from the pointings and remove their tile priorities
                 self.pointings[ii] = self.pointings[ii][self.overlap[tname]['global_no_overlap']]
+                self.tile_priorities[ii] = self.tile_priorities[ii][self.overlap[tname]['global_no_overlap']]
 
                 if len(self.pointings[ii]) == 0:
                     warnings.warn(f'target {tname} completely overlaps with other '
@@ -398,10 +401,13 @@ class Scheduler(object):
             [numpy.array([self.pointings[idx].ra.deg, self.pointings[idx].dec.deg]).T
              for idx in s])
 
-        # Create an array of pointing to priority.
+        # Create an array of the target's priority for each pointing
         priorities = numpy.concatenate([numpy.repeat(self.targets[idx].priority,
                                         len(self.pointings[idx]))
                                         for idx in s])
+
+        # Array with the individual tile priorities
+        tile_prio = numpy.concatenate([self.tile_priorities[idx] for idx in s])
 
         # Array with the total exposure time for each tile
         target_exposure_times = numpy.concatenate(
@@ -456,7 +462,7 @@ class Scheduler(object):
 
                 observed += self.schedule_one_night(
                     jd, plan, index_to_target, max_airmass_to_target,
-                    priorities, coordinates, target_exposure_times,
+                    priorities, tile_prio, coordinates, target_exposure_times,
                     exposure_quantums, min_moon_to_target, max_lunation,
                     observed, **kwargs)
 
@@ -470,7 +476,7 @@ class Scheduler(object):
                    float, float, float, float])
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
-                           target_priorities, coordinates, target_exposure_times,
+                           target_priorities, tile_prio, coordinates, target_exposure_times,
                            exposure_quantums, target_min_moon_dist, max_lunation,
                            observed, zenith_avoidance=__ZENITH_AVOIDANCE__):
         """Schedules a single night at a single observatory.
@@ -489,6 +495,9 @@ class Scheduler(object):
         priorities : ~numpy.ndarray
             An array with the length of all the pointings indicating the
             priority of the target.
+        tile_prio : ~numpy.ndarray
+            An array with the length of all the pointings indicating the
+            priority of the individual tiles.
         coordinates : ~astropy.coordinates.SkyCoord
             The coordinates of each one of the pointings, in the ICRS frame.
             The ordering of the coordinates is the same as in ``target_index``.
@@ -590,17 +599,19 @@ class Scheduler(object):
             incomplete = ((observed + new_observed > 0) &
                           (observed + new_observed < target_exposure_times))
 
-            # Gets the coordinates and priorities of valid pointings.
+            # Gets the coordinates, altitudes, and priorities of possible pointings.
             valid_alt = alt_start[valid_idx]
             valid_priorities = target_priorities[valid_idx]
             valid_incomplete = incomplete[valid_idx]
+            valid_tile_priorities = tile_prio[valid_idx]
 
             did_observe = False
 
-            # Give incomplete observations the highest priority
+            # Give incomplete observations the highest priority, imitating a high-priority target,
+            # that makes sure these are completed first in all visible targets
             valid_priorities[valid_incomplete] = maxpriority + 1
 
-            # Loops starting with pointings with the highest priority.
+            # Loops starting with targets with the highest priority.
             for priority in range(valid_priorities.max(), valid_priorities.min() - 1, -1):
 
                 # Gets the indices that correspond to this priority (note that
@@ -612,14 +623,22 @@ class Scheduler(object):
                 if len(valid_priority_idx) == 0:
                     continue
 
-                valid_alt_priority = valid_alt[valid_priority_idx]
+                # select all pointings with the current target priority
+                valid_alt_target_priority = valid_alt[valid_priority_idx]
+                valid_alt_tile_priority = valid_tile_priorities[valid_priority_idx]
 
-                # Gets the pointing with the highest altitude.
-                obs_alt_idx = valid_alt_priority.argmax()
-                obs_alt = valid_alt_priority[obs_alt_idx]
+                # Find the tiles with the highest tile priority
+                max_tile_priority = numpy.max(valid_alt_tile_priority)
+                high_priority_tiles = numpy.where(valid_alt_tile_priority==max_tile_priority)[0]
+
+                # Gets the pointing with the highest altitude among the tiles with the highest prio
+                obs_alt_idx = valid_alt_target_priority[high_priority_tiles].argmax()
+
+                obs_tile_idx = high_priority_tiles[obs_alt_idx]
+                obs_alt = valid_alt_target_priority[obs_tile_idx]
 
                 # Gets the index of the pointing in the master list.
-                observed_idx = valid_idx[valid_priority_idx[obs_alt_idx]]
+                observed_idx = valid_idx[valid_priority_idx[obs_tile_idx]]
 
                 # observe it, give it one quantum of exposure
                 new_observed[observed_idx] += exposure_quantums[observed_idx]
