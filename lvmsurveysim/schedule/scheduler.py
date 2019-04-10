@@ -16,6 +16,7 @@ import warnings
 import astropy
 import cycler
 import matplotlib.pyplot as plt
+from matplotlib import animation
 import numpy
 import shapely.vectorized
 
@@ -303,6 +304,40 @@ class Scheduler(object):
         scheduler.schedule = schedule
 
         return scheduler
+
+
+    def animate_survey(self, filename='lvm_survey.mp4', step=100, observatory=None, projection='mollweide'):
+
+        data = self.schedule[self.schedule['target'] != '-']
+
+        if observatory:
+            data = data[data['observatory'] == observatory]
+
+        l = int(len(data)/step)
+
+        x = numpy.deg2rad(data['ra']-180)
+        y = numpy.deg2rad(data['dec'])
+        t = data['JD']
+
+        fig, ax = get_axes(projection=projection)
+        p, = ax.plot([], [], '.', ms=1)
+
+        def init():
+            print (len(data))
+            p.set_data([], [])
+            return p,
+
+        def animate(i):
+            if i%10==0:
+                print (i/l)
+            p.set_data(x[:i*step], y[:i*step])
+            ax.set_title(str(t[i]))
+            return p,
+
+        anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                       frames=range(1,l), interval=0, blit=True, repeat=False)
+        anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
+
 
     def plot(self, observatory=None, projection='mollweide'):
         """Plots the observed pointings.
