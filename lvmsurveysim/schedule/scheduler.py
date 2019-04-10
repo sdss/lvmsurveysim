@@ -307,7 +307,20 @@ class Scheduler(object):
 
 
     def animate_survey(self, filename='lvm_survey.mp4', step=100, observatory=None, projection='mollweide'):
+        """
+        Create an animation of the survey progress and save as an mp4 file.
 
+        Parameters
+        ----------
+        filename: str
+            Name of the mp4 file, defaults to 'lvm_survey.mp4'
+        step: int
+            number of observations per frame of movie
+        observatory: str
+            Either 'LCO' or 'APO' or None (plots both)
+        projection: str
+            Which projection of the sphere to use. Defaults to Mollweide.
+        """
         data = self.schedule[self.schedule['target'] != '-']
 
         if observatory:
@@ -317,24 +330,22 @@ class Scheduler(object):
 
         x = numpy.deg2rad(data['ra']-180)
         y = numpy.deg2rad(data['dec'])
+        tt = [target.name for target in self.targets]
+        g = numpy.array([tt.index(i) for i in data['target']])
         t = data['JD']
 
         fig, ax = get_axes(projection=projection)
-        p, = ax.plot([], [], '.', ms=1)
-
-        def init():
-            print (len(data))
-            p.set_data([], [])
-            return p,
+        p, = ax.plot(x[:1], y[:1], '.')
+        ax.scatter(x[:1], y[:1], c=g[:1], s=1)
 
         def animate(i):
             if i%10==0:
-                print (i/l)
-            p.set_data(x[:i*step], y[:i*step])
+                print('%.1f %% done'%(i/l*100))
+            ax.scatter(x[:i*step], y[:i*step], c=g[:i*step], s=1)
             ax.set_title(str(t[i]))
             return p,
 
-        anim = animation.FuncAnimation(fig, animate, init_func=init,
+        anim = animation.FuncAnimation(fig, animate,
                                        frames=range(1,l), interval=0, blit=True, repeat=False)
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
 
