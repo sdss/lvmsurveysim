@@ -328,25 +328,32 @@ class Scheduler(object):
 
         l = int(len(data)/step)
 
-        x = numpy.deg2rad(data['ra']-180)
+        x = numpy.remainder(data['ra']+360+8*15,360) # shift RA values
+        ind = x>180
+        x[ind] -=360    # scale conversion to [-180, 180]
+        x=-x    # reverse the scale: East to the left
+        x = numpy.deg2rad(x)
         y = numpy.deg2rad(data['dec'])
         tt = [target.name for target in self.targets]
-        g = numpy.array([tt.index(i) for i in data['target']])
+        g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
         t = data['JD']
 
         fig, ax = get_axes(projection=projection)
-        p, = ax.plot(x[:1], y[:1], '.')
-        ax.scatter(x[:1], y[:1], c=g[:1], s=1)
+        #scat = ax.scatter(x[:1], y[:1], c=g[:1], s=1, edgecolor=None, edgecolors=None)
+        scat = ax.scatter(x, y, c=g, s=1, edgecolor=None, edgecolors=None, cmap='viridis')
+        #fig.show()
+        #return 
 
         def animate(i):
             if i%10==0:
                 print('%.1f %% done'%(i/l*100))
-            ax.scatter(x[:i*step], y[:i*step], c=g[:i*step], s=1)
+            scat.set_offsets(numpy.stack((x[:i*step], y[:i*step]), axis=0).T)
+            scat.set_array(g[:i*step])
             ax.set_title(str(t[i]))
-            return p,
+            return scat,
 
-        anim = animation.FuncAnimation(fig, animate,
-                                       frames=range(1,l), interval=0, blit=True, repeat=False)
+        anim = animation.FuncAnimation(fig, animate, frames=range(1,l), interval=1, 
+                                       blit=True, repeat=False)
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
 
 
