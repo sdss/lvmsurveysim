@@ -328,11 +328,9 @@ class Scheduler(object):
 
         l = int(len(data)/step)
 
-        x = numpy.remainder(data['ra']+360+8*15,360) # shift RA values
-        ind = x>180
-        x[ind] -=360    # scale conversion to [-180, 180]
-        x=-x    # reverse the scale: East to the left
-        x = numpy.deg2rad(x)
+        x = numpy.remainder(data['ra']+360+__MOLLWEIDE_ORIGIN__,360) # shift RA values
+        x[x>180] -=360    # scale conversion to [-180, 180]
+        x = numpy.deg2rad(-x) # reverse the scale: East to the left
         y = numpy.deg2rad(data['dec'])
         tt = [target.name for target in self.targets]
         g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
@@ -389,11 +387,9 @@ class Scheduler(object):
             data = data[data['observatory'] == observatory]
 
         if fast==True:
-            x = numpy.remainder(data['ra']+360+8*15,360) # shift RA values
-            ind = x>180
-            x[ind] -=360    # scale conversion to [-180, 180]
-            x=-x    # reverse the scale: East to the left
-            x = numpy.deg2rad(x)
+            x = numpy.remainder(data['ra']+360+__MOLLWEIDE_ORIGIN__,360) # shift RA values
+            x[x>180] -=360    # scale conversion to [-180, 180]
+            x = numpy.deg2rad(-x) # reverse the scale: East to the left
             y = numpy.deg2rad(data['dec'])
             tt = [target.name for target in self.targets]
             g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
