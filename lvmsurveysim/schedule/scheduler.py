@@ -355,7 +355,7 @@ class Scheduler(object):
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
 
 
-    def plot(self, observatory=None, projection='mollweide', fast=False):
+    def plot(self, observatory=None, projection='mollweide', fast=False, annotate=False):
         """Plots the observed pointings.
 
         Parameters
@@ -369,6 +369,8 @@ class Scheduler(object):
             Plot IFU sized and shaped pathces if False. This is the default.
             Allows accurate zooming and viewing. If True, plot scatter-plot
             dots instead of IFUs, for speed sacrificing accuracy. This is MUCH faster.
+        annotate : bool
+            Write the targets' names next to the target coordinates
 
         Returns
         -------
@@ -376,6 +378,9 @@ class Scheduler(object):
             The figure with the plot.
 
         """
+
+        if annotate==True
+            fast=True
 
         color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
 
@@ -394,6 +399,9 @@ class Scheduler(object):
             tt = [target.name for target in self.targets]
             g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
             ax.scatter(x, y, c=g, s=0.05, edgecolor=None, edgecolors=None, cmap='viridis')
+            if annotate==True:
+                _, text_indices = numpy.unique(g, return_index=True)
+                [plt.text(x[text_indices[i]],y[text_indices[i]], tt[i], fontsize=9) for i in range(len(tt))]
         else:
             for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
 
@@ -419,7 +427,9 @@ class Scheduler(object):
 
         if observatory is not None:
             ax.set_title(f'Observatory: {observatory}')
+
         return fig
+
 
     def _create_observing_plans(self):
         """Returns a list of `.ObservingPlan` from the configuration file."""
