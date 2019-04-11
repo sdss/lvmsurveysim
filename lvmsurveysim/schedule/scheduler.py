@@ -340,7 +340,7 @@ class Scheduler(object):
 
         fig, ax = get_axes(projection=projection)
         #scat = ax.scatter(x[:1], y[:1], c=g[:1], s=1, edgecolor=None, edgecolors=None)
-        scat = ax.scatter(x, y, c=g, s=1, edgecolor=None, edgecolors=None, cmap='viridis')
+        scat = ax.scatter(x, y, c=g, s=0.05, edgecolor=None, edgecolors=None, cmap='viridis')
         #fig.show()
         #return 
 
@@ -357,7 +357,7 @@ class Scheduler(object):
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
 
 
-    def plot(self, observatory=None, projection='mollweide'):
+    def plot(self, observatory=None, projection='mollweide', fast=False):
         """Plots the observed pointings.
 
         Parameters
@@ -367,6 +367,10 @@ class Scheduler(object):
             the pointings.
         projection : str
             The projection to use, either ``'mollweide'`` or ``'rectangular'``.
+        fast : bool
+            Plot IFU sized and shaped pathces if False. This is the default.
+            Allows accurate zooming and viewing. If True, plot scatter-plot
+            dots instead of IFUs, for speed sacrificing accuracy. This is MUCH faster.
 
         Returns
         -------
@@ -384,31 +388,41 @@ class Scheduler(object):
         if observatory:
             data = data[data['observatory'] == observatory]
 
-        for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
+        if fast==True:
+            x = numpy.remainder(data['ra']+360+8*15,360) # shift RA values
+            ind = x>180
+            x[ind] -=360    # scale conversion to [-180, 180]
+            x=-x    # reverse the scale: East to the left
+            x = numpy.deg2rad(x)
+            y = numpy.deg2rad(data['dec'])
+            tt = [target.name for target in self.targets]
+            g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
+            ax.scatter(x, y, c=g, s=0.05, edgecolor=None, edgecolors=None, cmap='viridis')
+        else:
+            for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
 
-            target = self.targets[ii]
-            name = target.name
+                target = self.targets[ii]
+                name = target.name
 
-            target_data = data[data['target'] == name]
+                target_data = data[data['target'] == name]
 
-            patches = [self.ifu.get_patch(scale=target.telescope.plate_scale,
-                                          centre=[pointing['ra'], pointing['dec']],
-                                          edgecolor='None', linewidth=0.0,
-                                          facecolor=sty['bgcolor'])[0]
-                       for pointing in target_data]
+                patches = [self.ifu.get_patch(scale=target.telescope.plate_scale,
+                                            centre=[pointing['ra'], pointing['dec']],
+                                            edgecolor='None', linewidth=0.0,
+                                            facecolor=sty['bgcolor'])[0]
+                        for pointing in target_data]
 
-            if projection == 'mollweide':
-                patches = [transform_patch_mollweide(ax, patch,
-                                                     origin=__MOLLWEIDE_ORIGIN__,
-                                                     patch_centre=target_data['ra'][ii])
-                           for ii, patch in enumerate(patches)]
+                if projection == 'mollweide':
+                    patches = [transform_patch_mollweide(ax, patch,
+                                                        origin=__MOLLWEIDE_ORIGIN__,
+                                                        patch_centre=target_data['ra'][ii])
+                            for ii, patch in enumerate(patches)]
 
-            for patch in patches:
-                ax.add_patch(patch)
+                for patch in patches:
+                    ax.add_patch(patch)
 
-            if observatory is not None:
-                ax.set_title(f'Observatory: {observatory}')
-
+        if observatory is not None:
+            ax.set_title(f'Observatory: {observatory}')
         return fig
 
     def _create_observing_plans(self):
