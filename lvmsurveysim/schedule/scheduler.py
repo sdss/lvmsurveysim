@@ -379,7 +379,7 @@ class Scheduler(object):
 
         """
 
-        if annotate==True
+        if annotate==True:
             fast=True
 
         color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
