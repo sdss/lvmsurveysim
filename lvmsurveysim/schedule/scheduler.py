@@ -850,6 +850,10 @@ class Scheduler(object):
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
+        for t in self.targets:
+            if target_ntiles[t.name] == 0:
+                target_ntiles[t.name] = 1
+
         rows = [
             (t if t != '-' else 'unused',
              numpy.around(target_ntiles_observed[t], decimals=2),
