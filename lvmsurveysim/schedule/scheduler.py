@@ -212,34 +212,31 @@ class Scheduler(object):
                 # j has a lower priority. So we are masking j with i
 
                 shapely_i = self.targets[i].region.shapely
-                # shapely_j = self.targets[j].region.shapely
+                shapely_j = self.targets[j].region.shapely
 
-                # We'd like to do this but shapely_i and shapely_j may be in
-                # different coordinate frames so for now we just check all
-                # regions against each other.
-                # TODO: add a Region.transform_to method to convert to a different frame.
-                # if shapely_i.intersects(shapely_j):
+                # short circuit the calculation on the tiles if the shapes do not overlap
+                if (self.targets[i].frame =='icrs') and (self.targets[j].frame=='icrs'):
+                    if not shapely_i.intersects(shapely_j):
+                        overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra), True)
+                else:
+                    # shapes overlap, so now find all pointings of j that are within i:
+                    lon_j = self.pointings[j][:].ra
+                    lat_j = self.pointings[j][:].dec
 
-                # For book keeping, keep an individual record of which
-                # objects overlap with a given target
+                    # All pointings are in ICRS but the regions can be in
+                    # galactic so we need to convert the pointings to the
+                    # region frame.
+                    if self.targets[i].frame == 'galactic':
 
-                lon_j = self.pointings[j][:].ra
-                lat_j = self.pointings[j][:].dec
+                        coords_j = astropy.coordinates.SkyCoord(ra=lon_j, dec=lat_j,
+                                                                frame='icrs', unit='deg')
+                        coords_j_gal = coords_j.transform_to('galactic')
 
-                # All pointings are in ICRS but the regions can be in
-                # galactic so we need to convert the pointings to the
-                # region frame.
-                if self.targets[i].frame == 'galactic':
+                        lon_j = coords_j_gal.l.deg
+                        lat_j = coords_j_gal.b.deg
 
-                    coords_j = astropy.coordinates.SkyCoord(ra=lon_j, dec=lat_j,
-                                                            frame='icrs', unit='deg')
-                    coords_j_gal = coords_j.transform_to('galactic')
-
-                    lon_j = coords_j_gal.l.deg
-                    lat_j = coords_j_gal.b.deg
-
-                overlap[names[j]][names[i]] = numpy.logical_not(
-                    shapely.vectorized.contains(shapely_i, lon_j, lat_j))
+                    overlap[names[j]][names[i]] = numpy.logical_not(
+                        shapely.vectorized.contains(shapely_i, lon_j, lat_j))
 
                 # For functional use, create a global overlap mask, to be used when scheduling
                 overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[i]]
