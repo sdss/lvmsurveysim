@@ -31,10 +31,13 @@ def great_circle_distance(ra0, dec0, ra1, dec1):
 
     """
 
-    return numpy.rad2deg(
-        numpy.arccos(numpy.cos(numpy.deg2rad(dec0)) * numpy.cos(numpy.deg2rad(dec1)) *
-                     numpy.cos(numpy.deg2rad(ra1 - ra0)) +
-                     numpy.sin(numpy.deg2rad(dec0)) * numpy.sin(numpy.deg2rad(dec1))))
+    val = numpy.cos(numpy.deg2rad(dec0)) * numpy.cos(numpy.deg2rad(dec1)) *\
+                    numpy.cos(numpy.deg2rad(ra1 - ra0)) +\
+                    numpy.sin(numpy.deg2rad(dec0)) * numpy.sin(numpy.deg2rad(dec1))
+
+    val[val > 1 ] = 1.0
+
+    return numpy.rad2deg(numpy.arccos(val))
 
 
 def ellipse_bbox(ra, dec, a, b, pa, padding=0):
