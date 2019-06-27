@@ -18,6 +18,7 @@ import cycler
 import matplotlib.pyplot as plt
 from matplotlib import animation
 import numpy
+numpy.seterr(invalid='raise')
 import shapely.vectorized
 
 import lvmsurveysim.target
@@ -850,12 +851,15 @@ class Scheduler(object):
             time_on_target[tname] = target_total_time
             surveytime += target_total_time
 
+        # targets that completely overlap with others have no tiles
         for t in self.targets:
             if target_ntiles[t.name] == 0:
+                print(t.name+" has no tiles")
                 target_ntiles[t.name] = 1
 
         rows = [
             (t if t != '-' else 'unused',
+             numpy.float(target_ntiles[t]),
              numpy.around(target_ntiles_observed[t], decimals=2),
              numpy.around(time_on_target[t] / 3600.0, decimals=2),
              numpy.around(exptime_on_target[t] / 3600.0, decimals=2),
@@ -867,9 +871,9 @@ class Scheduler(object):
             for t in names]
 
         stats = astropy.table.Table(rows=rows,
-                                    names=['Target', 'tiles', 'tottime/h', 'exptime/h',
+                                    names=['Target', 'tiles', 'tiles_obs', 'tottime/h', 'exptime/h',
                                            'timefrac', 'area', 'areafrac'],
-                                    dtype=('S8', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
+                                    dtype=('S8','f4', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
 
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
         stats.pprint(max_lines=-1, max_width=-1)
