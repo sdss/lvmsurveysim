@@ -104,7 +104,12 @@ ENV/
 .vscode
 *launch.json
 settings.json
+
+# MacOS
+.DS_Store
+
+# Project generated files
 schedule_load.py
 schedule_run.py
 lvmsurveysim_results.fits
-lvmsurveysim_*.fits
+lvm_survey.mp4
