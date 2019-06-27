@@ -116,7 +116,7 @@ class Target(object):
                 f'region_type={self.region.region_type!r})>')
 
     @classmethod
-    def from_list(cls, name, target_file=None):
+    def from_list(cls, name, targets=None, target_file=None):
         """Returns an instance of `.Target` from a target list.
 
         Initialises a new `.Target` whose parameters have been previously
@@ -158,15 +158,16 @@ class Target(object):
 
         """
 
-        if target_file is None:
-            target_file = pathlib.Path(
-                os.path.expanduser(os.path.expandvars(config['target_file'])))
-        else:
-            target_file = pathlib.Path(target_file)
+        if targets is None:
+            if target_file is None:
+                target_file = pathlib.Path(
+                    os.path.expanduser(os.path.expandvars(config['target_file'])))
+            else:
+                target_file = pathlib.Path(target_file)
 
-        assert target_file.exists()
+            assert target_file.exists()
 
-        targets = yaml.load(open(str(target_file)), Loader=yaml.FullLoader)
+            targets = yaml.load(open(str(target_file)), Loader=yaml.FullLoader)
 
         assert name in targets, 'target not found in target list.'
 
@@ -400,7 +401,7 @@ class TargetList(list):
 
             self._names = list(targets_dict.keys())
 
-            targets = [Target.from_list(name, target_file=target_file)
+            targets = [Target.from_list(name, targets=targets_dict)
                        for name in self._names]
 
             super().__init__(targets)
