@@ -116,7 +116,7 @@ class Target(object):
                 f'region_type={self.region.region_type!r})>')
 
     @classmethod
-    def from_list(cls, name, targets=None, target_file=None):
+    def from_list(cls, name, targets=None):
         """Returns an instance of `.Target` from a target list.
 
         Initialises a new `.Target` whose parameters have been previously
@@ -158,16 +158,7 @@ class Target(object):
 
         """
 
-        if targets is None:
-            if target_file is None:
-                target_file = pathlib.Path(
-                    os.path.expanduser(os.path.expandvars(config['target_file'])))
-            else:
-                target_file = pathlib.Path(target_file)
-
-            assert target_file.exists()
-
-            targets = yaml.load(open(str(target_file)), Loader=yaml.FullLoader)
+        assert targets is not None, "target dictionary not defined"
 
         assert name in targets, 'target not found in target list.'
 
@@ -188,8 +179,8 @@ class Target(object):
 
         if ifu is None:
             ifu = IFU.from_config()
-            warnings.warn(f'target {self.name}: no IFU provided. '
-                          f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
+            # warnings.warn(f'target {self.name}: no IFU provided. '
+            #               f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
 
         assert pixarea is not None or (ifu is not None and telescope is not None), \
             'either pixarea or ifu and telescope need to be defined.'
@@ -237,8 +228,8 @@ class Target(object):
 
         if ifu is None:
             ifu = IFU.from_config()
-            warnings.warn(f'target {self.name}: no IFU provided. '
-                          f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
+            # warnings.warn(f'target {self.name}: no IFU provided. '
+            #               f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
 
         tiles = ifu.get_tile_grid(self.region, telescope.plate_scale)
         tiles = astropy.coordinates.SkyCoord(tiles[:, 0], tiles[:, 1],
