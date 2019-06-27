@@ -1086,3 +1086,32 @@ class Scheduler(object):
         ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0), ncol=ncols)
 
         return fig
+
+    def plot_lunation(self, tname, observatory=None, dark_limit=0.2):
+            """
+            plot the lunation distribution for a target. use '-' for unused time
+            """
+            t = self.schedule[self.schedule['target'] == tname]
+
+            if observatory:
+                t = t[t['observatory'] == observatory]
+
+            bright = t[t['lunation'] > dark_limit]['lst']
+            dark = t[t['lunation'] <= dark_limit]['lst']
+
+            bin_size = 1
+            b = numpy.arange(0, 24 + bin_size, bin_size)
+
+            heights_dark, bins = numpy.histogram(dark, bins=b)
+            heights_dark = numpy.array(heights_dark, dtype=float)
+            heights_bright, bins = numpy.histogram(bright, bins=b)
+            heights_bright = numpy.array(heights_bright, dtype=float)
+
+            plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_dark, label='dark')
+            plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_bright, label='bright')
+            plt.legend()
+            plt.xlabel('LST')
+            plt.ylabel('# of exposures')
+            plt.title('unused' if tname=='-' else tname)
+            plt.show()
+
