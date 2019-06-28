@@ -929,8 +929,8 @@ class Scheduler(object):
             individually. Only used when ``use_groups=True``.
         cumulative : bool or str
             If `True`, plots the cumulative sum of hours spent on each target.
-            If ``'target'``, it plots the cumulative on-target hours normalised
-            by the total hours needed to observe the target. If ``'survey'``,
+            If ``'group'``, it plots the cumulative on-target hours normalised
+            by the total hours needed to observe the target group. If ``'survey'``,
             plots the cumulative hours normalised by the total survey hours.
             When ``cumulative`` is not `False`, ``bin_size`` is set to 1.
         lst : bool
@@ -1032,23 +1032,15 @@ class Scheduler(object):
                     if numpy.quantile(completion, 0.2) >= 1:
                         continue
 
-                if cumulative is not False:
-                    heights = heights.cumsum()
-
-                if cumulative == 'target':
-                    heights /= target_tot_time
-                    show_unused = False
-                elif cumulative == 'survey':
-                    tot_survey = numpy.sum(self.schedule['exptime']) / 3600.
-                    heights /= tot_survey
-                    show_unused = False
-
                 group_heights += heights
 
             # Only plot the heights if they are not zero. This prevents
             # targets that are not observed at an observatory to be displayed.
             if numpy.sum(group_heights) > 0:
-                ax.plot(bins[:-1] + numpy.diff(bins) / 2, group_heights, label=group)
+                if cumulative is False:
+                    ax.plot(bins[:-1] + numpy.diff(bins) / 2, group_heights, label=group)
+                else:
+                    ax.plot(bins[:-1] + numpy.diff(bins) / 2, np.cumsum(group_heights), label=group)
 
         # deal with unused time
         tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
