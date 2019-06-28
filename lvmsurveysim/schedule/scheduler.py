@@ -1126,5 +1126,5 @@ class Scheduler(object):
             plt.xlabel('LST')
             plt.ylabel('# of exposures')
             plt.title('unused' if tname=='-' else tname)
-            return(plot)
+            return(plt)
 
