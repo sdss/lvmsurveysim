@@ -1029,7 +1029,7 @@ class Scheduler(object):
             # Only plot the heights if they are not zero. This prevents
             # targets that are not observed at an observatory to be displayed.
             if numpy.sum(group_heights) > 0:
-                ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, label=group)
+                ax.plot(bins[:-1] + numpy.diff(bins) / 2, group_heights, label=group)
 
         # deal with unused time
         tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
