@@ -1105,17 +1105,12 @@ class Scheduler(object):
 
         return fig
 
-    def plot_lunation(self, tname, observatory=None, dark_limit=0.2):
+    def plot_lunation(self, tname, group=False, observatory=None, dark_limit=0.2):
             """
             plot the lunation distribution for a target. use '-' for unused time
             """
-            t = self.schedule[self.schedule['target'] == tname]
-
-            if observatory:
-                t = t[t['observatory'] == observatory]
-
-            bright = t[t['lunation'] > dark_limit]['lst']
-            dark = t[t['lunation'] <= dark_limit]['lst']
+            dark = self.get_target_time(tname, group=group, lunation=[-0.01, dark_limit], observatory=observatory, return_lst=True)
+            bright = self.get_target_time(tname, group=group, lunation=[dark_limit, 1.0], observatory=observatory, return_lst=True)
 
             bin_size = 1
             b = numpy.arange(0, 24 + bin_size, bin_size)
