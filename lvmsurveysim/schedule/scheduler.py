@@ -773,7 +773,7 @@ class Scheduler(object):
                               ra, dec, 0, 0, airmass, lunation, lst, exptime,
                               totaltime))
 
-    def get_target_time(self, tname, observatory=None, return_lst=False):
+    def get_target_time(self, tname, observatory=None, lunation=None, return_lst=False):
         """Returns the JDs or LSTs for a target at an observatory.
 
         Parameters
@@ -782,6 +782,10 @@ class Scheduler(object):
             The name of the target. Use ``'-'`` for unused time.
         observatory : str
             The observatory to filter for.
+        lunation : list
+            Restrict the data to a range in lunation. Defaults to returning
+            all lunations.
+            Set to [lmin, lmax] to return values of lmin<lunation<=lmax.
         return_lst : bool
             If `True`, returns an array with the LSTs of all the unobserved
             times.
@@ -799,6 +803,9 @@ class Scheduler(object):
 
         if observatory:
             t = t[t['observatory'] == observatory]
+
+        if lunation != None:
+            t = t[ (t['lunation'] > lunation[0]) * (t['lunation'] <= lunation[1])]
 
         if return_lst:
             return t['lst'].data
@@ -888,6 +895,7 @@ class Scheduler(object):
     def plot_survey(self, observatory=None, bin_size=30., targets=None, groups=None,
                     use_groups=False, use_primary_group=True,
                     show_ungrouped=True, cumulative=False, lst=False,
+                    lunation=None,
                     show_unused=True, skip_fast=False, show_mpld3=False):
         """Plot the hours spent on target.
 
@@ -922,6 +930,10 @@ class Scheduler(object):
             Whether to bin the used time by LST instead of JD.
         show_unused : bool
             Display the unused time.
+        lunation : list
+            Range of lunations to include in statistics. Defaults to all lunations.
+            Set to [lmin, lmax] to return values of lmin<lunation<=lmax.
+            Can be used to restrict lst usage plots to only bright, grey, or dark time.
         skip_fast : bool
             If set, do not plot targets that complete in the first 20% of the
             survey.
@@ -994,7 +1006,7 @@ class Scheduler(object):
                 tindex = [target.name for target in self.targets].index(tname)
 
                 # plot each target
-                tt = self.get_target_time(tname, observatory=observatory, return_lst=lst)
+                tt = self.get_target_time(tname, observatory=observatory, lunation=lunation, return_lst=lst)
 
                 if len(tt) == 0:
                     continue
