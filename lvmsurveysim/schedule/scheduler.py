@@ -885,7 +885,7 @@ class Scheduler(object):
         if return_table:
             return stats
 
-    def plot_survey(self, observatory=None, bin_size=30., targets=None,
+    def plot_survey(self, observatory=None, bin_size=30., targets=None, groups=None,
                     use_groups=False, use_primary_group=True,
                     show_ungrouped=True, cumulative=False, lst=False,
                     show_unused=True, skip_fast=False, show_mpld3=False):
@@ -900,6 +900,9 @@ class Scheduler(object):
         targets : list
             A list with the names of the targets to plot. If empty, plots all
             targets.
+        groups : list
+            A list with the names of the groups to plot. If empty, plots all
+            groups.
         use_groups : bool
             If set, the targets are grouped together using the
             ``Target.groups`` list.
@@ -966,7 +969,7 @@ class Scheduler(object):
         if not use_groups:
             groups = [target.name for target in self.targets]
         else:
-            groups = self.targets.list_groups()
+            groups = groups or self.targets.list_groups()
             # Adds the ungrouped targets.
             if show_ungrouped:
                 for target in self.targets:
