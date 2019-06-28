@@ -205,6 +205,7 @@ class Scheduler(object):
             overlap[name]['global_no_overlap'] = numpy.ones(len(self.pointings[idx]),
                                                             dtype=numpy.bool)
 
+        gal_coord_cache = {}
         for i_i, i in enumerate(sorted_indices[:-1]):
             # i has the highest priority because of the [::-1] reversal of the priority list
 
@@ -215,10 +216,13 @@ class Scheduler(object):
                 shapely_j = self.targets[j].region.shapely
 
                 # short circuit the calculation on the tiles if the shapes do not overlap
-                if (self.targets[i].frame =='icrs') and (self.targets[j].frame=='icrs'):
+                may_overlap = True
+                if self.targets[i].frame == self.targets[j].frame:
                     if not shapely_i.intersects(shapely_j):
                         overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra), True)
-                else:
+                        may_overlap = False
+
+                if may_overlap == True:
                     # shapes overlap, so now find all pointings of j that are within i:
                     lon_j = self.pointings[j][:].ra
                     lat_j = self.pointings[j][:].dec
@@ -227,11 +231,14 @@ class Scheduler(object):
                     # galactic so we need to convert the pointings to the
                     # region frame.
                     if self.targets[i].frame == 'galactic':
+                        # cache the transformed coordinates for performance reasons:
+                        if names[j] not in gal_coord_cache.keys():
+                            coords_j = astropy.coordinates.SkyCoord(ra=lon_j, dec=lat_j,
+                                                                    frame='icrs', unit='deg')
+                            coords_j_gal = coords_j.transform_to('galactic')
+                            gal_coord_cache[names[j]] = coords_j_gal
 
-                        coords_j = astropy.coordinates.SkyCoord(ra=lon_j, dec=lat_j,
-                                                                frame='icrs', unit='deg')
-                        coords_j_gal = coords_j.transform_to('galactic')
-
+                        coords_j_gal = gal_coord_cache[names[j]]
                         lon_j = coords_j_gal.l.deg
                         lat_j = coords_j_gal.b.deg
 
