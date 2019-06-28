@@ -802,7 +802,6 @@ class Scheduler(object):
             An array containing the times the target is observed at an
             observatory, as JDs. If ``return_lst=True`` returns an array of
             the corresponding LSTs.
-
         """
 
         column='group' if group==True else 'target'
@@ -830,7 +829,6 @@ class Scheduler(object):
             The targets to summarize. If `None`, use ``self.targets``.
         return_table : bool
             If `True`, return a `~astropy.table.Table` with the results.
-
         """
 
         if targets is None:
@@ -952,7 +950,6 @@ class Scheduler(object):
         ------
         fig : `~matplotlib.figure.Figure`
             The Matplotlib figure of the plot.
-
         """
 
         assert self.schedule is not None, 'you still have not run a simulation.'
@@ -1106,25 +1103,41 @@ class Scheduler(object):
         return fig
 
     def plot_lunation(self, tname, group=False, observatory=None, dark_limit=0.2):
-            """
-            plot the lunation distribution for a target. use '-' for unused time
-            """
-            dark = self.get_target_time(tname, group=group, lunation=[-0.01, dark_limit], observatory=observatory, return_lst=True)
-            bright = self.get_target_time(tname, group=group, lunation=[dark_limit, 1.0], observatory=observatory, return_lst=True)
+        """
+        plot the lunation distribution for a target. use '-' for unused time
 
-            bin_size = 1
-            b = numpy.arange(0, 24 + bin_size, bin_size)
+       Parameters
+       ----------
+        tname : str
+            The name of the target or group. Use ``'-'`` for unused time.
+        group : bool
+            If not true, tname will be the name of a group not a single 
+            target.
+        observatory : str
+            The observatory to filter for.
+        dark_limit : float
+            Limiting lunation value to count as dark time. Defaults to 0.2.
 
-            heights_dark, bins = numpy.histogram(dark, bins=b)
-            heights_dark = numpy.array(heights_dark, dtype=float)
-            heights_bright, bins = numpy.histogram(bright, bins=b)
-            heights_bright = numpy.array(heights_bright, dtype=float)
+        Return
+        ------
+        fig : `~matplotlib.figure.Figure`
+            The Matplotlib figure of the plot.
+        """
+        dark = self.get_target_time(tname, group=group, lunation=[-0.01, dark_limit], observatory=observatory, return_lst=True)
+        bright = self.get_target_time(tname, group=group, lunation=[dark_limit, 1.0], observatory=observatory, return_lst=True)
 
-            plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_dark, label='dark')
-            plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_bright, label='bright')
-            plt.legend()
-            plt.xlabel('LST')
-            plt.ylabel('# of exposures')
-            plt.title('unused' if tname=='-' else tname)
-            return(plt)
+        bin_size = 1
+        b = numpy.arange(0, 24 + bin_size, bin_size)
 
+        heights_dark, bins = numpy.histogram(dark, bins=b)
+        heights_dark = numpy.array(heights_dark, dtype=float)
+        heights_bright, bins = numpy.histogram(bright, bins=b)
+        heights_bright = numpy.array(heights_bright, dtype=float)
+
+        plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_dark, label='dark')
+        plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_bright, label='bright')
+        plt.legend()
+        plt.xlabel('LST')
+        plt.ylabel('# of exposures')
+        plt.title('unused' if tname=='-' else tname)
+        return plt
