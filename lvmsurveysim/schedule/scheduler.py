@@ -547,10 +547,10 @@ class Scheduler(object):
         # Convert schedule to Astropy Table.
         self.schedule = astropy.table.Table(
             rows=self.schedule,
-            names=['JD', 'observatory', 'target', 'index', 'ra', 'dec',
+            names=['JD', 'observatory', 'target', 'group', 'index', 'ra', 'dec',
                    'pixel', 'nside', 'airmass', 'lunation',
                    'lst', 'exptime', 'totaltime'],
-            dtype=[float, 'S10', 'S20', int, float, float, int, int, float,
+            dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
                    float, float, float, float])
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
@@ -727,6 +727,8 @@ class Scheduler(object):
 
                 target_index = index_to_target[observed_idx]
                 target_name = self.targets[target_index].name
+                groups = self.targets[target_index].groups
+                target_group = groups[0] if groups else 'None'
                 target_overhead = self.targets[target_index].overhead
 
                 # Get the index of the first value in index_to_target that matches
@@ -741,6 +743,7 @@ class Scheduler(object):
                 airmass = 1.0 / numpy.cos(numpy.radians(90.0 - obs_alt))
                 self._record_observation(current_jd, observatory,
                                          target_name=target_name,
+                                         target_group=target_group,
                                          pointing_index=pointing_index,
                                          ra=ra, dec=dec,
                                          airmass=airmass,
@@ -763,23 +766,26 @@ class Scheduler(object):
 
         return new_observed
 
-    def _record_observation(self, jd, observatory, target_name='-',
+    def _record_observation(self, jd, observatory, target_name='-', target_group='-',
                             pointing_index=-1, ra=-999., dec=-999.,
                             airmass=-999., lunation=-999., lst=-999.,
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
-        self.schedule.append((jd, observatory, target_name, pointing_index,
+        self.schedule.append((jd, observatory, target_name, target_group, pointing_index,
                               ra, dec, 0, 0, airmass, lunation, lst, exptime,
                               totaltime))
 
-    def get_target_time(self, tname, observatory=None, lunation=None, return_lst=False):
+    def get_target_time(self, tname, group=False, observatory=None, lunation=None, return_lst=False):
         """Returns the JDs or LSTs for a target at an observatory.
 
         Parameters
         ----------
         tname : str
-            The name of the target. Use ``'-'`` for unused time.
+            The name of the target or group. Use ``'-'`` for unused time.
+        group : bool
+            If not true, tname will be the name of a group not a single 
+            target.
         observatory : str
             The observatory to filter for.
         lunation : list
@@ -799,7 +805,8 @@ class Scheduler(object):
 
         """
 
-        t = self.schedule[self.schedule['target'] == tname]
+        column='group' if group==True else 'target'
+        t = self.schedule[self.schedule[column] == tname]
 
         if observatory:
             t = t[t['observatory'] == observatory]
