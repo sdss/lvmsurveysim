@@ -406,7 +406,8 @@ class Scheduler(object):
             ax.scatter(x, y, c=g, s=0.05, edgecolor=None, edgecolors=None, cmap='viridis')
             if annotate==True:
                 _, text_indices = numpy.unique(g, return_index=True)
-                [plt.text(x[text_indices[i]],y[text_indices[i]], tt[i], fontsize=9) for i in range(len(tt))]
+                for i in range(len(tt)):
+                    plt.text(x[text_indices[i]],y[text_indices[i]], tt[i], fontsize=9)
         else:
             for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
 
@@ -1037,7 +1038,7 @@ class Scheduler(object):
                 if cumulative is False:
                     ax.plot(bins[:-1] + numpy.diff(bins) / 2, group_heights, label=group)
                 else:
-                    ax.plot(bins[:-1] + numpy.diff(bins) / 2, np.cumsum(group_heights), label=group)
+                    ax.plot(bins[:-1] + numpy.diff(bins) / 2, numpy.cumsum(group_heights), label=group)
 
         # deal with unused time
         tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
