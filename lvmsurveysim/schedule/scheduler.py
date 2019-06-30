@@ -690,8 +690,8 @@ class Scheduler(object):
             # that makes sure these are completed first in all visible targets
             valid_priorities[valid_incomplete] = maxpriority + 1
 
-            # Loops starting with targets with the highest priority.
-            for priority in range(valid_priorities.max(), valid_priorities.min() - 1, -1):
+            # Loops starting with targets with the highest priority (lowest numerical value).
+            for priority in numpy.flip(numpy.unique(valid_priorities), axis=0):
 
                 # Gets the indices that correspond to this priority (note that
                 # these indices correspond to positions in valid_idx, not in the
