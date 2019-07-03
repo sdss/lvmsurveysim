@@ -343,7 +343,7 @@ class Scheduler(object):
 
         fig, ax = get_axes(projection=projection)
         #scat = ax.scatter(x[:1], y[:1], c=g[:1], s=1, edgecolor=None, edgecolors=None)
-        scat = ax.scatter(x, y, c=g, s=0.05, edgecolor=None, edgecolors=None, cmap='viridis')
+        scat = ax.scatter(x, y, c=g%19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
         #fig.show()
         #return 
 
@@ -403,7 +403,7 @@ class Scheduler(object):
             y = numpy.deg2rad(data['dec'])
             tt = [target.name for target in self.targets]
             g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
-            ax.scatter(x, y, c=g, s=0.05, edgecolor=None, edgecolors=None, cmap='viridis')
+            ax.scatter(x, y, c=g%19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
             if annotate==True:
                 _, text_indices = numpy.unique(g, return_index=True)
                 for i in range(len(tt)):
