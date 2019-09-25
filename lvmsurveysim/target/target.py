@@ -7,11 +7,10 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-04 17:40:19
+# @Last modified time: 2019-09-25 15:20:31
 
 import os
 import pathlib
-import warnings
 
 import astropy
 import numpy
@@ -23,7 +22,6 @@ from lvmsurveysim.utils import plot as lvm_plot
 import lvmsurveysim.utils.spherical
 
 from .. import config
-from ..exceptions import LVMSurveySimWarning
 from ..telescope import Telescope
 from .region import Region
 
@@ -108,7 +106,6 @@ class Target(object):
 
         self.tiles = None
         self.tile_priorities = None
-
 
     def __repr__(self):
 
@@ -233,7 +230,7 @@ class Target(object):
 
         tiles = ifu.get_tile_grid(self.region, telescope.plate_scale)
         tiles = astropy.coordinates.SkyCoord(tiles[:, 0], tiles[:, 1],
-                                              frame=self.frame, unit='deg')
+                                             frame=self.frame, unit='deg')
 
         if to_frame:
             tiles = tiles.transform_to(to_frame)
@@ -244,16 +241,14 @@ class Target(object):
 
         return tiles
 
-
     def get_tile_priorities(self, force_retile=False):
-        """
-        Return an array with tile priorities according to the tiling
+        """Return an array with tile priorities according to the tiling
         strategy defined for this target.
 
         Returns
         -------
         priorities: ~numpy.array
-        array of lentgh of number of tiles with the prioritiy for each tile.
+            Array of length of number of tiles with the priority for each tile.
         """
 
         # return cached values unless told not to
@@ -270,18 +265,19 @@ class Target(object):
 
         return self.tile_priorities
 
-
     def center_first_priorities_(self):
-        """
-        Return an array with tile priorities according for the center-first
-        tiling strategy. Tiles are prioritized according to the distance from
-        the region barycenter. Priorities are equal along lines of constant distance
-        from the barycenter, quantized in units of the tile diamter.
+        """Return an array with tile priorities according for the center-first
+        tiling strategy.
+
+        Tiles are prioritized according to the distance from the region
+        barycenter. Priorities are equal along lines of constant distance
+        from the barycenter, quantized in units of the tile diameter.
 
         Returns
         -------
-        priorities: ~numpy.array
-        array of lentgh of number of tiles with the prioritiy for each tile.
+        priorities : ~numpy.array
+            Array of length of number of tiles with the priority for each tile.
+
         """
         r, d = self.tiles.ra.deg, self.tiles.dec.deg
 
@@ -289,17 +285,15 @@ class Target(object):
         rc = numpy.average(r)
         dc = numpy.average(d)
         dist = lvmsurveysim.utils.spherical.great_circle_distance(r, d, rc, dc)
-        field = numpy.sqrt(self.get_pixarea()/numpy.pi) # TODO: better way to get field size!!!
+        field = numpy.sqrt(self.get_pixarea() / numpy.pi)  # TODO: better way to get field size!!!
 
-        p = numpy.floor(dist/field).astype(int)
-        return numpy.max(p)-p+1  # invert since priorities increase with value
-
+        p = numpy.floor(dist / field).astype(int)
+        return numpy.max(p) - p + 1  # invert since priorities increase with value
 
     def plot(self, *args, **kwargs):
         """Plots the region. An alias for ``.Region.plot``."""
 
         return self.region.plot(*args, **kwargs)
-
 
     def plot_tiling(self, coords=None, ifu=None, frame=None, fig=None, **kwargs):
         """Plots the tiles within the region.

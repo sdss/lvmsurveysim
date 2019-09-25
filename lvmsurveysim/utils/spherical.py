@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-26 19:46:55
+# @Last modified time: 2019-09-25 15:43:16
 
 import numpy
 
@@ -26,16 +26,16 @@ def great_circle_distance(ra0, dec0, ra1, dec1):
 
     Returns
     -------
-    separation : float or ~numpy.ndarray
+    separation : `float` or `~numpy.ndarray`
         The separation between the two sets of coordinates, in degrees.
 
     """
 
-    val = numpy.cos(numpy.deg2rad(dec0)) * numpy.cos(numpy.deg2rad(dec1)) *\
-                    numpy.cos(numpy.deg2rad(ra1 - ra0)) +\
-                    numpy.sin(numpy.deg2rad(dec0)) * numpy.sin(numpy.deg2rad(dec1))
+    val = (numpy.cos(numpy.deg2rad(dec0)) * numpy.cos(numpy.deg2rad(dec1)) *
+           numpy.cos(numpy.deg2rad(ra1 - ra0)) +
+           numpy.sin(numpy.deg2rad(dec0)) * numpy.sin(numpy.deg2rad(dec1)))
 
-    val[val > 1 ] = 1.0
+    val[val > 1] = 1.0
 
     return numpy.rad2deg(numpy.arccos(val))
 
@@ -89,7 +89,7 @@ def get_lst(jd, lon):
 
 
 def get_altitude(ra, dec, jd=None, lst=None, lon=None, lat=None, airmass=False):
-    """Returns the altitude of an object from its equatorial coordinates in degrees.
+    r"""Returns the altitude of an object from its equatorial coordinates in degrees.
 
     Parameters
     ----------
