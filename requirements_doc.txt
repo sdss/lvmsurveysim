@@ -6,3 +6,4 @@ sphinxcontrib-fulltoc>=1.2
 sphinx-click>=2.0.1
 m2r>=0.1.12
 releases>=1.6.1
+semantic-version==2.6.0
