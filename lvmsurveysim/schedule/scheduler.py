@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-04-04 23:28:39
+# @Last modified time: 2019-09-25 15:20:08
 
 import itertools
 import os
@@ -16,10 +16,9 @@ import warnings
 import astropy
 import cycler
 import matplotlib.pyplot as plt
-from matplotlib import animation
 import numpy
-numpy.seterr(invalid='raise')
 import shapely.vectorized
+from matplotlib import animation
 
 import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
@@ -33,6 +32,9 @@ try:
     import mpld3
 except ImportError:
     mpld3 = None
+
+
+numpy.seterr(invalid='raise')
 
 
 __all__ = ['Scheduler', 'AltitudeCalculator']
@@ -166,9 +168,12 @@ class Scheduler(object):
             for ii in self.pointings:
                 tname = self.targets[ii].name
 
-                # remove the overlapping tiles from the pointings and remove their tile priorities
-                self.pointings[ii] = self.pointings[ii][self.overlap[tname]['global_no_overlap']]
-                self.tile_priorities[ii] = self.tile_priorities[ii][self.overlap[tname]['global_no_overlap']]
+                # Remove the overlapping tiles from the pointings and
+                # remove their tile priorities.
+                self.pointings[ii] = self.pointings[ii][
+                    self.overlap[tname]['global_no_overlap']]
+                self.tile_priorities[ii] = self.tile_priorities[ii][
+                    self.overlap[tname]['global_no_overlap']]
 
                 if len(self.pointings[ii]) == 0:
                     warnings.warn(f'target {tname} completely overlaps with other '
@@ -219,10 +224,11 @@ class Scheduler(object):
                 may_overlap = True
                 if self.targets[i].frame == self.targets[j].frame:
                     if not shapely_i.intersects(shapely_j):
-                        overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra), True)
+                        overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra),
+                                                                 True)
                         may_overlap = False
 
-                if may_overlap == True:
+                if may_overlap is True:
                     # shapes overlap, so now find all pointings of j that are within i:
                     lon_j = self.pointings[j][:].ra
                     lat_j = self.pointings[j][:].dec
@@ -310,20 +316,19 @@ class Scheduler(object):
 
         return scheduler
 
-
-    def animate_survey(self, filename='lvm_survey.mp4', step=100, observatory=None, projection='mollweide'):
-        """
-        Create an animation of the survey progress and save as an mp4 file.
+    def animate_survey(self, filename='lvm_survey.mp4', step=100,
+                       observatory=None, projection='mollweide'):
+        """Create an animation of the survey progress and save as an mp4 file.
 
         Parameters
         ----------
-        filename: str
-            Name of the mp4 file, defaults to 'lvm_survey.mp4'
-        step: int
-            number of observations per frame of movie
-        observatory: str
-            Either 'LCO' or 'APO' or None (plots both)
-        projection: str
+        filename : str
+            Name of the mp4 file, defaults to ``'lvm_survey.mp4'``.
+        step : int
+            Number of observations per frame of movie.
+        observatory : str
+            Either ``'LCO'`` or ``'APO'`` or `None` (plots both).
+        projection : str
             Which projection of the sphere to use. Defaults to Mollweide.
         """
         data = self.schedule[self.schedule['target'] != '-']
@@ -331,34 +336,33 @@ class Scheduler(object):
         if observatory:
             data = data[data['observatory'] == observatory]
 
-        l = int(len(data)/step)
+        ll = int(len(data) / step)
 
-        x = numpy.remainder(data['ra']+360+__MOLLWEIDE_ORIGIN__,360) # shift RA values
-        x[x>180] -=360    # scale conversion to [-180, 180]
-        x = numpy.deg2rad(-x) # reverse the scale: East to the left
+        x = numpy.remainder(data['ra'] + 360 + __MOLLWEIDE_ORIGIN__, 360)  # shift RA values
+        x[x > 180] -= 360  # scale conversion to [-180, 180]
+        x = numpy.deg2rad(-x)  # reverse the scale: East to the left
         y = numpy.deg2rad(data['dec'])
         tt = [target.name for target in self.targets]
         g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
         t = data['JD']
 
         fig, ax = get_axes(projection=projection)
-        #scat = ax.scatter(x[:1], y[:1], c=g[:1], s=1, edgecolor=None, edgecolors=None)
-        scat = ax.scatter(x, y, c=g%19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
-        #fig.show()
-        #return 
+        # scat = ax.scatter(x[:1], y[:1], c=g[:1], s=1, edgecolor=None, edgecolors=None)
+        scat = ax.scatter(x, y, c=g % 19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
+        # fig.show()
+        # return
 
-        def animate(i):
-            if i%10==0:
-                print('%.1f %% done'%(i/l*100))
-            scat.set_offsets(numpy.stack((x[:i*step], y[:i*step]), axis=0).T)
-            scat.set_array(g[:i*step])
-            ax.set_title(str(t[i]))
+        def animate(ii):
+            if ii % 10 == 0:
+                print('%.1f %% done' % (ii / ll * 100))
+            scat.set_offsets(numpy.stack((x[:ii * step], y[:ii * step]), axis=0).T)
+            scat.set_array(g[:ii * step])
+            ax.set_title(str(t[ii]))
             return scat,
 
-        anim = animation.FuncAnimation(fig, animate, frames=range(1,l), interval=1, 
+        anim = animation.FuncAnimation(fig, animate, frames=range(1, ll), interval=1,
                                        blit=True, repeat=False)
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
-
 
     def plot(self, observatory=None, projection='mollweide', fast=False, annotate=False):
         """Plots the observed pointings.
@@ -371,11 +375,13 @@ class Scheduler(object):
         projection : str
             The projection to use, either ``'mollweide'`` or ``'rectangular'``.
         fast : bool
-            Plot IFU sized and shaped pathces if False. This is the default.
-            Allows accurate zooming and viewing. If True, plot scatter-plot
-            dots instead of IFUs, for speed sacrificing accuracy. This is MUCH faster.
+            Plot IFU sized and shaped patches if `False`. This is the default.
+            Allows accurate zooming and viewing. If `True`, plot scatter-plot
+            dots instead of IFUs, for speed sacrificing accuracy.
+            This is MUCH faster.
         annotate : bool
-            Write the targets' names next to the target coordinates
+            Write the targets' names next to the target coordinates. Implies
+            ``fast=True``.
 
         Returns
         -------
@@ -384,8 +390,8 @@ class Scheduler(object):
 
         """
 
-        if annotate==True:
-            fast=True
+        if annotate is True:
+            fast = True
 
         color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
 
@@ -396,18 +402,19 @@ class Scheduler(object):
         if observatory:
             data = data[data['observatory'] == observatory]
 
-        if fast==True:
-            x = numpy.remainder(data['ra']+360+__MOLLWEIDE_ORIGIN__,360) # shift RA values
-            x[x>180] -=360    # scale conversion to [-180, 180]
-            x = numpy.deg2rad(-1*x) # reverse the scale: East to the left
+        if fast is True:
+            x = numpy.remainder(data['ra'] + 360 + __MOLLWEIDE_ORIGIN__, 360)  # shift RA values
+            x[x > 180] -= 360  # scale conversion to [-180, 180]
+            x = numpy.deg2rad(-1*x)  # reverse the scale: East to the left
+
             y = numpy.deg2rad(data['dec'])
             tt = [target.name for target in self.targets]
             g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
-            ax.scatter(x, y, c=g%19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
-            if annotate==True:
+            ax.scatter(x, y, c=g % 19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
+            if annotate is True:
                 _, text_indices = numpy.unique(g, return_index=True)
                 for i in range(len(tt)):
-                    plt.text(x[text_indices[i]],y[text_indices[i]], tt[i], fontsize=9)
+                    plt.text(x[text_indices[i]], y[text_indices[i]], tt[i], fontsize=9)
         else:
             for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
 
@@ -417,16 +424,16 @@ class Scheduler(object):
                 target_data = data[data['target'] == name]
 
                 patches = [self.ifu.get_patch(scale=target.telescope.plate_scale,
-                                            centre=[pointing['ra'], pointing['dec']],
-                                            edgecolor='None', linewidth=0.0,
-                                            facecolor=sty['bgcolor'])[0]
-                        for pointing in target_data]
+                                              centre=[pointing['ra'], pointing['dec']],
+                                              edgecolor='None', linewidth=0.0,
+                                              facecolor=sty['bgcolor'])[0]
+                           for pointing in target_data]
 
                 if projection == 'mollweide':
                     patches = [transform_patch_mollweide(ax, patch,
-                                                        origin=__MOLLWEIDE_ORIGIN__,
-                                                        patch_centre=target_data['ra'][ii])
-                            for ii, patch in enumerate(patches)]
+                                                         origin=__MOLLWEIDE_ORIGIN__,
+                                                         patch_centre=target_data['ra'][ii])
+                               for ii, patch in enumerate(patches)]
 
                 for patch in patches:
                     ax.add_patch(patch)
@@ -435,7 +442,6 @@ class Scheduler(object):
             ax.set_title(f'Observatory: {observatory}')
 
         return fig
-
 
     def _create_observing_plans(self):
         """Returns a list of `.ObservingPlan` from the configuration file."""
@@ -708,9 +714,10 @@ class Scheduler(object):
 
                 # Find the tiles with the highest tile priority
                 max_tile_priority = numpy.max(valid_alt_tile_priority)
-                high_priority_tiles = numpy.where(valid_alt_tile_priority==max_tile_priority)[0]
+                high_priority_tiles = numpy.where(valid_alt_tile_priority == max_tile_priority)[0]
 
-                # Gets the pointing with the highest altitude among the tiles with the highest prio
+                # Gets the pointing with the highest altitude among the tiles
+                # with the highest priority.
                 obs_alt_idx = valid_alt_target_priority[high_priority_tiles].argmax()
 
                 obs_tile_idx = high_priority_tiles[obs_alt_idx]
@@ -777,7 +784,8 @@ class Scheduler(object):
                               ra, dec, 0, 0, airmass, lunation, lst, exptime,
                               totaltime))
 
-    def get_target_time(self, tname, group=False, observatory=None, lunation=None, return_lst=False):
+    def get_target_time(self, tname, group=False, observatory=None, lunation=None,
+                        return_lst=False):
         """Returns the JDs or LSTs for a target at an observatory.
 
         Parameters
@@ -785,14 +793,14 @@ class Scheduler(object):
         tname : str
             The name of the target or group. Use ``'-'`` for unused time.
         group : bool
-            If not true, tname will be the name of a group not a single 
+            If not true, ``tname`` will be the name of a group not a single
             target.
         observatory : str
             The observatory to filter for.
         lunation : list
             Restrict the data to a range in lunation. Defaults to returning
-            all lunations.
-            Set to [lmin, lmax] to return values of lmin<lunation<=lmax.
+            all lunations. Set to ``[lmin, lmax]`` to return values of
+            ``lmin < lunation <= lmax``.
         return_lst : bool
             If `True`, returns an array with the LSTs of all the unobserved
             times.
@@ -805,14 +813,14 @@ class Scheduler(object):
             the corresponding LSTs.
         """
 
-        column='group' if group==True else 'target'
+        column = 'group' if group is True else 'target'
         t = self.schedule[self.schedule[column] == tname]
 
         if observatory:
             t = t[t['observatory'] == observatory]
 
-        if lunation != None:
-            t = t[ (t['lunation'] > lunation[0]) * (t['lunation'] <= lunation[1])]
+        if lunation is not None:
+            t = t[(t['lunation'] > lunation[0]) * (t['lunation'] <= lunation[1])]
 
         if return_lst:
             return t['lst'].data
@@ -871,7 +879,7 @@ class Scheduler(object):
         # targets that completely overlap with others have no tiles
         for t in self.targets:
             if target_ntiles[t.name] == 0:
-                print(t.name+" has no tiles")
+                print(t.name + ' has no tiles')
                 target_ntiles[t.name] = 1
 
         rows = [
@@ -888,9 +896,9 @@ class Scheduler(object):
             for t in names]
 
         stats = astropy.table.Table(rows=rows,
-                                    names=['Target', 'tiles', 'tiles_obs', 'tottime/h', 'exptime/h',
-                                           'timefrac', 'area', 'areafrac'],
-                                    dtype=('S8','f4', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
+                                    names=['Target', 'tiles', 'tiles_obs', 'tottime/h',
+                                           'exptime/h', 'timefrac', 'area', 'areafrac'],
+                                    dtype=('S8', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
 
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
         stats.pprint(max_lines=-1, max_width=-1)
@@ -938,8 +946,9 @@ class Scheduler(object):
             Display the unused time.
         lunation : list
             Range of lunations to include in statistics. Defaults to all lunations.
-            Set to [lmin, lmax] to return values of lmin<lunation<=lmax.
-            Can be used to restrict lst usage plots to only bright, grey, or dark time.
+            Set to ``[lmin, lmax]`` to return values of ``lmin < lunation <= lmax``.
+            Can be used to restrict lst usage plots to only bright, grey, or
+            dark time.
         skip_fast : bool
             If set, do not plot targets that complete in the first 20% of the
             survey.
@@ -1012,7 +1021,8 @@ class Scheduler(object):
                 tindex = [target.name for target in self.targets].index(tname)
 
                 # plot each target
-                tt = self.get_target_time(tname, observatory=observatory, lunation=lunation, return_lst=lst)
+                tt = self.get_target_time(tname, observatory=observatory,
+                                          lunation=lunation, return_lst=lst)
 
                 if len(tt) == 0:
                     continue
@@ -1114,7 +1124,7 @@ class Scheduler(object):
         tname : str
             The name of the target or group. Use ``'-'`` for unused time.
         group : bool
-            If not true, tname will be the name of a group not a single 
+            If not true, ``tname`` will be the name of a group not a single
             target.
         observatory : str
             The observatory to filter for.
@@ -1126,8 +1136,10 @@ class Scheduler(object):
         fig : `~matplotlib.figure.Figure`
             The Matplotlib figure of the plot.
         """
-        dark = self.get_target_time(tname, group=group, lunation=[-0.01, dark_limit], observatory=observatory, return_lst=True)
-        bright = self.get_target_time(tname, group=group, lunation=[dark_limit, 1.0], observatory=observatory, return_lst=True)
+        dark = self.get_target_time(tname, group=group, lunation=[-0.01, dark_limit],
+                                    observatory=observatory, return_lst=True)
+        bright = self.get_target_time(tname, group=group, lunation=[dark_limit, 1.0],
+                                      observatory=observatory, return_lst=True)
 
         bin_size = 1
         b = numpy.arange(0, 24 + bin_size, bin_size)
@@ -1142,5 +1154,5 @@ class Scheduler(object):
         plt.legend()
         plt.xlabel('LST')
         plt.ylabel('# of exposures')
-        plt.title('unused' if tname=='-' else tname)
+        plt.title('unused' if tname == '-' else tname)
         return plt

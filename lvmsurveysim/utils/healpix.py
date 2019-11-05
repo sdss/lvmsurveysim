@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
-# @Last modified time: 2019-03-13 15:01:07
+# @Last modified time: 2019-09-25 15:42:18
 
 import healpy
 import numpy
@@ -20,7 +20,7 @@ __all__ = ['nested_regrade', 'get_minimum_nside_pixarea', 'tile_geometry']
 
 
 def nested_regrade(pixels, nside_in, nside_out):
-    """Returns the parent/children pixels from a given HealPix nested pixel.
+    r"""Returns the parent/children pixels from a given HealPix nested pixel.
 
     The HealPix nested mode follows a quadrilateral tree pixel scheme (see
     Figure 1 in Górski et al. 2005) When the resolution (nside) increases,
