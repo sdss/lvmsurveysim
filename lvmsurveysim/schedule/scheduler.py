@@ -399,7 +399,7 @@ class Scheduler(object):
         if fast==True:
             x = numpy.remainder(data['ra']+360+__MOLLWEIDE_ORIGIN__,360) # shift RA values
             x[x>180] -=360    # scale conversion to [-180, 180]
-            x = numpy.deg2rad(-x) # reverse the scale: East to the left
+            x = numpy.deg2rad(-1*x) # reverse the scale: East to the left
             y = numpy.deg2rad(data['dec'])
             tt = [target.name for target in self.targets]
             g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
@@ -997,6 +997,7 @@ class Scheduler(object):
 
             # Cumulated group heights
             group_heights = numpy.zeros(len(b) - 1, dtype=numpy.float)
+            group_target_tot_time = 0.0
 
             # If we are not using groups or the "group"
             # name is that of an ungrouped target.
@@ -1031,6 +1032,7 @@ class Scheduler(object):
                         continue
 
                 group_heights += heights
+                group_target_tot_time += target_tot_time
 
             # Only plot the heights if they are not zero. This prevents
             # targets that are not observed at an observatory to be displayed.
@@ -1038,7 +1040,7 @@ class Scheduler(object):
                 if cumulative is False:
                     ax.plot(bins[:-1] + numpy.diff(bins) / 2, group_heights, label=group)
                 else:
-                    ax.plot(bins[:-1] + numpy.diff(bins) / 2, numpy.cumsum(group_heights), label=group)
+                    ax.plot(bins[:-1] + numpy.diff(bins) / 2, numpy.cumsum(group_heights)/group_target_tot_time, label=group)
 
         # deal with unused time
         tt = self.get_target_time('-', observatory=observatory, return_lst=lst)
@@ -1050,7 +1052,7 @@ class Scheduler(object):
         if cumulative:
             heights = heights.cumsum()
 
-        if show_unused:
+        if show_unused and cumulative is False:
             ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights, ':',
                     color='k', label='Unused')
 
