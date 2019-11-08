@@ -1156,10 +1156,11 @@ class Scheduler(object):
         heights_bright, bins = numpy.histogram(bright, bins=b)
         heights_bright = numpy.array(heights_bright, dtype=float)
 
-        plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_dark, label='dark')
-        plt.plot(bins[:-1] + numpy.diff(bins) / 2, heights_bright, label='bright')
-        plt.legend()
+        fig, ax = plt.subplots()
+        ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights_dark, label='dark')
+        ax.plot(bins[:-1] + numpy.diff(bins) / 2, heights_bright, label='bright')
+        ax.legend()
         plt.xlabel('LST')
         plt.ylabel('# of exposures')
         plt.title('unused' if tname == '-' else tname)
-        return plt
+        return fig
