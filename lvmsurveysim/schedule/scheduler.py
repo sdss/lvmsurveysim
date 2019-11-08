@@ -827,7 +827,7 @@ class Scheduler(object):
         else:
             return t['JD'].data
 
-    def print_statistics(self, observatory=None, targets=None, return_table=False):
+    def print_statistics(self, out_file=None, out_format="ascii", overwrite_out=True, observatory=None, targets=None, return_table=False):
         """Prints a summary of observations at a given observatory.
 
         Parameters
@@ -838,6 +838,10 @@ class Scheduler(object):
             The targets to summarize. If `None`, use ``self.targets``.
         return_table : bool
             If `True`, return a `~astropy.table.Table` with the results.
+        out_file : str
+            Outfile to write statistics.
+        out_format : str
+            Outfile format consistent with astropy.table dumps
         """
 
         if targets is None:
@@ -902,6 +906,9 @@ class Scheduler(object):
 
         print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
         stats.pprint(max_lines=-1, max_width=-1)
+
+        if out_file is not None:
+            stats.write(out_file, format=out_format, overwrite=overwrite_out)
 
         if return_table:
             return stats
