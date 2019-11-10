@@ -222,10 +222,10 @@ class Scheduler(object):
 
                 # short circuit the calculation on the tiles if the shapes do not overlap
                 may_overlap = True
-                if self.targets[i].frame == self.targets[j].frame:
+                if (self.targets[i].frame == 'icrs') and (self.targets[i].frame == self.targets[j].frame):
                     if not shapely_i.intersects(shapely_j):
                         overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra),
-                                                                 True)
+                                                                True)
                         may_overlap = False
 
                 if may_overlap is True:
@@ -638,7 +638,7 @@ class Scheduler(object):
         # The additional exposure time in this night
         new_observed = observed * 0.0
 
-        # Get the coordinates in radians, this speeds up then altitude calculation
+        # Get the coordinates in radians, this speeds up the altitude calculation
         ac = AltitudeCalculator(coordinates[:, 0], coordinates[:, 1], lon, lat)
 
         # convert airmass to altitude, we'll work in altitude space for efficiency
