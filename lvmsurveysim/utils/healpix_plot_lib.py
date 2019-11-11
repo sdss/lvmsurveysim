@@ -107,8 +107,6 @@ if __name__ == "__main__":
     order = hdu_list[0].header['ORDERING']
     data = np.array(hdu_list[1].data.tolist())[:,0]
 
-
-
     log_I = np.log10(data)
     log_I_max = 2.0
     log_I_min = -1.0
@@ -125,4 +123,4 @@ if __name__ == "__main__":
     masks.append(long_lat[1] < -30*u.deg)
     masks.append(long_lat[1] > 30*u.deg)
 
-    healpix_shader(log_I, masks, title=r"MW H$\alpha$", vmin=log_I_min, vmax=log_I_max, outfile="shaded_MW.png", gui=True)
+    healpix_shader(log_I, masks, title=r"MW H$\alpha$", vmin=log_I_min, vmax=log_I_max, outfile="outfile.png", gui=True)

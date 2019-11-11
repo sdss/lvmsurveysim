@@ -12,6 +12,7 @@ from astropy.time import Time
 import astropy.table
 import yaml
 import astropy.units as u
+from lvmsurveysim.target import TargetList
 
 def convert(params):
         
@@ -25,16 +26,19 @@ def convert(params):
     hp = HEALPix(nside=params['nside'], order=image_order, frame=Galactic())
 
     schedule = astropy.table.Table.read(params["file"])
-    target_names = list(np.unique(schedule['target'])[1:])
-    targets = yaml.load(open(os.environ['LVMCORE_DIR']+"/surveydesign/targets.yaml"), Loader=yaml.FullLoader)
+    target_names = np.unique(schedule['target'])
 
+    print(params["target_file"])
+    targets = TargetList(target_file=params["target_file"])
 
     #Create the missing column in the schedule table: Priority
     schedule_priority = np.full(len(schedule['target']), -1)
 
-    for target in target_names:
-        target_mask = schedule['target'] == target
-        schedule_priority[target_mask] = targets[target]['priority']
+    for target_i in range(len(targets)):
+        target = targets[target_i].name
+        if target != '-':
+            target_mask = schedule['target'] == target
+            schedule_priority[target_mask] = targets[target_i].priority
     
     schedule['priority'] = astropy.table.Column(schedule_priority)
 
@@ -76,12 +80,16 @@ def convert(params):
     return(healpix_dictionary)
 
 if __name__ == "__main__":
-    params = {"file":"lvmsurveysim_results.fits", "nside":1024, "targets":"None"}
+    params = {"file":None, "nside":1024, "target_file":"None"}
 
     if len(sys.argv) > 1:
         for argument in sys.argv[1:]:
             key, value = argument.split(":")
             params[key] = value
+
+    if params["target_file"] is "None":
+        params["target_file"] = "%s/surveydesign/%s"%(os.environ['LVMCORE_DIR'], params["file"].replace(".fits",".yaml"))
+        print("converting fits file name %s to target file %s"%(params["file"], params["target_file"]))
 
     healpix_dictionary = convert(params)
 
@@ -93,14 +101,23 @@ if __name__ == "__main__":
 
     colors =[]
     masks = []
-    colors_available = ["copper","Greens","Blues"]
+    colors_available = ["copper", "Greens","Blues", "Purples"]
+    scale = [1, 1, 1]
+
+    priority_min = -1
 
     healpix_dictionary["high_res_priorities"] = healpy.pixelfunc.ud_grade(healpix_dictionary['priorities'], image_nside, power=0.0)
     for priority_i, priority in enumerate(healpix_dictionary['priority_levels']):
-        masks.append(healpix_dictionary['high_res_priorities'] == priority)
-        if priority_i <= len(colors_available) -1:
-            colors.append(colors_available[priority_i])
+        if priority >= (priority_min or -1):
+            masks.append(healpix_dictionary['high_res_priorities'] == priority)
+            if priority_i <= len(colors_available) -1:
+                colors.append(colors_available[priority_i])
+            else:
+                colors.append(colors_available[-1])
+            if priority_i <= len(scale) -1:
+                scale.append(scale[-1])
             
+    
     image_data = np.array(image_hdu_list[1].data.tolist())[:,0]
     hp = HEALPix(nside=params['nside'], order=image_order, frame=Galactic())
 
@@ -109,7 +126,7 @@ if __name__ == "__main__":
     log_I_max = 2.0
     log_I_min = -1.0
 
-    healpix_shader(log_I, masks, cmaps=colors, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="shaded_MW.png", gui=True)
+    healpix_shader(log_I, masks, cmaps=colors, scale=scale, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="%s_shaded_MW.png"%(params['file'].replace(".fits","")), gui=True)
     
 
 
