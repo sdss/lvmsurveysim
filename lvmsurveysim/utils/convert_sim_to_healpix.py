@@ -19,7 +19,7 @@ def convert(coversion_params):
     for coversion_params_key in coversion_params.keys():
         print(coversion_params_key,":", coversion_params[coversion_params_key])
 
-    image_hdu_list = fits.open("Halpha_fwhm06_1024.fits")
+    image_hdu_list = fits.open("%s/surveydesign/Halpha_fwhm06_1024.fits"%(os.environ['LVMCORE_DIR']))
     image_nside = image_hdu_list[0].header['NSIDE']
     image_order = image_hdu_list[0].header['ORDERING']
     image_data = np.array(image_hdu_list[1].data.tolist())[:,0]
