@@ -14,22 +14,22 @@ import yaml
 import astropy.units as u
 from lvmsurveysim.target import TargetList
 
-def convert(params):
+def convert(coversion_params):
         
-    for key in params.keys():
-        print(key,":", params[key])
+    for coversion_params_key in coversion_params.keys():
+        print(coversion_params_key,":", coversion_params[coversion_params_key])
 
     image_hdu_list = fits.open("Halpha_fwhm06_1024.fits")
     image_nside = image_hdu_list[0].header['NSIDE']
     image_order = image_hdu_list[0].header['ORDERING']
     image_data = np.array(image_hdu_list[1].data.tolist())[:,0]
-    hp = HEALPix(nside=params['nside'], order=image_order, frame=Galactic())
+    hp = HEALPix(nside=coversion_params['nside'], order=image_order, frame=Galactic())
 
-    schedule = astropy.table.Table.read(params["file"])
+    schedule = astropy.table.Table.read(coversion_params["file"])
     target_names = np.unique(schedule['target'])
 
-    print(params["target_file"])
-    targets = TargetList(target_file=params["target_file"])
+    print(coversion_params["target_file"])
+    targets = TargetList(target_file=coversion_params["target_file"])
 
     #Create the missing column in the schedule table: Priority
     schedule_priority = np.full(len(schedule['target']), -1)
@@ -53,7 +53,7 @@ def convert(params):
     healpix_dictionary = {}
 
     # To later create empty arrays we need to know the number of healpix pixels.
-    npix=12*params['nside']**2
+    npix=12*coversion_params['nside']**2
 
     #Populate the healpix array with the highest priority of that pixel.
     healpix_dictionary['target index'] = {}
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     image_nside = image_hdu_list[0].header['NSIDE']
     image_order = image_hdu_list[0].header['ORDERING']
 
-    from healpix_plot_lib import healpix_shader
+    from lvmsurveysim.utils.healpix_plot_lib import healpix_shader
 
     colors =[]
     masks = []

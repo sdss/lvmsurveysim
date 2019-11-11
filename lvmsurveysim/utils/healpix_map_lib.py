@@ -3,7 +3,7 @@ import healpy
 from astropy_healpix import HEALPix
 import math
 import astropy.units as u
-import obs_class
+import lvmsurveysim.utils.obs_class as obs_class
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun, get_moon
 from astropy.coordinates import Galactic
 from astropy.time import Time

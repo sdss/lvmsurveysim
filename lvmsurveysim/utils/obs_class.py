@@ -1,10 +1,8 @@
 import astropy.units as u
 import math
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun, get_moon, Galactic
+from astropy.coordinates import SkyCoord, EarthLocation, get_sun, get_moon, Galactic
 from astropy.time import Time
-import numpy as np
 from astropy_healpix import HEALPix
-import healpy
 
 class obs():
     def __init__(self, 
