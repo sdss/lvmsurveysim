@@ -21,7 +21,7 @@ from lvmsurveysim.target import _VALID_FRAMES
 __all__ = ['get_axes', 'transform_patch_mollweide', 'convert_to_mollweide', 'plot_ellipse']
 
 
-__MOLLWEIDE_ORIGIN__ = 120
+__MOLLWEIDE_ORIGIN__ = 180
 
 
 def get_axes(projection='rectangular', frame='icrs', ylim=None):
