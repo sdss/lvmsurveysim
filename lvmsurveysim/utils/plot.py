@@ -21,7 +21,7 @@ from lvmsurveysim.target import _VALID_FRAMES
 __all__ = ['get_axes', 'transform_patch_mollweide', 'convert_to_mollweide', 'plot_ellipse']
 
 
-__MOLLWEIDE_ORIGIN__ = 120
+__MOLLWEIDE_ORIGIN__ = 180
 
 
 def get_axes(projection='rectangular', frame='icrs', ylim=None):
@@ -95,7 +95,7 @@ def get_axes(projection='rectangular', frame='icrs', ylim=None):
     return fig, ax
 
 
-def convert_to_mollweide(coords):
+def convert_to_mollweide(ra, dec):
     """Converts ``[0, 360)`` coordinates to Mollweide-valid values.
 
     Converts values to radians and offsets the Longitude to match the custom
@@ -103,20 +103,24 @@ def convert_to_mollweide(coords):
 
     Parameters
     ----------
-    coords : ~numpy.ndarray
-        A ``Nx2`` array of coordinates to be converted.
+    ra : ~numpy.ndarray
+        ra in degrees of coordinates to be converted
+    dec : ~numpy.ndarray
+        dec in degrees of coordinates to be converted
 
+    Returns
+    -------
+    ra0,dec0 in radians suitable to plot in mollwede projection
     """
 
-    coord0 = numpy.remainder(coords[:, 0] + 360 - __MOLLWEIDE_ORIGIN__, 360)
-    ind = coord0 > 180.
-    coord0[ind] -= 360
-    coord0 = -coord0
+    ra0 = numpy.remainder(ra + 360 - __MOLLWEIDE_ORIGIN__, 360)
+    ind = ra0 > 180.
+    ra0[ind] -= 360
+    ra0 = -ra0
 
-    coords[:, 0] = coord0
-    coords *= numpy.pi / 180.
-
-    return coords
+    ra0 *= numpy.pi / 180.
+    dec0 = dec * numpy.pi / 180.
+    return ra0,dec0
 
 
 def transform_patch_mollweide(ax, patch, patch_centre=None, origin=None):

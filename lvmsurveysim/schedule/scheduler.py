@@ -25,7 +25,7 @@ import lvmsurveysim.utils.spherical
 from lvmsurveysim import IFU, config, log
 from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
 from lvmsurveysim.schedule.plan import ObservingPlan
-from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide
+from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
 
 
 try:
@@ -338,10 +338,7 @@ class Scheduler(object):
 
         ll = int(len(data) / step)
 
-        x = numpy.remainder(data['ra'] + 360 + __MOLLWEIDE_ORIGIN__, 360)  # shift RA values
-        x[x > 180] -= 360  # scale conversion to [-180, 180]
-        x = numpy.deg2rad(-x)  # reverse the scale: East to the left
-        y = numpy.deg2rad(data['dec'])
+        x,y = convert_to_mollweide(data['ra'], data['dec'])
         tt = [target.name for target in self.targets]
         g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
         t = data['JD']
@@ -403,11 +400,10 @@ class Scheduler(object):
             data = data[data['observatory'] == observatory]
 
         if fast is True:
-            x = numpy.remainder(data['ra'] + 360 + __MOLLWEIDE_ORIGIN__, 360)  # shift RA values
-            x[x > 180] -= 360  # scale conversion to [-180, 180]
-            x = numpy.deg2rad(-1*x)  # reverse the scale: East to the left
-
-            y = numpy.deg2rad(data['dec'])
+            if projection == 'mollweide':
+                x,y = convert_to_mollweide(data['ra'], data['dec'])
+            else:
+                x,y = data['ra'], data['dec']
             tt = [target.name for target in self.targets]
             g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
             ax.scatter(x, y, c=g % 19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
