@@ -26,7 +26,7 @@ observing_plan:
     APO:
         start_date: 2459216
         end_date: 2461041
-        good_weather: 0.6
+        good_weather: 0.7
     LCO:
         start_date: 2459216
         end_date: 2461041
