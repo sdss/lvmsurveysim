@@ -278,12 +278,14 @@ class Scheduler(object):
 
                     #Initialize array to True. This doesn't matter. We loop over all values anyway, but it's nice.
                     overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra),
-                                                            True)
+                                                            False)
                     t_start = time.time()
                     # Check array to see which is false.
                     for k in range(len(lon_j)):
                         contains_True_False = poly_i.contains_radec(lon_j[k], lat_j[k], degrees=True)
+
                         overlap[names[j]][names[i]][k] = numpy.logical_not(contains_True_False)
+
                         if contains_True_False and (self.verbos_level >= 2):
                             print("%s x %s overlap at %f, %f"%(self.targets[i].name, self.targets[j].name, lon_j[k], lat_j[k]))
                     
@@ -395,7 +397,7 @@ class Scheduler(object):
 
         def animate(ii):
             if ii % 10 == 0:
-                print('%.1f %% done' % (ii / ll * 100))
+                print('%.1f %% done\r' % (ii / ll * 100))
             scat.set_offsets(numpy.stack((x[:ii * step], y[:ii * step]), axis=0).T)
             scat.set_array(g[:ii * step])
             ax.set_title(str(t[ii]))
