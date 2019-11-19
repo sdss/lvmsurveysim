@@ -47,7 +47,6 @@ def polygon_perimeter(x, y, n=1.0, min_points=5):
     y_perimeter = numpy.array([])
     for x1,x2,y1,y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
         # Calculate the length of a segment, hopefully in degrees
-        print("%f,%f to %f,%f"%(x1,y1,x2,y2))
         dl = ((x2-x1)**2 + (y2-y1)**2)**0.5
 
         n_dl = numpy.max([int(dl/n), min_points])
