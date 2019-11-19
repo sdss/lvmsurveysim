@@ -137,7 +137,7 @@ class Scheduler(object):
 
     """
 
-    def __init__(self, targets, observing_plans=None, ifu=None, remove_overlap=True):
+    def __init__(self, targets, observing_plans=None, ifu=None, remove_overlap=True, verbos_level=0):
 
         if observing_plans is None:
             observing_plans = self._create_observing_plans()
@@ -157,6 +157,7 @@ class Scheduler(object):
         self.pointings = targets.get_tiling(ifu=self.ifu, to_frame='icrs')
         self.tile_priorities = targets.get_tile_priorities()
         self.tiling_type = 'hexagonal'
+        self.verbos_level = verbos_level
 
         # Calculate overlap but don't apply the masks
         self.overlap = self.get_overlap()
@@ -283,10 +284,11 @@ class Scheduler(object):
                     for k in range(len(lon_j)):
                         contains_True_False = poly_i.contains_radec(lon_j[k], lat_j[k], degrees=True)
                         overlap[names[j]][names[i]][k] = numpy.logical_not(contains_True_False)
-                        if contains_True_False:
+                        if contains_True_False and (self.verbos_level >= 2):
                             print("%s x %s overlap at %f, %f"%(self.targets[i].name, self.targets[j].name, lon_j[k], lat_j[k]))
                     
-                    print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[i].name, self.targets[j].name, time.time()-t_start))
+                    if self.verbos_level >=1:
+                        print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[i].name, self.targets[j].name, time.time()-t_start))
                 
                 else:
                     overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra),
