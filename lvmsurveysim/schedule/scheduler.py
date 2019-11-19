@@ -294,7 +294,7 @@ class Scheduler(object):
 
                     per_x, per_y = polygon_perimeter(x_j, y_j)
                     c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
-                    poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').deg)
+                    poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
 
                 else:
                     # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly 
