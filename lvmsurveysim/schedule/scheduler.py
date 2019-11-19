@@ -41,6 +41,31 @@ __all__ = ['Scheduler', 'AltitudeCalculator']
 __ZENITH_AVOIDANCE__ = config['scheduler']['zenith_avoidance']
 __DEFAULT_TIME_STEP__ = config['scheduler']['timestep']
 
+def polygon_perimeter(x, y, n=1.0, min_points=5):
+    """ x and y are numpy type arrays. Function returns perimiter values every n-degree in length"""
+    x_perimeter = numpy.array([])
+    y_perimeter = numpy.array([])
+    for x1,x2,y1,y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
+        # Calculate the length of a segment, hopefully in degrees
+        print("%f,%f to %f,%f"%(x1,y1,x2,y2))
+        dl = ((x2-x1)**2 + (y2-y1)**2)**0.5
+
+        n_dl = numpy.max([int(dl/n), min_points])
+        
+        if x1 != x2:
+            m = (y2-y1)/(x2-x1)
+            b = y2 - m*x2
+
+            interp_x = numpy.linspace(x1, x2, num=n_dl, endpoint=True)
+            interp_y = interp_x * m + b
+        
+        else:
+            interp_x = numpy.full(n_dl, x1)
+            interp_y = numpy.linspace(y1,y2, num_dl, endpoint=True)
+
+        x_perimeter = numpy.append(x_perimeter, interp_x)
+        y_perimeter = numpy.append(y_perimeter, interp_y)
+    return(x_perimeter, y_perimeter)
 
 class AltitudeCalculator(object):
     """Calculate the altitude of a constant set of objects at some global JD,
@@ -222,6 +247,19 @@ class Scheduler(object):
                 self.targets[i].region.r.deg,
                 degrees=True)
 
+            elif self.targets[i].region.region_type == 'rectangle':
+                # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
+                shapely_i = self.targets[i].region.shapely
+
+                # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
+                # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
+                # Get the x-y coordinates which define the polygon of the region.
+                x_i, y_i = shapely_i.exterior.coords.xy
+
+                per_x, per_y = polygon_perimeter(x_i, y_i)
+                c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
+                poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').deg)
+
             else:
                 # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
                 shapely_i = self.targets[i].region.shapely
@@ -245,7 +283,20 @@ class Scheduler(object):
                 if self.targets[j].region.region_type == 'circle':
                     poly_j = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[j].region.coords.transform_to('icrs').ra.deg, self.targets[j].region.coords.transform_to('icrs').dec.deg, self.targets[j].region.r.deg, degrees=True)
 
-                else:
+            elif self.targets[j].region.region_type == 'rectangle':
+                # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
+                shapely_j = self.targets[j].region.shapely
+
+                # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
+                # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
+                # Get the x-y coordinates which define the polygon of the region.
+                x_j, y_j = shapely_j.exterior.coords.xy
+
+                per_x, per_y = polygon_perimeter(x_j, y_j)
+                c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
+                poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').deg)
+
+            else:
                     # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly 
                     shapely_j = self.targets[j].region.shapely
                     
