@@ -283,20 +283,20 @@ class Scheduler(object):
                 if self.targets[j].region.region_type == 'circle':
                     poly_j = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[j].region.coords.transform_to('icrs').ra.deg, self.targets[j].region.coords.transform_to('icrs').dec.deg, self.targets[j].region.r.deg, degrees=True)
 
-            elif self.targets[j].region.region_type == 'rectangle':
-                # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                shapely_j = self.targets[j].region.shapely
+                elif self.targets[j].region.region_type == 'rectangle':
+                    # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
+                    shapely_j = self.targets[j].region.shapely
 
-                # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                # Get the x-y coordinates which define the polygon of the region.
-                x_j, y_j = shapely_j.exterior.coords.xy
+                    # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
+                    # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
+                    # Get the x-y coordinates which define the polygon of the region.
+                    x_j, y_j = shapely_j.exterior.coords.xy
 
-                per_x, per_y = polygon_perimeter(x_j, y_j)
-                c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
-                poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').deg)
+                    per_x, per_y = polygon_perimeter(x_j, y_j)
+                    c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
+                    poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').deg)
 
-            else:
+                else:
                     # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly 
                     shapely_j = self.targets[j].region.shapely
                     
