@@ -209,7 +209,6 @@ class Scheduler(object):
             overlap[name]['global_no_overlap'] = numpy.ones(len(self.pointings[idx]),
                                                             dtype=numpy.bool)
 
-        gal_coord_cache = {}
         #import spherical geometry routine to use for calculating polygons in spherical coordinates
         from spherical_geometry import polygon as spherical_geometry_polygon
 
