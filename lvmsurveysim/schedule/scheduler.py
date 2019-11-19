@@ -56,12 +56,12 @@ def polygon_perimeter(x, y, n=1.0, min_points=5):
             m = (y2-y1)/(x2-x1)
             b = y2 - m*x2
 
-            interp_x = numpy.linspace(x1, x2, num=n_dl, endpoint=True)
+            interp_x = numpy.linspace(x1, x2, num=n_dl, endpoint=False)
             interp_y = interp_x * m + b
         
         else:
             interp_x = numpy.full(n_dl, x1)
-            interp_y = numpy.linspace(y1,y2, n_dl, endpoint=True)
+            interp_y = numpy.linspace(y1,y2, n_dl, endpoint=False)
 
         x_perimeter = numpy.append(x_perimeter, interp_x)
         y_perimeter = numpy.append(y_perimeter, interp_y)
@@ -258,7 +258,7 @@ class Scheduler(object):
 
                 per_x, per_y = polygon_perimeter(x_i, y_i)
                 c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
-                poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').deg)
+                poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
 
             else:
                 # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
