@@ -61,7 +61,7 @@ def polygon_perimeter(x, y, n=1.0, min_points=5):
         
         else:
             interp_x = numpy.full(n_dl, x1)
-            interp_y = numpy.linspace(y1,y2, num_dl, endpoint=True)
+            interp_y = numpy.linspace(y1,y2, n_dl, endpoint=True)
 
         x_perimeter = numpy.append(x_perimeter, interp_x)
         y_perimeter = numpy.append(y_perimeter, interp_y)
