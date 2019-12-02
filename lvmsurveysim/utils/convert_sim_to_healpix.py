@@ -44,10 +44,9 @@ def convert(coversion_params):
     
     schedule['priority'] = astropy.table.Column(schedule_priority)
 
-    #Mask out all the unobserved values. I don't know why they are bad, but they are.
-    obs_mask = schedule['target'] != "-"
-
     ### DEV
+    #Mask out all the unobserved values. I don't know why they are bad, but they are.
+    # obs_mask = schedule['target'] != "-"
     # Create a mapping between the values in the table and their healpix index.
     # This allows us to directly dump information from the table onto the array.
     # healpix_indicies = hp.skycoord_to_healpix(SkyCoord(schedule['ra'][obs_mask], schedule['dec'][obs_mask], unit=u.deg))
@@ -133,7 +132,7 @@ if __name__ == "__main__":
         params["target_file"] = "%s/surveydesign/%s"%(os.environ['LVMCORE_DIR'], params["file"].replace(".fits",".yaml"))
         print("converting fits file name %s to target file %s"%(params["file"], params["target_file"]))
 
-    assert(params['image_file'] != None, "No image file specified...")
+    assert(params['image_file'] != None), "No image file specified..."
     run(params)
 
     
