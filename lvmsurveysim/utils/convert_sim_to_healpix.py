@@ -79,18 +79,8 @@ def convert(coversion_params):
     
     return(healpix_dictionary)
 
-if __name__ == "__main__":
-    params = {"file":None, "nside":1024, "target_file":"None"}
 
-    if len(sys.argv) > 1:
-        for argument in sys.argv[1:]:
-            key, value = argument.split(":")
-            params[key] = value
-
-    if params["target_file"] is "None":
-        params["target_file"] = "%s/surveydesign/%s"%(os.environ['LVMCORE_DIR'], params["file"].replace(".fits",".yaml"))
-        print("converting fits file name %s to target file %s"%(params["file"], params["target_file"]))
-
+def run(params):
     healpix_dictionary = convert(params)
 
     image_hdu_list = fits.open("Halpha_fwhm06_1024.fits")
@@ -127,10 +117,20 @@ if __name__ == "__main__":
     log_I_min = -1.0
 
     healpix_shader(log_I, masks, cmaps=colors, scale=scale, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="%s_shaded_MW.png"%(params['file'].replace(".fits","")), gui=True)
-    
 
+if __name__ == "__main__":
+    "provide the fits file, and target file"
+    params = {"file":None, "target_file":"None", "nside":1024}
 
-    
+    if len(sys.argv) > 1:
+        for argument in sys.argv[1:]:
+            key, value = argument.split(":")
+            params[key] = value
 
+    if params["target_file"] is "None":
+        params["target_file"] = "%s/surveydesign/%s"%(os.environ['LVMCORE_DIR'], params["file"].replace(".fits",".yaml"))
+        print("converting fits file name %s to target file %s"%(params["file"], params["target_file"]))
+
+    run(params)
 
     
