@@ -1,10 +1,11 @@
 
-fibre_size: 140  # in microns
+fibre_size: 107  # core dimater in microns
 
 ifu:
     type: monolithic
     centres: [[0, 0]]
-    n_fibres: 1657
+    #n_fibres: 1657	# 23 rings, hexagonal
+    n_fibres: 1801  # 24 rings, as of PDR
     allow_rotation: false
     # type: non_abuttable_triangle:
     # centres: [[-0.75, 0.433012702], [0.75, 0.433012702], [0, -0.866025404]]
@@ -17,10 +18,10 @@ target_file: $LVMCORE_DIR/surveydesign/targets.yaml
 telescopes:
     LVM-1m:
         diameter: 1.
-        f: 5
+        f: 3.7
     LVM-160:
         diameter: 0.16
-        f: 5
+        f: 3.7
 
 observing_plan:
     APO:
