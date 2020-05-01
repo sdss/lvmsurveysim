@@ -1281,7 +1281,7 @@ class Scheduler(object):
        Parameters
        ----------
         tname : str
-            The name of the target or group. Use 'None' for all targets.
+            The name of the target or group. Use 'ALL' for all targets and group==True.
         group : bool
             If not true, ``tname`` will be the name of a group not a single
             target.
@@ -1294,7 +1294,7 @@ class Scheduler(object):
             The Matplotlib figure of the plot.
         """
         column = 'group' if group is True else 'target'
-        if tname is not None:
+        if tname is not None and tname is not 'ALL':
             t = self.schedule[self.schedule[column] == tname]
         else:
             t = self.schedule
@@ -1302,14 +1302,22 @@ class Scheduler(object):
             t = t[t['observatory'] == observatory]
 
         b = numpy.logspace(numpy.log10(100.),numpy.log10(100000.),100)
-        hz = t['shadow_height']
-        hz = hz[numpy.where(hz>0)]/1000. # convert to km
-
         fig, ax = plt.subplots()
-        ax.hist(hz, bins=b)
+        if group==True and tname=='ALL':
+            groups = self.targets.list_groups()
+            for group in groups:
+                tt = t[t['group'] == group]
+                hz = tt['shadow_height']
+                hz = hz[numpy.where(hz>0)]/1000. # convert to km
+                ax.hist(hz, bins=b, histtype='step', label=group)
+        else:
+                hz = t['shadow_height']
+                hz = hz[numpy.where(hz>0)]/1000. # convert to km
+                ax.hist(hz, bins=b, histtype='step', label=tname)
+
         ax.set_xscale("log")
         plt.xlabel('shadow height / km')
         plt.ylabel('# of exposures')
-        plt.title('unused' if tname == '-' else tname)
+        plt.legend()
         plt.show()
         return fig
