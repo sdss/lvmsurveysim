@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy
 import shapely.vectorized
 from matplotlib import animation
+from astropy import units as u
 
 import lvmsurveysim.target
 import lvmsurveysim.utils.spherical
@@ -27,6 +28,10 @@ from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
 from lvmsurveysim.schedule.plan import ObservingPlan
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
 import time
+
+import skyfield.api
+from lvmsurveysim.utils import shadow_height_lib
+
 try:
     import mpld3
 except ImportError:
@@ -182,6 +187,13 @@ class Scheduler(object):
         self.tile_priorities = targets.get_tile_priorities()
         self.tiling_type = 'hexagonal'
         self.verbos_level = verbos_level
+
+        # init shadow height calculator, TODO: allow multiple observatories!
+        eph = skyfield.api.load('de421.bsp')
+        self.shadow_calc = shadow_height_lib.shadow_calc(observatory_name='LCO', 
+                                observatory_elevation=2380*u.m,
+                                observatory_lat='29.0146S', observatory_lon='70.6926W',
+                                eph=eph, earth=eph['earth'], sun=eph['sun'])
 
         # Calculate overlap but don't apply the masks
         self.overlap = self.get_overlap()
@@ -647,10 +659,10 @@ class Scheduler(object):
         self.schedule = astropy.table.Table(
             rows=self.schedule,
             names=['JD', 'observatory', 'target', 'group', 'index', 'ra', 'dec',
-                   'pixel', 'nside', 'airmass', 'lunation',
+                   'pixel', 'nside', 'airmass', 'lunation', 'shadow_height',
                    'lst', 'exptime', 'totaltime'],
             dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
-                   float, float, float, float])
+                   float, float, float, float, float])
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
                            target_priorities, tile_prio, coordinates, target_exposure_times,
@@ -838,6 +850,10 @@ class Scheduler(object):
                 # Get the index of the pointing within its target.
                 pointing_index = observed_idx - target_index_first
 
+                # calculate shadow height for chosen observation
+                self.shadow_calc.update_t(current_jd)
+                hz = self.shadow_calc.height_from_radec(ra, dec, simple_output=True)['height']
+
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
                 airmass = 1.0 / numpy.cos(numpy.radians(90.0 - obs_alt))
@@ -848,6 +864,7 @@ class Scheduler(object):
                                          ra=ra, dec=dec,
                                          airmass=airmass,
                                          lunation=lunation,
+                                         shadow_height=hz,
                                          lst=current_lst,
                                          exptime=exptime,
                                          totaltime=exptime * target_overhead)
@@ -868,12 +885,12 @@ class Scheduler(object):
 
     def _record_observation(self, jd, observatory, target_name='-', target_group='-',
                             pointing_index=-1, ra=-999., dec=-999.,
-                            airmass=-999., lunation=-999., lst=-999.,
+                            airmass=-999., lunation=-999., shadow_height=-999., lst=-999.,
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
         self.schedule.append((jd, observatory, target_name, target_group, pointing_index,
-                              ra, dec, 0, 0, airmass, lunation, lst, exptime,
+                              ra, dec, 0, 0, airmass, lunation, shadow_height, lst, exptime,
                               totaltime))
 
     def get_target_time(self, tname, group=False, observatory=None, lunation=None,
@@ -1255,4 +1272,44 @@ class Scheduler(object):
         plt.xlabel('LST')
         plt.ylabel('# of exposures')
         plt.title('unused' if tname == '-' else tname)
+        return fig
+
+    def plot_shadow_height(self, tname=None, group=False, observatory=None):
+        """
+        plot the shadow height distribution for a target. use '-' for unused time
+
+       Parameters
+       ----------
+        tname : str
+            The name of the target or group. Use 'None' for all targets.
+        group : bool
+            If not true, ``tname`` will be the name of a group not a single
+            target.
+        observatory : str
+            The observatory to filter for.
+
+        Return
+        ------
+        fig : `~matplotlib.figure.Figure`
+            The Matplotlib figure of the plot.
+        """
+        column = 'group' if group is True else 'target'
+        if tname is not None:
+            t = self.schedule[self.schedule[column] == tname]
+        else:
+            t = self.schedule
+        if observatory:
+            t = t[t['observatory'] == observatory]
+
+        b = numpy.logspace(numpy.log10(100.),numpy.log10(10000000.),100)
+        hz = t['shadow_height']
+        hz = hz[numpy.where(hz>0)]/1000. # convert to km
+
+        fig, ax = plt.subplots()
+        ax.hist(hz, bins=b)
+        ax.set_xscale("log")
+        plt.xlabel('shadow height / km')
+        plt.ylabel('# of exposures')
+        plt.title('unused' if tname == '-' else tname)
+        plt.show()
         return fig
