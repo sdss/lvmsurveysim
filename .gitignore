@@ -111,5 +111,11 @@ settings.json
 # Project generated files
 schedule_load.py
 schedule_run.py
-lvmsurveysim_results.fits
-lvm_survey.mp4
+*.fits
+*.mp4
+*.png
+darks.ascii
+de421.bsp
+deltat.data
+deltat.preds
+Leap_Second.dat
