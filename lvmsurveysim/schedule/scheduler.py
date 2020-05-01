@@ -1301,7 +1301,7 @@ class Scheduler(object):
         if observatory:
             t = t[t['observatory'] == observatory]
 
-        b = numpy.logspace(numpy.log10(100.),numpy.log10(10000000.),100)
+        b = numpy.logspace(numpy.log10(100.),numpy.log10(100000.),100)
         hz = t['shadow_height']
         hz = hz[numpy.where(hz>0)]/1000. # convert to km
 
