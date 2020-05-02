@@ -20,7 +20,7 @@ import numpy
 from lvmsurveysim import config
 
 
-__all__ = ['ObservingPlan', 'get_moon_data']
+__all__ = ['ObservingPlan', 'get_sun_moon_data']
 
 
 numpy.random.seed(seed=42)  # For reproducible results
@@ -28,8 +28,8 @@ numpy.random.seed(seed=42)  # For reproducible results
 _delta_dt = datetime.timedelta(days=1)
 
 
-def get_moon_data(jd, location=None):
-    """Computes the Moon position and illuminated fraction for a given JD(s).
+def get_sun_moon_data(jd, location=None):
+    """Computes the Sun and Moon position and illuminated fraction for a given JD(s).
 
     Adapted from PyAstronomy.
 
@@ -44,7 +44,7 @@ def get_moon_data(jd, location=None):
     Returns
     -------
     data : `tuple`
-        A tuple with the `~astropy.coordinates.SkyCoord` position of the Moon
+        A tuple with the `~astropy.coordinates.SkyCoord` position of the Sun, Moon
         and the illuminated fraction [0 - 1]. Has the same size as ``jd``.
 
     """
@@ -71,7 +71,7 @@ def get_moon_data(jd, location=None):
     inc = numpy.arctan2(edist * numpy.sin(phi), dism - edist * numpy.cos(phi))
     k = (1 + numpy.cos(inc)) / 2.
 
-    return mpos, numpy.ravel(k)
+    return spos, mpos, numpy.ravel(k)
 
 
 class ObservingPlan(object):
@@ -163,9 +163,9 @@ class ObservingPlan(object):
 
             midnight = numpy.mean(twilights_jd, axis=1)
 
-            # We call get_mood_data without location since it increases the
+            # We call get_sun_moon_data without location since it increases the
             # runtime significantly and we don't need the extra precision.
-            moonpos, moonphase = get_moon_data(astropy.time.Time(midnight, format='jd'))
+            sunpos, moonpos, moonphase = get_sun_moon_data(astropy.time.Time(midnight, format='jd'))
 
         # Calculate clear nights
         if good_weather >= 1:
@@ -175,9 +175,9 @@ class ObservingPlan(object):
 
         self.data = astropy.table.Table(
             data=[jds, twilights_jd[:, 0], twilights_jd[:, 1],
-                  moonpos.ra.deg, moonpos.dec.deg, moonphase, is_clear],
+                  moonpos.ra.deg, moonpos.dec.deg, moonphase, is_clear, sunpos.ra.deg, sunpos.dec.deg],
             names=['JD', 'evening_twilight', 'morning_twilight',
-                   'moon_ra', 'moon_dec', 'moon_phase', 'is_clear'])
+                   'moon_ra', 'moon_dec', 'moon_phase', 'is_clear', 'sun_ra', 'sun_dec'])
 
     def __repr__(self):
 
