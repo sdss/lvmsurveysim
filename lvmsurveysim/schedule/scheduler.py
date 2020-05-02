@@ -858,6 +858,8 @@ class Scheduler(object):
                 # calculate shadow height for chosen observation
                 self.shadow_calc.update_t(current_jd)
                 hz = self.shadow_calc.height_from_radec(ra, dec, simple_output=True)['height']
+                if hz>0.0:
+                    hz = hz/1000.
 
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
@@ -1279,7 +1281,7 @@ class Scheduler(object):
         plt.title('unused' if tname == '-' else tname)
         return fig
 
-    def plot_shadow_height(self, tname=None, group=False, observatory=None, norm=False):
+    def plot_shadow_height(self, tname=None, group=False, observatory=None):
         """
         plot the shadow height distribution for a target. use '-' for unused time
 
@@ -1300,31 +1302,12 @@ class Scheduler(object):
         fig : `~matplotlib.figure.Figure`
             The Matplotlib figure of the plot.
         """
-        column = 'group' if group is True else 'target'
-        if tname is not None and tname is not 'ALL':
-            t = self.schedule[self.schedule[column] == tname]
-        else:
-            t = self.schedule
-        if observatory:
-            t = t[t['observatory'] == observatory]
-
         b = numpy.logspace(numpy.log10(100.),numpy.log10(100000.),100)
         fig, ax = plt.subplots()
-        if group==True and tname=='ALL':
-            groups = self.targets.list_groups()
-            for group in groups:
-                tt = t[t['group'] == group]
-                hz = tt['shadow_height']
-                hz = hz[numpy.where(hz>0)]/1000. # convert to km
-                ax.hist(hz, bins=b, histtype='step', label=group, normed=norm)
-        else:
-                hz = t['shadow_height']
-                hz = hz[numpy.where(hz>0)]/1000. # convert to km
-                ax.hist(hz, bins=b, histtype='step', label=tname, normed=norm)
-
+        self._plot_histograms(ax, 'shadow_height', b, tname=tname, group=group, observatory=observatory, norm=False)
         ax.set_xscale("log")
         plt.xlabel('shadow height / km')
-        plt.ylabel('# of exposures' if norm==False else 'frequency')
+        plt.ylabel('# of exposures')
         plt.legend()
         plt.show()
         return fig
@@ -1350,6 +1333,37 @@ class Scheduler(object):
         fig : `~matplotlib.figure.Figure`
             The Matplotlib figure of the plot.
         """
+        b = numpy.linspace(1.0,2.0,51)
+        fig, ax = plt.subplots()
+        self._plot_histograms(ax, 'airmass', b, tname=tname, group=group, observatory=observatory, norm=norm)
+        plt.xlabel('airmass')
+        plt.ylabel('# of exposures' if norm==False else 'frequency')
+        plt.legend()
+        plt.show()
+        return fig
+
+    def _plot_histograms(self, ax, keyword, bins, tname=None, group=False, observatory=None, norm=False):
+        """
+        plot a histogram of 'keyword' for a target or group(s).
+
+       Parameters
+       ----------
+        ax : pyplot.ax
+            axes object to plot into
+        keyword : str
+            name of the column in the schedule table to plot.
+        bins : numpy.array
+            the array of bins
+        tname : str
+            The name of the target or group. Use 'ALL' for all groups and group==True.
+        group : bool
+            If not true, ``tname`` will be the name of a group not a single
+            target.
+        observatory : str
+            The observatory to filter for.
+        norm : bool
+            Normalize the histograms instead of plotting raw numbers.
+        """
         column = 'group' if group is True else 'target'
         if tname is not None and tname is not 'ALL':
             t = self.schedule[self.schedule[column] == tname]
@@ -1358,22 +1372,14 @@ class Scheduler(object):
         if observatory:
             t = t[t['observatory'] == observatory]
 
-        b = numpy.linspace(1.0,2.0,51)
-        fig, ax = plt.subplots()
         if group==True and tname=='ALL':
             groups = self.targets.list_groups()
             for group in groups:
                 tt = t[t['group'] == group]
-                am = tt['airmass']
+                am = tt[keyword]
                 am = am[numpy.where(am>0)]
-                ax.hist(am, bins=b, histtype='step', label=group, normed=norm)
+                ax.hist(am, bins=bins, histtype='step', label=group, density=norm)
         else:
-                am = t['airmass']
+                am = t[keyword]
                 am = am[numpy.where(am>0)]
-                ax.hist(am, bins=b, histtype='step', label=tname, normed=norm)
-
-        plt.xlabel('airmass')
-        plt.ylabel('# of exposures' if norm==False else 'frequency')
-        plt.legend()
-        plt.show()
-        return fig
+                ax.hist(am, bins=bins, histtype='step', label=tname, density=norm)
