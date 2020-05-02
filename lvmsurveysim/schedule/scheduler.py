@@ -819,6 +819,7 @@ class Scheduler(object):
                 # select all pointings with the current target priority
                 valid_alt_target_priority = valid_alt[valid_priority_idx]
                 valid_alt_tile_priority = valid_tile_priorities[valid_priority_idx]
+                valid_alt_sun_to_pointings_priority= sun_to_pointings[valid_priority_idx]
 
                 # Find the tiles with the highest tile priority
                 max_tile_priority = numpy.max(valid_alt_tile_priority)
@@ -826,7 +827,7 @@ class Scheduler(object):
 
                 # Gets the pointing with the highest altitude among the tiles
                 # with the highest priority.
-                obs_alt_idx = valid_alt_target_priority[high_priority_tiles].argmax()
+                obs_alt_idx = (valid_alt_sun_to_pointings_priority[high_priority_tiles]*valid_alt_target_priority[high_priority_tiles]).argmax()
 
                 obs_tile_idx = high_priority_tiles[obs_alt_idx]
                 obs_alt = valid_alt_target_priority[obs_tile_idx]
