@@ -1279,7 +1279,7 @@ class Scheduler(object):
         plt.title('unused' if tname == '-' else tname)
         return fig
 
-    def plot_shadow_height(self, tname=None, group=False, observatory=None):
+    def plot_shadow_height(self, tname=None, group=False, observatory=None, norm=False):
         """
         plot the shadow height distribution for a target. use '-' for unused time
 
@@ -1292,6 +1292,8 @@ class Scheduler(object):
             target.
         observatory : str
             The observatory to filter for.
+        norm : bool
+            Normalize the histograms instead of plotting raw numbers.
 
         Return
         ------
@@ -1314,15 +1316,15 @@ class Scheduler(object):
                 tt = t[t['group'] == group]
                 hz = tt['shadow_height']
                 hz = hz[numpy.where(hz>0)]/1000. # convert to km
-                ax.hist(hz, bins=b, histtype='step', label=group)
+                ax.hist(hz, bins=b, histtype='step', label=group, normed=norm)
         else:
                 hz = t['shadow_height']
                 hz = hz[numpy.where(hz>0)]/1000. # convert to km
-                ax.hist(hz, bins=b, histtype='step', label=tname)
+                ax.hist(hz, bins=b, histtype='step', label=tname, normed=norm)
 
         ax.set_xscale("log")
         plt.xlabel('shadow height / km')
-        plt.ylabel('# of exposures')
+        plt.ylabel('# of exposures' if norm==False else 'frequency')
         plt.legend()
         plt.show()
         return fig
@@ -1340,6 +1342,8 @@ class Scheduler(object):
             target.
         observatory : str
             The observatory to filter for.
+        norm : bool
+            Normalize the histograms instead of plotting raw numbers.
 
         Return
         ------
