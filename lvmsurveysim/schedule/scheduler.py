@@ -1281,7 +1281,7 @@ class Scheduler(object):
        Parameters
        ----------
         tname : str
-            The name of the target or group. Use 'ALL' for all targets and group==True.
+            The name of the target or group. Use 'ALL' for all groups and group==True.
         group : bool
             If not true, ``tname`` will be the name of a group not a single
             target.
