@@ -739,6 +739,10 @@ class Scheduler(object):
             night_plan['moon_ra'], night_plan['moon_dec'],
             coordinates[:, 0], coordinates[:, 1])
 
+        sun_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
+            night_plan['sun_ra'], night_plan['sun_dec'],
+            coordinates[:, 0], coordinates[:, 1])
+
         # The additional exposure time in this night
         new_observed = observed * 0.0
 
