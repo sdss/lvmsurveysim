@@ -1325,3 +1325,50 @@ class Scheduler(object):
         plt.legend()
         plt.show()
         return fig
+
+    def plot_airmass(self, tname=None, group=False, observatory=None, norm=False):
+        """
+        plot the airmass distribution for a target or group(s).
+
+       Parameters
+       ----------
+        tname : str
+            The name of the target or group. Use 'ALL' for all groups and group==True.
+        group : bool
+            If not true, ``tname`` will be the name of a group not a single
+            target.
+        observatory : str
+            The observatory to filter for.
+
+        Return
+        ------
+        fig : `~matplotlib.figure.Figure`
+            The Matplotlib figure of the plot.
+        """
+        column = 'group' if group is True else 'target'
+        if tname is not None and tname is not 'ALL':
+            t = self.schedule[self.schedule[column] == tname]
+        else:
+            t = self.schedule
+        if observatory:
+            t = t[t['observatory'] == observatory]
+
+        b = numpy.linspace(1.0,2.0,51)
+        fig, ax = plt.subplots()
+        if group==True and tname=='ALL':
+            groups = self.targets.list_groups()
+            for group in groups:
+                tt = t[t['group'] == group]
+                am = tt['airmass']
+                am = am[numpy.where(am>0)]
+                ax.hist(am, bins=b, histtype='step', label=group, normed=norm)
+        else:
+                am = t['airmass']
+                am = am[numpy.where(am>0)]
+                ax.hist(am, bins=b, histtype='step', label=tname, normed=norm)
+
+        plt.xlabel('airmass')
+        plt.ylabel('# of exposures' if norm==False else 'frequency')
+        plt.legend()
+        plt.show()
+        return fig
