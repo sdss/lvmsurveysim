@@ -747,6 +747,9 @@ class Scheduler(object):
         sun_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
             night_plan['sun_ra'], night_plan['sun_dec'],
             coordinates[:, 0], coordinates[:, 1])
+        
+        # increase weight of distance to sun, will be compared to alititude later
+        sun_to_pointings = sun_to_pointings**3.0
 
         # The additional exposure time in this night
         new_observed = observed * 0.0
@@ -830,9 +833,8 @@ class Scheduler(object):
                 max_tile_priority = numpy.max(valid_alt_tile_priority)
                 high_priority_tiles = numpy.where(valid_alt_tile_priority == max_tile_priority)[0]
 
-                # Gets the pointing with the highest altitude among the tiles
-                # with the highest priority.
-                obs_alt_idx = (valid_alt_sun_to_pointings_priority[high_priority_tiles]*valid_alt_target_priority[high_priority_tiles]).argmax()
+                # Gets the pointing with the highest altitude and distance from sun
+                obs_alt_idx = (valid_alt_sun_to_pointings_priority[high_priority_tiles] * valid_alt_target_priority[high_priority_tiles]).argmax()
 
                 obs_tile_idx = high_priority_tiles[obs_alt_idx]
                 obs_alt = valid_alt_target_priority[obs_tile_idx]
