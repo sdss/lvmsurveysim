@@ -268,7 +268,7 @@ class Scheduler(object):
                 x_i, y_i = shapely_i.exterior.coords.xy
 
                 per_x, per_y = polygon_perimeter(x_i, y_i)
-                c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
+                c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[i].frame)
                 poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
 
             else:
@@ -282,7 +282,7 @@ class Scheduler(object):
 
                 # Convert the coordinates of the polygon into SkyCoordinates
                 # This logical statemetns that check for the type of coordinate
-                c_i = astropy.coordinates.SkyCoord(x_i*astropy.units.degree, y_i*astropy.units.degree, frame=self.targets[i].frame)
+                c_i = astropy.coordinates.SkyCoord(x_i*u.degree, y_i*u.degree, frame=self.targets[i].frame)
 
                 # Convert the x-y coordinates, now in SkyCoordinates into polygons in icrs. 
                 # This ensures that independent of what ever coordinate system i or j are in that the comparison is in the correct frame
@@ -304,7 +304,7 @@ class Scheduler(object):
                     x_j, y_j = shapely_j.exterior.coords.xy
 
                     per_x, per_y = polygon_perimeter(x_j, y_j)
-                    c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*astropy.units.degree, per_y*astropy.units.degree, frame=self.targets[i].frame)
+                    c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[i].frame)
                     poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
 
                 else:
@@ -318,7 +318,7 @@ class Scheduler(object):
 
                     # Convert the coordinates of the polygon into SkyCoordinates
                     # This logical statemetns that check for the type of coordinate
-                    c_j = astropy.coordinates.SkyCoord(x_j*astropy.units.degree, y_j*astropy.units.degree, frame=self.targets[j].frame)
+                    c_j = astropy.coordinates.SkyCoord(x_j*u.degree, y_j*u.degree, frame=self.targets[j].frame)
 
                     # Convert the x-y coordinates, now in SkyCoordinates into polygons in icrs. 
                     # This ensures that independent of what ever coordinate system i or j are in that the comparison is in the correct frame
@@ -378,7 +378,7 @@ class Scheduler(object):
         self.schedule.write(path, format='fits', overwrite=overwrite)
 
     @classmethod
-    def load(cls, path, targets=None, observing_plans=None):
+    def load(cls, path, targets=None, observing_plans=None, verbos_level=0):
         """Creates a new instance from a schedule file.
 
         Parameters
@@ -392,7 +392,8 @@ class Scheduler(object):
             used, if possible.
         observing_plans : list of `.ObservingPlan` or None
             A list with the `.ObservingPlan` to use (one for each observatory).
-
+        verbose_level : int
+            Verbosity level to pass to constructor of Schedule
         """
 
         schedule = astropy.table.Table.read(path)
@@ -419,7 +420,7 @@ class Scheduler(object):
             warnings.warn('No TILETYPE found in schedule file. '
                           'Assuming hexagonal tiling.', LVMSurveySimWarning)
 
-        scheduler = cls(targets, observing_plans=observing_plans)
+        scheduler = cls(targets, observing_plans=observing_plans, verbos_level=verbos_level)
         scheduler.schedule = schedule
 
         return scheduler
@@ -1380,6 +1381,6 @@ class Scheduler(object):
                 am = am[numpy.where(am>0)]
                 ax.hist(am, bins=bins, histtype='step', label=group, density=norm)
         else:
-                am = t[keyword]
-                am = am[numpy.where(am>0)]
-                ax.hist(am, bins=bins, histtype='step', label=tname, density=norm)
+            am = t[keyword]
+            am = am[numpy.where(am>0)]
+            ax.hist(am, bins=bins, histtype='step', label=tname, density=norm)
