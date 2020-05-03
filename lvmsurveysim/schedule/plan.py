@@ -233,12 +233,12 @@ class ObservingPlan(object):
                                         observer_elevation=alt,
                                         depression=self.twilight_alt)
         else:
-            dusk = self._astral.(astral.Observer(latitude=lat, longitude=lon,
-                                        observer_elevation=alt),
-                                        date=datetime_today)[dusk]
+            dusk = self._astral(astral.Observer(latitude=lat, longitude=lon,
+                                        elevation=alt),
+                                        date=datetime_today)["dusk"]
 
-            dawn = self._astral.(astral.Observer(latitude=lat, longitude=lon,
-                                        observer_elevation=alt),
+            dawn = self._astral(astral.Observer(latitude=lat, longitude=lon,
+                                        elevation=alt),
                                         date=datetime_today)['dawn']
 
         return dusk, dawn
