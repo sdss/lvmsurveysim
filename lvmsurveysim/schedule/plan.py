@@ -120,7 +120,12 @@ class ObservingPlan(object):
         self.observatory = observatory
         self.location = astropy.coordinates.EarthLocation.of_site(full_obs_name)
 
-        self._astral = astral.Astral()
+        if float(astral.__version__.split(".")[0]) == 1:
+            self._astral = astral.Astral()
+        else:
+            from astral.sun import sun
+            self._astral = sun
+
 
         if isinstance(start, astropy.table.Table):
 
@@ -219,12 +224,21 @@ class ObservingPlan(object):
     def _get_twilight(self, datetime_today, lon, lat, alt):
         """Returns the dusk and dawn times associated with a given JD."""
 
-        dusk = self._astral.dusk_utc(datetime_today, lat, lon,
-                                     observer_elevation=alt,
-                                     depression=self.twilight_alt)
+        if float(astral.__version__.split(".")[0]) == 1:
+            dusk = self._astral.dusk_utc(datetime_today, lat, lon,
+                                        observer_elevation=alt,
+                                        depression=self.twilight_alt)
 
-        dawn = self._astral.dawn_utc(datetime_today + _delta_dt, lat, lon,
-                                     observer_elevation=alt,
-                                     depression=self.twilight_alt)
+            dawn = self._astral.dawn_utc(datetime_today + _delta_dt, lat, lon,
+                                        observer_elevation=alt,
+                                        depression=self.twilight_alt)
+        else:
+            dusk = self._astral.(astral.Observer(latitude=lat, longitude=lon,
+                                        observer_elevation=alt),
+                                        date=datetime_today)[dusk]
+
+            dawn = self._astral.(astral.Observer(latitude=lat, longitude=lon,
+                                        observer_elevation=alt),
+                                        date=datetime_today)['dawn']
 
         return dusk, dawn
