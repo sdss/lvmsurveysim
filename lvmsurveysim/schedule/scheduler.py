@@ -166,7 +166,7 @@ class Scheduler(object):
 
     """
 
-    def __init__(self, targets, observing_plans=None, ifu=None, remove_overlap=True, verbos_level=0):
+    def __init__(self, targets, observing_plans=None, ifu=None, remove_overlap=True, overlap=None, verbos_level=0):
 
         if observing_plans is None:
             observing_plans = self._create_observing_plans()
@@ -196,7 +196,7 @@ class Scheduler(object):
                                 eph=eph, earth=eph['earth'], sun=eph['sun'])
 
         # Calculate overlap but don't apply the masks
-        self.overlap = self.get_overlap()
+        self.overlap = overlap or self.get_overlap()
 
         # Remove pointings that overlap with other regions.
         if remove_overlap:
@@ -353,11 +353,9 @@ class Scheduler(object):
                     
                     if self.verbos_level >=1:
                         print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[i].name, self.targets[j].name, time.time()-t_start))
-                
                 else:
                     overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra),
                                                             True)
-
 
                 # For functional use, create a global overlap mask, to be used when scheduling
                 overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[i]]
@@ -365,7 +363,9 @@ class Scheduler(object):
         return overlap
 
     def save(self, path, overwrite=False):
-        """Saves the results to a file as FITS."""
+        """Saves the results to two files one FITS the other NPY.
+        The FITS file contains the schedule while the npy file contains
+        the overlap regions. The latter take too long to compute ..."""
 
         assert isinstance(self.schedule, astropy.table.Table), \
             'cannot save empty schedule. Execute Scheduler.run() first.'
@@ -375,7 +375,8 @@ class Scheduler(object):
 
         self.schedule.meta['tiletype'] = self.tiling_type
 
-        self.schedule.write(path, format='fits', overwrite=overwrite)
+        self.schedule.write(path+'.fits', format='fits', overwrite=overwrite)
+        numpy.save(path+'.npy', self.overlap)
 
     @classmethod
     def load(cls, path, targets=None, observing_plans=None, verbos_level=0):
@@ -384,7 +385,8 @@ class Scheduler(object):
         Parameters
         ----------
         path : str or ~pathlib.Path
-            The path to the schedule file.
+            The path to the schedule file and the basename, no extension. The 
+            routine expects to find path.fits and path.npy
         targets : ~lvmsurveysim.target.target.TargetList or path-like
             The `~lvmsurveysim.target.target.TargetList` object associated
             with the schedule file or a path to the target list to load. If
@@ -396,7 +398,7 @@ class Scheduler(object):
             Verbosity level to pass to constructor of Schedule
         """
 
-        schedule = astropy.table.Table.read(path)
+        schedule = astropy.table.Table.read(path+'.fits')
 
         targfile = schedule.meta.get('TARGFILE', 'NA')
         targets = targets or targfile
@@ -420,7 +422,9 @@ class Scheduler(object):
             warnings.warn('No TILETYPE found in schedule file. '
                           'Assuming hexagonal tiling.', LVMSurveySimWarning)
 
-        scheduler = cls(targets, observing_plans=observing_plans, verbos_level=verbos_level)
+        overlap = numpy.load(path+'.npy', allow_pickle='TRUE').item()
+
+        scheduler = cls(targets, observing_plans=observing_plans, overlap=overlap, verbos_level=verbos_level)
         scheduler.schedule = schedule
 
         return scheduler

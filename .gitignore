@@ -112,6 +112,7 @@ settings.json
 schedule_load.py
 schedule_run.py
 *.fits
+*.npy
 *.mp4
 *.png
 darks.ascii
