@@ -1288,7 +1288,7 @@ class Scheduler(object):
         plt.title('unused' if tname == '-' else tname)
         return fig
 
-    def plot_shadow_height(self, tname=None, group=False, observatory=None):
+    def plot_shadow_height(self, tname=None, group=False, observatory=None, norm=False, cumulative=0):
         """
         plot the shadow height distribution for a target. use '-' for unused time
 
@@ -1311,7 +1311,8 @@ class Scheduler(object):
         """
         b = numpy.logspace(numpy.log10(100.),numpy.log10(100000.),100)
         fig, ax = plt.subplots()
-        self._plot_histograms(ax, 'shadow_height', b, tname=tname, group=group, observatory=observatory, norm=False)
+        self._plot_histograms(ax, 'shadow_height', b, tname=tname, group=group, observatory=observatory, 
+                              norm=norm, cumulative=cumulative)
         ax.set_xscale("log")
         plt.xlabel('shadow height / km')
         plt.ylabel('# of exposures')
@@ -1319,7 +1320,7 @@ class Scheduler(object):
         plt.show()
         return fig
 
-    def plot_airmass(self, tname=None, group=False, observatory=None, norm=False):
+    def plot_airmass(self, tname=None, group=False, observatory=None, norm=False, cumulative=0):
         """
         plot the airmass distribution for a target or group(s).
 
@@ -1342,14 +1343,16 @@ class Scheduler(object):
         """
         b = numpy.linspace(1.0,2.0,51)
         fig, ax = plt.subplots()
-        self._plot_histograms(ax, 'airmass', b, tname=tname, group=group, observatory=observatory, norm=norm)
+        self._plot_histograms(ax, 'airmass', b, tname=tname, group=group, observatory=observatory, 
+                              norm=norm, cumulative=cumulative)
         plt.xlabel('airmass')
         plt.ylabel('# of exposures' if norm==False else 'frequency')
         plt.legend()
         plt.show()
         return fig
 
-    def _plot_histograms(self, ax, keyword, bins, tname=None, group=False, observatory=None, norm=False):
+    def _plot_histograms(self, ax, keyword, bins, tname=None, group=False, observatory=None, 
+                         norm=False, cumulative=0):
         """
         plot a histogram of 'keyword' for a target or group(s).
 
@@ -1370,6 +1373,8 @@ class Scheduler(object):
             The observatory to filter for.
         norm : bool
             Normalize the histograms instead of plotting raw numbers.
+        cumulative : int
+            plot cumulative histogram (>0), reverse accumulation (<0)
         """
         column = 'group' if group is True else 'target'
         if tname is not None and tname is not 'ALL':
@@ -1385,8 +1390,8 @@ class Scheduler(object):
                 tt = t[t['group'] == group]
                 am = tt[keyword]
                 am = am[numpy.where(am>0)]
-                ax.hist(am, bins=bins, histtype='step', label=group, density=norm)
+                ax.hist(am, bins=bins, histtype='step', label=group, density=norm, cumulative=cumulative)
         else:
             am = t[keyword]
             am = am[numpy.where(am>0)]
-            ax.hist(am, bins=bins, histtype='step', label=tname, density=norm)
+            ax.hist(am, bins=bins, histtype='step', label=tname, density=norm, cumulative=cumulative)
