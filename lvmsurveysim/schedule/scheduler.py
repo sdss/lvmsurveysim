@@ -834,7 +834,7 @@ class Scheduler(object):
                 high_priority_tiles = numpy.where(valid_alt_tile_priority == max_tile_priority)[0]
 
                 # Gets the pointing with the highest altitude and distance from sun
-                obs_alt_idx = (valid_alt_sun_to_pointings_priority[high_priority_tiles]**1 * valid_alt_target_priority[high_priority_tiles]**0).argmax()
+                obs_alt_idx = (valid_alt_sun_to_pointings_priority[high_priority_tiles] * valid_alt_target_priority[high_priority_tiles]).argmax()
 
                 obs_tile_idx = high_priority_tiles[obs_alt_idx]
                 obs_alt = valid_alt_target_priority[obs_tile_idx]
