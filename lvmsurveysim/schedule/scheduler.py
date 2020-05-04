@@ -664,10 +664,10 @@ class Scheduler(object):
         self.schedule = astropy.table.Table(
             rows=self.schedule,
             names=['JD', 'observatory', 'target', 'group', 'index', 'ra', 'dec',
-                   'pixel', 'nside', 'airmass', 'lunation', 'shadow_height',
-                   'lst', 'exptime', 'totaltime'],
+                'pixel', 'nside', 'airmass', 'lunation', 'shadow_height',
+                'lst', 'exptime', 'totaltime'],
             dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
-                   float, float, float, float, float])
+                float, float, float, float, float])
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
                            target_priorities, tile_prio, coordinates, target_exposure_times,

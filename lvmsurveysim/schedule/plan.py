@@ -239,6 +239,6 @@ class ObservingPlan(object):
 
             dawn = self._astral(astral.Observer(latitude=lat, longitude=lon,
                                         elevation=alt),
-                                        date=datetime_today)['dawn']
+                                        date=datetime_today + _delta_dt)['dawn']
 
         return dusk, dawn
