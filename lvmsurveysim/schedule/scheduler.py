@@ -1288,7 +1288,7 @@ class Scheduler(object):
         plt.title('unused' if tname == '-' else tname)
         return fig
 
-    def plot_shadow_height(self, tname=None, group=False, observatory=None, norm=False, cumulative=0):
+    def plot_shadow_height(self, tname=None, group=False, observatory=None, norm=False, cumulative=0, linear_log=False):
         """
         plot the shadow height distribution for a target. use '-' for unused time
 
@@ -1309,10 +1309,14 @@ class Scheduler(object):
         fig : `~matplotlib.figure.Figure`
             The Matplotlib figure of the plot.
         """
-        b = numpy.logspace(numpy.log10(100.),numpy.log10(100000.),100)
+        if linear_log is False:
+            b = numpy.logspace(numpy.log10(100.),numpy.log10(100000.),100)
+        else:
+            b = numpy.linspace(2, 5, 31)
+
         fig, ax = plt.subplots()
         self._plot_histograms(ax, 'shadow_height', b, tname=tname, group=group, observatory=observatory, 
-                              norm=norm, cumulative=cumulative)
+                              norm=norm, cumulative=cumulative, linear_log=linear_log)
         ax.set_xscale("log")
         plt.xlabel('shadow height / km')
         plt.ylabel('# of exposures')
@@ -1352,7 +1356,7 @@ class Scheduler(object):
         return fig
 
     def _plot_histograms(self, ax, keyword, bins, tname=None, group=False, observatory=None, 
-                         norm=False, cumulative=0):
+                         norm=False, cumulative=0, linear_log=False):
         """
         plot a histogram of 'keyword' for a target or group(s).
 
@@ -1390,8 +1394,12 @@ class Scheduler(object):
                 tt = t[t['group'] == group]
                 am = tt[keyword]
                 am = am[numpy.where(am>0)]
+                if linear_log is True:
+                    am = numpy.log10(am)
                 ax.hist(am, bins=bins, histtype='step', label=group, density=norm, cumulative=cumulative)
         else:
             am = t[keyword]
             am = am[numpy.where(am>0)]
+            if linear_log is True:
+                am = numpy.log10(am)
             ax.hist(am, bins=bins, histtype='step', label=tname, density=norm, cumulative=cumulative)
