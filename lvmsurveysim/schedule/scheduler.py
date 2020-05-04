@@ -664,7 +664,7 @@ class Scheduler(object):
         self.schedule = astropy.table.Table(
             rows=self.schedule,
             names=['JD', 'observatory', 'target', 'group', 'index', 'ra', 'dec',
-                'pixel', 'nside', 'airmass', 'lunation', 'shadow_height', "moon_dist", "sun_dist"
+                'pixel', 'nside', 'airmass', 'lunation', 'shadow_height', "moon_dist", "sun_dist",
                 'lst', 'exptime', 'totaltime'],
             dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
                 float, float, float, float, float, float, float])
@@ -749,7 +749,7 @@ class Scheduler(object):
             coordinates[:, 0], coordinates[:, 1])
         
         # increase weight of distance to sun, will be compared to alititude later
-        sun_to_pointings = sun_to_pointings**3.0
+        sun_to_pointings = sun_to_pointings**2.0
 
         # The additional exposure time in this night
         new_observed = observed * 0.0
