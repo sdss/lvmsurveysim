@@ -664,10 +664,10 @@ class Scheduler(object):
         self.schedule = astropy.table.Table(
             rows=self.schedule,
             names=['JD', 'observatory', 'target', 'group', 'index', 'ra', 'dec',
-                'pixel', 'nside', 'airmass', 'lunation', 'shadow_height',
+                'pixel', 'nside', 'airmass', 'lunation', 'shadow_height', "moon_dist", "sun_dist"
                 'lst', 'exptime', 'totaltime'],
             dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
-                float, float, float, float, float])
+                float, float, float, float, float, float, float])
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
                            target_priorities, tile_prio, coordinates, target_exposure_times,
@@ -868,6 +868,11 @@ class Scheduler(object):
                 if hz>0.0:
                     hz = hz/1000.
 
+                # Record angular distance to solar system objects
+                dist_to_moon = moon_to_pointings[observed_idx]
+                dist_to_sun = sun_to_pointings[observed_idx]
+
+
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
                 airmass = 1.0 / numpy.cos(numpy.radians(90.0 - obs_alt))
@@ -879,6 +884,8 @@ class Scheduler(object):
                                          airmass=airmass,
                                          lunation=lunation,
                                          shadow_height=hz,
+                                         dist_to_moon=dist_to_moon,
+                                         dist_to_sun=dist_to_sun,
                                          lst=current_lst,
                                          exptime=exptime,
                                          totaltime=exptime * target_overhead)
@@ -899,12 +906,13 @@ class Scheduler(object):
 
     def _record_observation(self, jd, observatory, target_name='-', target_group='-',
                             pointing_index=-1, ra=-999., dec=-999.,
-                            airmass=-999., lunation=-999., shadow_height=-999., lst=-999.,
+                            airmass=-999., lunation=-999., shadow_height=-999., dist_to_moon=-999., dist_to_sun=-999.,
+                            lst=-999.,
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
         self.schedule.append((jd, observatory, target_name, target_group, pointing_index,
-                              ra, dec, 0, 0, airmass, lunation, shadow_height, lst, exptime,
+                              ra, dec, 0, 0, airmass, lunation, shadow_height, dist_to_moon, dist_to_sun, lst, exptime,
                               totaltime))
 
     def get_target_time(self, tname, group=False, observatory=None, lunation=None,
