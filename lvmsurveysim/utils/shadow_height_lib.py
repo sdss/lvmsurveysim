@@ -137,7 +137,7 @@ class shadow_calc(object):
         if return_heights:
             return(self.dist)
 
-    def vecmag(a, origin=[0,0,0]):
+    def vecmag(self, a, origin=[0,0,0]):
         """ Return the magnitude of a set of vectors around an abritrary origin """
         if len(np.shape(origin)) == 1:
             return( (( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2)**0.5)
