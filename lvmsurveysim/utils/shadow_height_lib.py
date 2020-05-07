@@ -7,7 +7,7 @@ from skyfield.api import load
 from skyfield.api import Topos
 from skyfield.positionlib import position_from_radec, Geometric
 
-def vecdot(a,b,origin=[0,0,0]):
+def vecdot(a,b, origin=np.array([0,0,0])):
     a = a - origin
     b = b - origin
 
@@ -17,12 +17,141 @@ def vecdot(a,b,origin=[0,0,0]):
     else:
         return(a[:,0] * b[:,0] + a[:,1] * b[:,1] + a[:,2] * b[:,2])
 
+class shadow_calc(object):
+    def __init__(self, observatory_name="APO",
+    observatory_elevation=2788.0*u.m,
+    observatory_lat='32.7802777778N',
+    observatory_lon = '105.8202777778W',
+    jd=False,
+    eph=None,
+    earth=None,
+    sun=None,
+    d=None,
+    mask=None):
+        """
+        Initialization sets a default observatory to LCO, and the default time to the date when initialized.
+        """
+        super().__init__()
+        # Load the ephemeral datat for the earth and sun. 
+        if eph is None:
+            self.eph = load('de421.bsp')
+        
+        # Get functions for the earth, sun and observatory
+        self.earth = earth
+        if self.earth is None:
+            self.earth = self.eph['earth']
+        
+        self.sun = sun
+        if self.sun is None:
+            self.sun = self.eph['sun']
+
+        self.observatory_elevation = observatory_elevation
+        try:
+            self.observatory_elevation.to("m")
+        except:
+            sys.exit("Observatory elevation does not have unit of length")
+
+        self.observatory_name = observatory_name
+        self.observatory_lat = observatory_lat
+        self.observatory_lon = observatory_lon
+        self.observatory_topo = Topos(self.observatory_lat, self.observatory_lon, elevation_m=self.observatory_elevation.to("m").value)
+        self.ts = load.timescale()
+
+        if jd is not False:
+            self.t = self.ts.tt_jd(jd)
+
+        else:
+            self.t = self.ts.now()
+
+        self.update_xyz()
+        # define these at time self.t xyz_observatory_m, xyz_earth_m, xyz_sun_m
+
+        """
+        These are going to be vectors which are the x,y,z positions of the puzzle.
+        Credit for this solution to the intersection goes to:  Julien Guertault @ http://lousodrome.net/blog/light/2017/01/03/intersection-of-a-ray-and-a-cone/
+        """
+
+        # Those are very self explanitory 
+        self.earth_radius=6.357e6*u.m
+        self.sun_radius=695.700e6*u.m
+
+        # Distance from Sun to the earth.
+        self.d_se = 1*u.au
+
+        # Distance from tip of the shadow cone to the earth
+        self.d_ec = self.earth_radius * self.d_se / (self.sun_radius - self.earth_radius)
+
+        # Opening angle of the shadow cone
+        self.shadow_cone_theta  = np.arctan(self.earth_radius/self.d_ec)
+
+        # Finally, updated the xyz coordinate vectors of earth, sun and observatory.
+        self.update_vectors(self, jd)
+
+    def update_time(self, jd):
+        """ Update the time, and all time dependent vectors """
+        self.t = self.ts.tt_jd(jd)
+        self.update_xyz()
+        self.update_vec_c()
+        self.co = self.c_xyz - self.xyz_observatory
+
+    def update_xyz(self):
+        """
+        Due to the nature of the vectors, it is not possible to combine the earth and the observatory topo directly. Therefore
+        this requires the calculation of an observatory position to be done using the XYZ positions defined at a particular time, and with a particular unit.
+        To prevent unit issues later from arising SI units are adopted. In the case where other units are desired, like plotting the solar system, local conversions
+        can be done.
+        """
+        self.xyz_earth = self.earth.at(self.t).position.au
+        self.xyz_sun = self.sun.at(self.t).position.au
+        self.xyz_observatory = self.earth.at(self.t).position.au + self.observatory_topo.at(self.t).position.au
+
+
+    def update_vec_c(self):
+        """
+        d_se : distance sun to earth
+        d_ec : distance earth to (c)one tip
+        c_unit_vec: unit vector from cone to earth, or earth to sun.
+
+        """
+        # We reverse the vector sun to earth explicitly with -1.0 for clarity
+        self.v = -1.0*(self.earth_xyz - self.xyz_sun)/self.d_ec
+        self.c_xyz = self.earth_xyz + self.v * self.d_ec
+
+
+    def get_abcd(self):
+        self.a = vecdot(self.d,self.v)**2 - np.cos(self.theta)**2
+        self.b = 2*( vecdot(self.d,self.v) * vecdot(self.co,self.v) - vecdot(self.d,self.co)*np.cos(self.theta)**2)
+        self.c = vecdot(self.co, self.v)**2 - self.co * self.co * np.cos(self.theta)**2
+        self.delta = self.b**2 - 4 * self.a * self.c
+
+    def get_dist(self):
+        self.P[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
+        self.P[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
+        self.P[self.delta < 0 ] = False
+        self.dist = self.vecmag(self.P, origin=self.xyz_earth) - self.earth_radius
+
+    def run(self, jd, return_heights=True):
+        self.update_time(jd)
+        self.get_abcd()
+        self.get_dist()
+        if return_heights:
+            return(self.dist)
+
+    def vecmag(a, origin=[0,0,0]):
+        """ Return the magnitude of a set of vectors around an abritrary origin """
+        if len(np.shape(origin)) == 1:
+            return( (( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2)**0.5)
+        else:
+            return( ((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2)**0.5)
+
+
 def vecmag(a, origin=[0,0,0]):
     """ Return the magnitude of a set of vectors around an abritrary origin """
     if len(np.shape(origin)) == 1:
         return( (( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2)**0.5)
     else:
         return( ((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2)**0.5)
+
 
 def vecang(a, b, origin=[0,0,0],degree=False):
     """ Compute the angle between a and b with an origion, or set of origins """
@@ -55,7 +184,7 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
     else:
         return(theta)
 
-class shadow_calc():
+class shadow_calc_old():
     def __init__(self, observatory_name="APO",
     observatory_elevation=2788.0*u.m,
     observatory_lat='32.7802777778N',
