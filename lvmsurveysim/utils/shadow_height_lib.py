@@ -18,11 +18,11 @@ def vecdot(a,b, origin=np.array([0,0,0])):
         return(a[:,0] * b[:,0] + a[:,1] * b[:,1] + a[:,2] * b[:,2])
 
 class shadow_calc(object):
-    def __init__(self, observatory_name="APO",
-    observatory_elevation=2788.0*u.m,
-    observatory_lat='32.7802777778N',
-    observatory_lon = '105.8202777778W',
-    jd=False,
+    def __init__(self, observatory_name="LCO",
+    observatory_elevation=2380.0*u.m,
+    observatory_lat='29.0146S',
+    observatory_lon = '70.6926W',
+    jd=2459458,
     eph=None,
     earth=None,
     sun=None,
@@ -57,13 +57,6 @@ class shadow_calc(object):
         self.observatory_topo = Topos(self.observatory_lat, self.observatory_lon, elevation_m=self.observatory_elevation.to("m").value)
         self.ts = load.timescale()
 
-        if jd is not False:
-            self.t = self.ts.tt_jd(jd)
-
-        else:
-            self.t = self.ts.now()
-
-        self.update_xyz()
         # define these at time self.t xyz_observatory_m, xyz_earth_m, xyz_sun_m
 
         """
@@ -85,7 +78,13 @@ class shadow_calc(object):
         self.shadow_cone_theta  = np.arctan(self.earth_radius/self.d_ec)
 
         # Finally, updated the xyz coordinate vectors of earth, sun and observatory.
-        self.update_vectors(self, jd)
+        if jd is not False:
+            self.t = self.ts.tt_jd(jd)
+
+        else:
+            self.t = self.ts.now()
+
+        self.update_time(jd)
 
     def update_time(self, jd):
         """ Update the time, and all time dependent vectors """
@@ -114,8 +113,8 @@ class shadow_calc(object):
 
         """
         # We reverse the vector sun to earth explicitly with -1.0 for clarity
-        self.v = -1.0*(self.earth_xyz - self.xyz_sun)/self.d_ec
-        self.c_xyz = self.earth_xyz + self.v * self.d_ec
+        self.v = -1.0*(self.xyz_earth - self.xyz_sun)/self.d_ec
+        self.c_xyz = self.xyz_earth + self.v * self.d_ec
 
 
     def get_abcd(self):
@@ -659,44 +658,51 @@ class shadow_calc_old():
         return(LCO_topo)
 
 if __name__ == "__main__":
-    speedtest = False
+    test_results ={}
+    # Initiate tests.
+    try:
+        calculator = shadow_calc()
+        test_results["Create Class"] = "Passed"
+    except:
+        test_results["Create Class"] = "Failed"
 
-    #intialize the shaddow calculator
-    calculator = shadow_calc()
-    calculator.heidelberg_test()
+    d_ra = 1.0
+    ra_min = 0.0
+    ra_max = 360.
+    ra_deg = np.linspace(ra_min, ra_max-d_ra, int( abs(ra_max - ra_min)/d_ra) ) 
 
-    del(calculator)
+    d_dec = 1.0
+    dec_min = -90.
+    dec_max = 0.0
+    dec_deg = np.linspace(dec_min, dec_max-d_ra, int( abs(dec_max - dec_min)/d_dec) ) 
 
+    for test in test_results.keys():
+        print ("%s -> %s"%(test, test_results[test]))
 
-    calculator = shadow_calc()
+#     if speedtest is False:
+#         import matplotlib.pyplot as plt
+#         import matplotlib.animation as animation
+#         import matplotlib.patches as patches
 
-    ra_hours = 0.0
-    dec_degrees = 0.0
+#     if speedtest is False:
 
-    if speedtest is False:
-        import matplotlib.pyplot as plt
-        import matplotlib.animation as animation
-        import matplotlib.patches as patches
+#         calculator.fig, calculator.ax = plt.subplots(figsize=(10,10))
+#         calculator.line1, = calculator.ax.plot([], [], 'ro', lw=2)
+#         calculator.line2, = calculator.ax.plot([], [], '.-', lw=5)
+#         calculator.line3, = calculator.ax.plot([], [], '.-', lw=5)
+#         calculator.path, = calculator.ax.plot([],[],'-', lw=1)
 
-    if speedtest is False:
+#         calculator.ax.grid()
+#         calculator.xdata, calculator.ydata = [], []
+#         calculator.pathx, calculator.pathy = [], []
 
-        calculator.fig, calculator.ax = plt.subplots(figsize=(10,10))
-        calculator.line1, = calculator.ax.plot([], [], 'ro', lw=2)
-        calculator.line2, = calculator.ax.plot([], [], '.-', lw=5)
-        calculator.line3, = calculator.ax.plot([], [], '.-', lw=5)
-        calculator.path, = calculator.ax.plot([],[],'-', lw=1)
-
-        calculator.ax.grid()
-        calculator.xdata, calculator.ydata = [], []
-        calculator.pathx, calculator.pathy = [], []
-
-    if speedtest:
-        for i in range (24*365):
-            junk = calculator.update_positions(i, speedtest=True, goFast=True)
-    else:
-        ani = animation.FuncAnimation(fig, calculator.animation_update_positions, frames=(24*365), repeat_delay=0,
-                                        blit=False, interval=10, init_func=calculator.init_plotting_animation, repeat=0)
-        import os
-        ani.save("%s/tmp/im.mp4"%(os.environ["HOME"]))
-#plt.show()
+#     # if speedtest:
+#     #     for i in range (24*365):
+#     #         junk = calculator.update_positions(i, speedtest=True, goFast=True)
+#     # else:
+#     #     ani = animation.FuncAnimation(fig, calculator.animation_update_positions, frames=(24*365), repeat_delay=0,
+#     #                                     blit=False, interval=10, init_func=calculator.init_plotting_animation, repeat=0)
+#     #     import os
+#     #     ani.save("%s/tmp/im.mp4"%(os.environ["HOME"]))
+# #plt.show()
 
