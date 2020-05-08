@@ -27,7 +27,8 @@ class shadow_calc(object):
     earth=None,
     sun=None,
     d=None,
-    mask=None):
+    mask=None,
+    pointings=None):
         """
         Initialization sets a default observatory to LCO, and the default time to the date when initialized.
         """
@@ -56,7 +57,8 @@ class shadow_calc(object):
         self.observatory_lon = observatory_lon
         self.observatory_topo = Topos(self.observatory_lat, self.observatory_lon, elevation_m=self.observatory_elevation.to("m").value)
         self.ts = load.timescale()
-
+        self.coordinates = None
+       
         # define these at time self.t xyz_observatory_m, xyz_earth_m, xyz_sun_m
 
         """
@@ -86,9 +88,26 @@ class shadow_calc(object):
 
         self.update_time(jd)
 
-    def update_time(self, jd):
+    def set_coordinates(self, new_coordinates=None):
+        # Set coordinates and calculate unit vectors.
+        self.coordinates = new_coordinates
+        #if type(new_coordinates) ==  type(SkyCoord([],[], frame="fk4", unit=(u.hourangle, u.deg))):
+        #     self.coordinate = new_coordinates
+        # else:
+        #     sys.exit("sky coordinates are not a astropy.skycoord object")
+
+        self.pointing_unit_vectors = np.zeros(shape=(len(self.coordinates),3))
+
+        a = np.pi / 180.
+        self.pointing_unit_vectors[:,0]= np.cos(self.coordinates.ra.deg*a)*np.sin(self.coordinates.dec.deg*a)
+        self.pointing_unit_vectors[:,1]= np.sin(self.coordinates.ra.deg*a)*np.sin(self.coordinates.dec.deg*a)
+        self.pointing_unit_vectors[:,2]= np.cos(self.coordinates.dec.deg*a)
+
+    def update_time(self, jd=None):
         """ Update the time, and all time dependent vectors """
-        self.t = self.ts.tt_jd(jd)
+        if jd is not None:
+            self.jd = jd
+        self.t = self.ts.tt_jd(self.jd)
         self.update_xyz()
         self.update_vec_c()
         self.co = self.c_xyz - self.xyz_observatory
@@ -116,11 +135,10 @@ class shadow_calc(object):
         self.v = -1.0*(self.xyz_earth - self.xyz_sun)/self.d_ec
         self.c_xyz = self.xyz_earth + self.v * self.d_ec
 
-
     def get_abcd(self):
-        self.a = vecdot(self.d,self.v)**2 - np.cos(self.theta)**2
-        self.b = 2*( vecdot(self.d,self.v) * vecdot(self.co,self.v) - vecdot(self.d,self.co)*np.cos(self.theta)**2)
-        self.c = vecdot(self.co, self.v)**2 - self.co * self.co * np.cos(self.theta)**2
+        self.a = vecdot(self.pointing_unit_vectors,self.v)**2 - np.cos(self.shadow_cone_theta)**2
+        self.b = 2*( vecdot(self.pointing_unit_vectors,self.v) * vecdot(self.co,self.v) - vecdot(self.pointing_unit_vectors,self.co)*np.cos(self.shadow_cone_theta)**2)
+        self.c = vecdot(self.co, self.v)**2 - self.co * self.co * np.cos(self.shadow_cone_theta)**2
         self.delta = self.b**2 - 4 * self.a * self.c
 
     def get_dist(self):
@@ -129,8 +147,10 @@ class shadow_calc(object):
         self.P[self.delta < 0 ] = False
         self.dist = self.vecmag(self.P, origin=self.xyz_earth) - self.earth_radius
 
-    def run(self, jd, return_heights=True):
-        self.update_time(jd)
+    def get_heights(self, jd=None, return_heights=True):
+        if jd is not None:
+            self.jd = jd
+        self.update_time()
         self.get_abcd()
         self.get_dist()
         if return_heights:
@@ -659,22 +679,38 @@ class shadow_calc_old():
 
 if __name__ == "__main__":
     test_results ={}
+    from astropy.coordinates import SkyCoord
+    from astropy.coordinates import Angle, Latitude, Longitude
+    from astropy import units as u
     # Initiate tests.
     try:
         calculator = shadow_calc()
-        test_results["Create Class"] = "Passed"
+        test_results["Create Class"] = "Pass"
     except:
-        test_results["Create Class"] = "Failed"
+        test_results["Create Class"] = "Fail"
 
     d_ra = 1.0
     ra_min = 0.0
     ra_max = 360.
-    ra_deg = np.linspace(ra_min, ra_max-d_ra, int( abs(ra_max - ra_min)/d_ra) ) 
+    ra_deg = Longitude(np.linspace(ra_min, ra_max-d_ra, int( abs(ra_max - ra_min)/d_ra) ), unit=u.deg)
 
     d_dec = 1.0
     dec_min = -90.
     dec_max = 0.0
-    dec_deg = np.linspace(dec_min, dec_max-d_ra, int( abs(dec_max - dec_min)/d_dec) ) 
+    dec_deg = Latitude(np.linspace(dec_min, dec_max-d_ra, len(ra_deg)), unit=u.deg)
+
+    try:
+        calculator.set_coordinates(SkyCoord(ra_deg, dec_deg, frame="icrs"))
+        test_results["Set Coordinates"]= "Pass"
+    except:
+        test_results["Set Coordinates"]= "Fail"
+
+    try:
+        calculator.get_heights()
+        test_results["Run"] = "Pass"
+    except:
+        test_results["Run"] = "Fail"
+
 
     for test in test_results.keys():
         print ("%s -> %s"%(test, test_results[test]))
