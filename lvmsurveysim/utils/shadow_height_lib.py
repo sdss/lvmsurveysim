@@ -159,7 +159,7 @@ class shadow_calc(object):
 
         """
         # We reverse the vector sun to earth explicitly with -1.0 for clarity
-        self.v = -1.0*(self.xyz_earth - self.xyz_sun)/(np.sum((self.xyz_earth-self.xyz_sun)**2))**0.5
+        self.v = -1.0*(self.xyz_earth - self.xyz_sun)/np.sqrt(np.sum((self.xyz_earth-self.xyz_sun)**2))
         self.c_xyz = self.xyz_earth + self.v * self.d_ec.to("au").value
 
     def get_abcd(self, mask=False):
@@ -204,17 +204,17 @@ class shadow_calc(object):
     def vecmag(self, a, origin=[0,0,0]):
         """ Return the magnitude of a set of vectors around an abritrary origin """
         if len(np.shape(origin)) == 1:
-            return( (( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2)**0.5)
+            return( np.sqrt(( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2))
         else:
-            return( ((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2)**0.5)
+            return( np.sqrt((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2))
 
 
 def vecmag(a, origin=[0,0,0]):
     """ Return the magnitude of a set of vectors around an abritrary origin """
     if len(np.shape(origin)) == 1:
-        return( (( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2)**0.5)
+        return( np.sqrt(( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2))
     else:
-        return( ((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2)**0.5)
+        return( np.sqrt((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2))
 
 
 def vecang(a, b, origin=[0,0,0],degree=False):
@@ -446,7 +446,7 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
 #             self.xyz_point_m = self.xyz_observatory_m + self.point_along_ray.position.m
 
 #             # Calculate the altitude to see if the point faces the earth.
-#             altitude_point_to_earth_m = np.sum( np.array( self.xyz_point_m - self.xyz_earth_m )**2 )**0.5 - (self.r_earth.to("m").value)
+#             altitude_point_to_earth_m = np.sqrt(np.sum( np.array( self.xyz_point_m - self.xyz_earth_m )**2 )) - (self.r_earth.to("m").value)
 
 #             if altitude_point_to_earth_m <= 0:
 #                 # Index -1 is a flag to indicate the direction faces into the earth.
@@ -464,7 +464,7 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
 
 #             if self.point_in_earth_shaddow(self.xyz_point_m, self.xyz_sun_m, self.xyz_earth_m) == True:
 #                 # Only calculate the altitude of the shadow if the point is in the shadow
-#                 altitude_point_to_earth_m = np.sum( np.array( self.xyz_point_m - self.xyz_earth_m )**2 )**0.5 - self.r_earth.to("m").value
+#                 altitude_point_to_earth_m = np.sqrt(np.sum( np.array( self.xyz_point_m - self.xyz_earth_m )**2 )) - self.r_earth.to("m").value
 #                 # Index -2 is a flag to indicate the direction at the maximum distance is still in the shadow.
 #                 # This is likely still a useful shadow height however, so we return the maximum tested distance and the altitude
 #                 return(altitude_point_to_earth_m, distance, -2)
@@ -479,7 +479,7 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
 #             # Get the first illuminated distance, where we are NOT in the shaddow
 #             i_distance = np.min(np.where(np.logical_not(self.points_in_shaddow)))
 
-#             altitude_point_to_earth_m = np.sum( np.array( self.xyz_points_m[i_distance] - self.xyz_earth_m )**2 )**0.5 - self.r_earth.to("m").value
+#             altitude_point_to_earth_m = np.sqrt(np.sum( np.array( self.xyz_points_m[i_distance] - self.xyz_earth_m )**2 )) - self.r_earth.to("m").value
 
 #             return(altitude_point_to_earth_m, distances[i_distance].to("m").value, i_distance)
 
@@ -497,7 +497,7 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
 #             #     # Check if point is in the shadow
 #             #     if self.point_in_earth_shaddow(self.xyz_point_m, self.xyz_sun_m, self.xyz_earth_m) == False:
 #             #         # If in the shadow calculate and return the altitude above the earth.
-#             #         altitude_point_to_earth_m = np.sum( np.array( self.xyz_point_m - self.xyz_earth_m )**2 )**0.5 - self.r_earth.to("m").value
+#             #         altitude_point_to_earth_m = np.sqrt(np.sum( np.array( self.xyz_point_m - self.xyz_earth_m )**2 )) - self.r_earth.to("m").value
                     
 #             #         return(altitude_point_to_earth_m, distance.to("m").value, i_distance)
 
