@@ -126,9 +126,9 @@ class shadow_calc(object):
         self.pointing_unit_vectors = np.zeros(shape=(len(self.coordinates),3))
 
         a = np.pi / 180.
-        self.pointing_unit_vectors[:,0]= np.cos(self.coordinates.ra.deg*a)*np.sin(self.coordinates.dec.deg*a)
-        self.pointing_unit_vectors[:,1]= np.sin(self.coordinates.ra.deg*a)*np.sin(self.coordinates.dec.deg*a)
-        self.pointing_unit_vectors[:,2]= np.cos(self.coordinates.dec.deg*a)
+        self.pointing_unit_vectors[:,0]= np.cos(self.coordinates.ra.deg*a)*np.cos(self.coordinates.dec.deg*a)
+        self.pointing_unit_vectors[:,1]= np.sin(self.coordinates.ra.deg*a)*np.cos(self.coordinates.dec.deg*a)
+        self.pointing_unit_vectors[:,2]= np.sin(self.coordinates.dec.deg*a)
 
     def update_time(self, jd=None):
         """ Update the time, and all time dependent vectors """
@@ -172,10 +172,12 @@ class shadow_calc(object):
         self.heights = np.full(len(self.a), -9999.00)
         # Get P distance to point.
         self.heights[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
-        # self.dist[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
+        height_b1 = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
+        height_b2 = -self.b[self.delta > 0 ]-np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
+        self.dist[self.delta > 0 ] = np.max([height_b1, height_b2], axis=0)
         # self.dist[self.delta < 0 ] = False
         # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
-        self.heights[self.delta == 0] = self.heights[self.delta == 0]*u.au - self.earth_radius
+        self.heights[self.heights != -9999.00] = self.heights[self.heights != -9999.00]*u.au - self.earth_radius
 
     def get_heights(self, jd=None, return_heights=True):
         if jd is not None:
@@ -725,10 +727,10 @@ if __name__ == "__main__":
     ra_max = 360.
     ra_deg = Longitude(np.linspace(ra_min, ra_max-d_ra, int( abs(ra_max - ra_min)/d_ra) ), unit=u.deg)
 
-    d_dec = 1.0
+    d_dec = 0.0
     dec_max = 0.0
     dec_min = 0.0
-    dec_deg = Latitude(np.linspace(dec_min, dec_max-d_ra, len(ra_deg)), unit=u.deg)
+    dec_deg = Latitude(np.linspace(dec_min, dec_max-d_dec, len(ra_deg)), unit=u.deg)
 
     try:
         test = "Set Coordinates"
@@ -758,7 +760,7 @@ if __name__ == "__main__":
         for jd in np.linspace(2459458, 2459458+365, 24*365):
             calculator.update_time(jd)
             max_height = np.max(calculator.get_heights(return_heights=True))
-            print("vector v(%f) = %f,%f,%f"%(jd, calculator.v[0],calculator.v[1],calculator.v[2]))
+            print("height_v(jd=%f) = %f"%(jd, max_height))
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
