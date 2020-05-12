@@ -772,8 +772,8 @@ if __name__ == "__main__":
         test = "loop"
         for jd in np.linspace(2459458, 2459458+365, 24*365):
             calculator.update_time(jd)
-            max_height = np.max(calculator.get_heights(return_heights=True, unit="km"))
-            print("height_v(jd=%f) = %f"%(jd, max_height))
+            heights = calculator.get_heights(return_heights=True, unit="km")
+            print("height_v(jd=%f) = %f"%(jd, heights[0]))
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
