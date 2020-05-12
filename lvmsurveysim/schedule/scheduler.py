@@ -845,10 +845,6 @@ class Scheduler(object):
                 # observe it, give it one quantum of exposure
                 new_observed[observed_idx] += exposure_quantums[observed_idx]
 
-                # Gets the parameters of the pointing.
-                ra = coordinates[observed_idx, 0]
-                dec = coordinates[observed_idx, 1]
-
                 target_index = index_to_target[observed_idx]
                 target_name = self.targets[target_index].name
                 groups = self.targets[target_index].groups
@@ -863,15 +859,13 @@ class Scheduler(object):
                 pointing_index = observed_idx - target_index_first
 
                 # calculate shadow height for chosen observation
-                self.shadow_calc.update_t(current_jd)
-                hz = self.shadow_calc.height_from_radec(ra, dec, simple_output=True)['height']
-                if hz>0.0:
-                    hz = hz/1000.
+                self.shadow_calc.update_time(current_jd)
+                self.shadow_calc.set_coordinates(coordinates[observed_idx])
+                hz = self.shadow_calc.get_heights(return_heights=True, unit="km")
 
                 # Record angular distance to solar system objects
                 dist_to_moon = moon_to_pointings[observed_idx]
                 dist_to_sun = sun_to_pointings[observed_idx]
-
 
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
@@ -880,7 +874,8 @@ class Scheduler(object):
                                          target_name=target_name,
                                          target_group=target_group,
                                          pointing_index=pointing_index,
-                                         ra=ra, dec=dec,
+                                         ra=coordinates[observed_idx, 0], 
+                                         dec=coordinates[observed_idx, 1],
                                          airmass=airmass,
                                          lunation=lunation,
                                          shadow_height=hz,
