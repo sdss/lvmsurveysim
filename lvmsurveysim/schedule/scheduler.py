@@ -860,7 +860,7 @@ class Scheduler(object):
 
                 # calculate shadow height for chosen observation
                 self.shadow_calc.update_time(current_jd)
-                self.shadow_calc.set_coordinates(coordinates[observed_idx])
+                self.shadow_calc.set_coordinates(astropy.coordinates.SkyCoord(coordinates[observed_idx, 0], coordinates[observed_idx, 1], unit='deg'))
                 hz = self.shadow_calc.get_heights(return_heights=True, unit="km")
 
                 # Record angular distance to solar system objects
