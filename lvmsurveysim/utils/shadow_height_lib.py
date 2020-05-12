@@ -183,9 +183,10 @@ class shadow_calc(object):
        
         # Get P distance to point.
         self.heights[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
-        height_b1[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
-        height_b2[self.delta > 0 ] = -self.b[self.delta > 0 ]-np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
-        self.heights[self.delta > 0 ] = np.min([height_b1[self.delta > 0 ], height_b2[self.delta > 0 ]], axis=0)
+        positive_delta = self.delta > 0 
+        height_b1[positive_delta] = -self.b[positive_delta]+np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
+        height_b2[positive_delta] = -self.b[positive_delta]-np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
+        self.heights[positive_delta] = np.min([height_b1[positive_delta], height_b2[positive_delta]], axis=0)
         self.heights[self.heights < 0 ] = np.max([height_b1[self.heights < 0 ], height_b2[self.heights < 0 ]], axis=0)
 
         # self.dist[self.delta < 0 ] = False
