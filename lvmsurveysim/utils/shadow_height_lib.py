@@ -159,7 +159,7 @@ class shadow_calc(object):
 
         """
         # We reverse the vector sun to earth explicitly with -1.0 for clarity
-        self.v = -1.0*(self.xyz_earth - self.xyz_sun)/self.d_ec.to("au").value
+        self.v = -1.0*(self.xyz_earth - self.xyz_sun)/(np.sum((self.xyz_earth-self.xyz_sun)**2))**0.5
         self.c_xyz = self.xyz_earth + self.v * self.d_ec.to("au").value
 
     def get_abcd(self):
@@ -171,11 +171,11 @@ class shadow_calc(object):
     def solve_for_height(self):
         self.heights = np.full(len(self.a), -9999.00)
         # Get P distance to point.
-        self.dist[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
+        self.heights[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
         # self.dist[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
         # self.dist[self.delta < 0 ] = False
         # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
-        self.heights[self.delta == 0] = self.dist[self.delta == 0]*u.au - self.earth_radius
+        self.heights[self.delta == 0] = self.heights[self.delta == 0]*u.au - self.earth_radius
 
     def get_heights(self, jd=None, return_heights=True):
         if jd is not None:
@@ -726,8 +726,8 @@ if __name__ == "__main__":
     ra_deg = Longitude(np.linspace(ra_min, ra_max-d_ra, int( abs(ra_max - ra_min)/d_ra) ), unit=u.deg)
 
     d_dec = 1.0
-    dec_min = -90.
     dec_max = 0.0
+    dec_min = 0.0
     dec_deg = Latitude(np.linspace(dec_min, dec_max-d_ra, len(ra_deg)), unit=u.deg)
 
     try:
@@ -758,7 +758,7 @@ if __name__ == "__main__":
         for jd in np.linspace(2459458, 2459458+365, 24*365):
             calculator.update_time(jd)
             max_height = np.max(calculator.get_heights(return_heights=True))
-            print("max_Height(%f) = %f"%(jd, max_height))
+            print("vector v(%f) = %f,%f,%f"%(jd, calculator.v[0],calculator.v[1],calculator.v[2]))
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
