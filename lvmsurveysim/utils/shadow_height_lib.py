@@ -159,7 +159,7 @@ class shadow_calc(object):
 
         """
         # We reverse the vector sun to earth explicitly with -1.0 for clarity
-        self.v = -1.0*(self.xyz_earth - self.xyz_sun)/np.sqrt(np.sum((self.xyz_earth-self.xyz_sun)**2))
+        self.v = -1.0*(self.xyz_earth - self.xyz_sun)/np.sqrt(np.sum(np.square(self.xyz_earth-self.xyz_sun)))
         self.c_xyz = self.xyz_earth + self.v * self.d_ec.to("au").value
 
     def get_abcd(self, mask=False):
@@ -171,10 +171,10 @@ class shadow_calc(object):
         self.c = np.full(len(self.pointing_unit_vectors), np.nan)
         self.delta = np.full(len(self.pointing_unit_vectors), np.nan)
 
-        self.a[mask] = np.sum(self.pointing_unit_vectors[mask]*self.v,axis=1)**2 - np.cos(self.shadow_cone_theta)**2
-        self.b[mask] = 2*( np.sum(self.pointing_unit_vectors[mask]*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(self.pointing_unit_vectors[mask]*self.co, axis=1)*np.cos(self.shadow_cone_theta)**2)
-        self.c[mask] = np.sum(self.co*self.v)**2 - np.sum(self.co * self.co) * np.cos(self.shadow_cone_theta)**2
-        self.delta[mask] = self.b[mask]**2 - 4 * self.a[mask] * self.c[mask]
+        self.a[mask] = np.square(np.sum(self.pointing_unit_vectors[mask]*self.v,axis=1)) - np.square(np.cos(self.shadow_cone_theta))
+        self.b[mask] = 2*( np.sum(self.pointing_unit_vectors[mask]*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(self.pointing_unit_vectors[mask]*self.co, axis=1)*np.square(np.cos(self.shadow_cone_theta)))
+        self.c[mask] = np.square(np.sum(self.co*self.v)) - np.sum(self.co * self.co) * np.square(np.cos(self.shadow_cone_theta))
+        self.delta[mask] = np.square(self.b[mask]) - 4 * self.a[mask] * self.c[mask]
 
     def solve_for_height(self, unit="km"):
         self.heights = np.full(len(self.a), -9999.00)
@@ -182,12 +182,14 @@ class shadow_calc(object):
         height_b2 = np.full(len(self.a), -9999.00)
        
         # Get P distance to point.
-        self.heights[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
+        zero_delta = self.delta == 0
+        self.heights[zero_delta] = -self.b[zero_delta]/(2*self.a[zero_delta])
         positive_delta = self.delta > 0 
         height_b1[positive_delta] = -self.b[positive_delta]+np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
         height_b2[positive_delta] = -self.b[positive_delta]-np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
         self.heights[positive_delta] = np.min([height_b1[positive_delta], height_b2[positive_delta]], axis=0)
-        self.heights[self.heights < 0 ] = np.max([height_b1[self.heights < 0 ], height_b2[self.heights < 0 ]], axis=0)
+        negative_delta = self.heights < 0
+        self.heights[negative_delta] = np.max([height_b1[negative_delta], height_b2[negative_delta]], axis=0)
 
         # self.dist[self.delta < 0 ] = False
         # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
@@ -200,22 +202,22 @@ class shadow_calc(object):
         self.get_abcd()
         self.solve_for_height(unit="km")
         if return_heights:
-            return(self.heights)
+            return self.heights 
 
     def vecmag(self, a, origin=[0,0,0]):
         """ Return the magnitude of a set of vectors around an abritrary origin """
         if len(np.shape(origin)) == 1:
-            return( np.sqrt(( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2))
+            return np.sqrt(np.square(a[0] - origin[0]) + np.square(a[1] - origin[1]) + np.square(a[2] - origin[2]))
         else:
-            return( np.sqrt((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2))
+            return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
 
 def vecmag(a, origin=[0,0,0]):
     """ Return the magnitude of a set of vectors around an abritrary origin """
     if len(np.shape(origin)) == 1:
-        return( np.sqrt(( a[0]  - origin[0]   )**2 + (a[1]   - origin[1]  )**2 + (a[2]   - origin[2]  )**2))
+        return np.sqrt(np.square(a[0] - origin[0]) + np.square(a[1] - origin[1]) + np.square(a[2] - origin[2]))
     else:
-        return( np.sqrt((a[:,0]- origin[:,0] )**2 + (a[:,1] - origin[:,1])**2 + (a[:,2] - origin[:,2])**2))
+        return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
 
 def vecang(a, b, origin=[0,0,0],degree=False):
