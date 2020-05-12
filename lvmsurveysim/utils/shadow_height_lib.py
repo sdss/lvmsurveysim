@@ -162,29 +162,42 @@ class shadow_calc(object):
         self.v = -1.0*(self.xyz_earth - self.xyz_sun)/(np.sum((self.xyz_earth-self.xyz_sun)**2))**0.5
         self.c_xyz = self.xyz_earth + self.v * self.d_ec.to("au").value
 
-    def get_abcd(self):
-        self.a = np.sum(self.pointing_unit_vectors*self.v,axis=1)**2 - np.cos(self.shadow_cone_theta)**2
-        self.b = 2*( np.sum(self.pointing_unit_vectors*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(self.pointing_unit_vectors*self.co, axis=1)*np.cos(self.shadow_cone_theta)**2)
-        self.c = np.sum(self.co*self.v)**2 - np.sum(self.co * self.co) * np.cos(self.shadow_cone_theta)**2
-        self.delta = self.b**2 - 4 * self.a * self.c
+    def get_abcd(self, mask=False):
+        if mask is False:
+            mask = np.full(len(self.pointing_unit_vectors), True)
 
-    def solve_for_height(self):
+        self.a = np.full(len(self.pointing_unit_vectors), np.nan)
+        self.b = np.full(len(self.pointing_unit_vectors), np.nan)
+        self.c = np.full(len(self.pointing_unit_vectors), np.nan)
+        self.delta = np.full(len(self.pointing_unit_vectors), np.nan)
+
+        self.a[mask] = np.sum(self.pointing_unit_vectors[mask]*self.v,axis=1)**2 - np.cos(self.shadow_cone_theta)**2
+        self.b[mask] = 2*( np.sum(self.pointing_unit_vectors[mask]*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(self.pointing_unit_vectors[mask]*self.co, axis=1)*np.cos(self.shadow_cone_theta)**2)
+        self.c[mask] = np.sum(self.co*self.v)**2 - np.sum(self.co * self.co) * np.cos(self.shadow_cone_theta)**2
+        self.delta[mask] = self.b[mask]**2 - 4 * self.a[mask] * self.c[mask]
+
+    def solve_for_height(self, unit="km"):
         self.heights = np.full(len(self.a), -9999.00)
+        height_b1 = np.full(len(self.a), -9999.00)
+        height_b2 = np.full(len(self.a), -9999.00)
+       
         # Get P distance to point.
         self.heights[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
-        height_b1 = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
-        height_b2 = -self.b[self.delta > 0 ]-np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
-        self.dist[self.delta > 0 ] = np.max([height_b1, height_b2], axis=0)
+        height_b1[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
+        height_b2[self.delta > 0 ] = -self.b[self.delta > 0 ]-np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
+        self.heights[self.delta > 0 ] = np.min([height_b1[self.delta > 0 ], height_b2[self.delta > 0 ]], axis=0)
+        self.heights[self.heights < 0 ] = np.max([height_b1[self.heights < 0 ], height_b2[self.heights < 0 ]], axis=0)
+
         # self.dist[self.delta < 0 ] = False
         # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
-        self.heights[self.heights != -9999.00] = self.heights[self.heights != -9999.00]*u.au - self.earth_radius
+        self.heights[self.heights != -9999.00] = (self.heights[self.heights != -9999.00]*u.au - self.earth_radius).to(unit)
 
-    def get_heights(self, jd=None, return_heights=True):
+    def get_heights(self, jd=None, return_heights=True,unit=u.km):
         if jd is not None:
             self.jd = jd
         self.update_time()
         self.get_abcd()
-        self.solve_for_height()
+        self.solve_for_height(unit="km")
         if return_heights:
             return(self.heights)
 
@@ -759,7 +772,7 @@ if __name__ == "__main__":
         test = "loop"
         for jd in np.linspace(2459458, 2459458+365, 24*365):
             calculator.update_time(jd)
-            max_height = np.max(calculator.get_heights(return_heights=True))
+            max_height = np.max(calculator.get_heights(return_heights=True, unit="km"))
             print("height_v(jd=%f) = %f"%(jd, max_height))
         test_results[test] = "Pass"
     except:
