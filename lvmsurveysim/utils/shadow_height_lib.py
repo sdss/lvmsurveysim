@@ -169,13 +169,13 @@ class shadow_calc(object):
         self.delta = self.b**2 - 4 * self.a * self.c
 
     def solve_for_height(self):
-        self.dist = np.full(len(self.a), -9999.00)
+        self.heights = np.full(len(self.a), -9999.00)
         # Get P distance to point.
         self.dist[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
         # self.dist[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
         # self.dist[self.delta < 0 ] = False
         # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
-        self.heights[self.delta == 0] = self.P[self.delta == 0]*u.au - self.earth_radius
+        self.heights[self.delta == 0] = self.dist[self.delta == 0]*u.au - self.earth_radius
 
     def get_heights(self, jd=None, return_heights=True):
         if jd is not None:
@@ -751,6 +751,18 @@ if __name__ == "__main__":
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
+
+
+    try:
+        test = "loop"
+        for jd in np.linspace(2459458, 2459458+365, 24*365):
+            calculator.update_time(jd)
+            max_height = np.max(calculator.get_heights(return_heights=True))
+            print("max_Height(%f) = %f"%(jd, max_height))
+        test_results[test] = "Pass"
+    except:
+        test_results[test] = "Fail"
+
 
 
     for test in test_results.keys():
