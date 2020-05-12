@@ -168,21 +168,23 @@ class shadow_calc(object):
         self.c = np.sum(self.co*self.v)**2 - np.sum(self.co * self.co) * np.cos(self.shadow_cone_theta)**2
         self.delta = self.b**2 - 4 * self.a * self.c
 
-    def get_dist(self):
-        self.P = np.full(len(self.a), -9999.00)
-        self.P[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
-        self.P[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
-        self.P[self.delta < 0 ] = False
-        self.dist = self.P*u.au - self.earth_radius
+    def solve_for_height(self):
+        self.dist = np.full(len(self.a), -9999.00)
+        # Get P distance to point.
+        self.dist[self.delta == 0] = -self.b[self.delta == 0]/(2*self.a[self.delta == 0])
+        # self.dist[self.delta > 0 ] = -self.b[self.delta > 0 ]+np.sqrt(self.delta[self.delta > 0 ]) / (2*self.a[self.delta > 0 ])
+        # self.dist[self.delta < 0 ] = False
+        # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
+        self.heights[self.delta == 0] = self.P[self.delta == 0]*u.au - self.earth_radius
 
     def get_heights(self, jd=None, return_heights=True):
         if jd is not None:
             self.jd = jd
         self.update_time()
         self.get_abcd()
-        self.get_dist()
+        self.solve_for_height()
         if return_heights:
-            return(self.dist)
+            return(self.heights)
 
     def vecmag(self, a, origin=[0,0,0]):
         """ Return the magnitude of a set of vectors around an abritrary origin """
@@ -731,6 +733,14 @@ if __name__ == "__main__":
     try:
         test = "Set Coordinates"
         calculator.set_coordinates(SkyCoord(ra_deg, dec_deg, frame="icrs"))
+        test_results[test] = "Pass"
+    except:
+        test_results[test] = "Fail"
+
+
+    try:
+        test = "set jd=2459458.5"
+        calculator.update_time(2459458)
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
