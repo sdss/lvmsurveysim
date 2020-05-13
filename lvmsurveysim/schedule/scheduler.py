@@ -664,10 +664,10 @@ class Scheduler(object):
         self.schedule = astropy.table.Table(
             rows=self.schedule,
             names=['JD', 'observatory', 'target', 'group', 'index', 'ra', 'dec',
-                'pixel', 'nside', 'airmass', 'lunation', 'shadow_height', "moon_dist", "sun_dist",
+                'pixel', 'nside', 'airmass', 'lunation', 'shadow_height', "moon_dist",
                 'lst', 'exptime', 'totaltime'],
             dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
-                float, float, float, float, float, float, float])
+                float, float, float, float, float, float])
 
     def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
                            target_priorities, tile_prio, coordinates, target_exposure_times,
@@ -743,13 +743,6 @@ class Scheduler(object):
         moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
             night_plan['moon_ra'], night_plan['moon_dec'],
             coordinates[:, 0], coordinates[:, 1])
-
-        sun_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
-            night_plan['sun_ra'], night_plan['sun_dec'],
-            coordinates[:, 0], coordinates[:, 1])
-        
-        # increase weight of distance to sun, will be compared to alititude later
-        sun_to_pointings = sun_to_pointings**2.0
 
         # The additional exposure time in this night
         new_observed = observed * 0.0
@@ -827,14 +820,13 @@ class Scheduler(object):
                 # select all pointings with the current target priority
                 valid_alt_target_priority = valid_alt[valid_priority_idx]
                 valid_alt_tile_priority = valid_tile_priorities[valid_priority_idx]
-                valid_alt_sun_to_pointings_priority= sun_to_pointings[valid_priority_idx]
 
                 # Find the tiles with the highest tile priority
                 max_tile_priority = numpy.max(valid_alt_tile_priority)
                 high_priority_tiles = numpy.where(valid_alt_tile_priority == max_tile_priority)[0]
 
-                # Gets the pointing with the highest altitude and distance from sun
-                obs_alt_idx = (valid_alt_sun_to_pointings_priority[high_priority_tiles] * valid_alt_target_priority[high_priority_tiles]).argmax()
+                # Gets the pointing with the highest altitude
+                obs_alt_idx = valid_alt_target_priority[high_priority_tiles].argmax()
 
                 obs_tile_idx = high_priority_tiles[obs_alt_idx]
                 obs_alt = valid_alt_target_priority[obs_tile_idx]
@@ -863,9 +855,8 @@ class Scheduler(object):
                 self.shadow_calc.set_coordinates(astropy.coordinates.SkyCoord([coordinates[observed_idx, 0]], [coordinates[observed_idx, 1]], unit='deg'))
                 hz = self.shadow_calc.get_heights(return_heights=True, unit="km")[0]
 
-                # Record angular distance to solar system objects
+                # Record angular distance to moon
                 dist_to_moon = moon_to_pointings[observed_idx]
-                dist_to_sun = sun_to_pointings[observed_idx]
 
                 # Update the table with the schedule.
                 exptime = exposure_quantums[observed_idx]
@@ -880,7 +871,6 @@ class Scheduler(object):
                                          lunation=lunation,
                                          shadow_height=hz,
                                          dist_to_moon=dist_to_moon,
-                                         dist_to_sun=dist_to_sun,
                                          lst=current_lst,
                                          exptime=exptime,
                                          totaltime=exptime * target_overhead)
@@ -901,13 +891,13 @@ class Scheduler(object):
 
     def _record_observation(self, jd, observatory, target_name='-', target_group='-',
                             pointing_index=-1, ra=-999., dec=-999.,
-                            airmass=-999., lunation=-999., shadow_height=-999., dist_to_moon=-999., dist_to_sun=-999.,
+                            airmass=-999., lunation=-999., shadow_height=-999., dist_to_moon=-999.,
                             lst=-999.,
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
         self.schedule.append((jd, observatory, target_name, target_group, pointing_index,
-                              ra, dec, 0, 0, airmass, lunation, shadow_height, dist_to_moon, dist_to_sun, lst, exptime,
+                              ra, dec, 0, 0, airmass, lunation, shadow_height, dist_to_moon, lst, exptime,
                               totaltime))
 
     def get_target_time(self, tname, group=False, observatory=None, lunation=None,
