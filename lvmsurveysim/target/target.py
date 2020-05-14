@@ -337,10 +337,9 @@ class Target(object):
         else:
             ax = fig.axes[0]
 
-        coords_array = numpy.array([lon, lat]).T
-        coords_moll = lvm_plot.convert_to_mollweide(coords_array)
+        c1,c2 = lvm_plot.convert_to_mollweide(lon, lat)
 
-        ax.scatter(coords_moll[:, 0], coords_moll[:, 1], **kwargs)
+        ax.scatter(c1, c2, **kwargs)
 
         return fig
 
