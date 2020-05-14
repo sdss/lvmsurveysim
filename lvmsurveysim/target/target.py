@@ -423,7 +423,7 @@ class TargetList(list):
 
         return targets
 
-    def list_groups(self):
+    def get_groups(self):
         """Returns a list of all the groups for all the targets in the list."""
 
         groups = []

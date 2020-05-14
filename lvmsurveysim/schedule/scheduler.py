@@ -1118,7 +1118,7 @@ class Scheduler(object):
         if not use_groups:
             groups = [target.name for target in self.targets]
         else:
-            groups = groups or self.targets.list_groups()
+            groups = groups or self.targets.get_groups()
             # Adds the ungrouped targets.
             if show_ungrouped:
                 for target in self.targets:
@@ -1383,7 +1383,7 @@ class Scheduler(object):
             t = t[t['observatory'] == observatory]
 
         if group==True and tname=='ALL':
-            groups = self.targets.list_groups()
+            groups = self.targets.get_groups()
             for group in groups:
                 tt = t[t['group'] == group]
                 am = tt[keyword]
