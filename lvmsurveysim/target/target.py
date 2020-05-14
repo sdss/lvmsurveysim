@@ -426,11 +426,11 @@ class TargetList(list):
     def get_groups(self):
         """Returns a list of all the groups for all the targets in the list."""
 
-        groups = []
+        groups = set()
         for target in self:
-            groups += target.groups
+            groups.update(target.groups)
 
-        return list(set(groups))
+        return list(groups)
 
     def get_tiling(self, **kwargs):
         """Gets the tile centres for all the targets in the set.
