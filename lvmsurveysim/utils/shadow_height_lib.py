@@ -245,7 +245,7 @@ def orbit_animation():
 
         N_ra = 24
         N_dec = 9
-        x_heightsposition.au = np.zeros(len(N_ra * N_dec)+1)
+        x_heights = np.zeros(len(N_ra * N_dec)+1)
         y_heights = np.zeros(len(N_ra * N_dec)+1)
 
         height_au = 3.0 * self.calculator.r_earth.to("au").value
