@@ -230,7 +230,7 @@ def orbit_animation():
         import os
         ani.save("%s/tmp/im.mp4"%(os.environ["HOME"]))
 
-    def animation_update_positions(self, frame, speedtest=False, goFast=True):
+    def animation_update_positions(self, frame):
         if len( self.ax.patches ) > 1:
             del( self.ax.patches[-1] )
 
