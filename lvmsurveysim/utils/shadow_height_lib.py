@@ -205,9 +205,9 @@ class orbit_animation(object):
         self.plt = plt
         self.animation = animation
         self.patches = patches
+        self.fig, self.ax = self.plt.subplots(figsize=(10,10))
 
     def init_plotting_animation(self):
-        self.fig, self.ax = self.plt.subplots(figsize=(10,10))
         self.line1, = self.ax.plot([], [], 'ro', lw=2)
         self.line2, = self.ax.plot([], [], '.-', lw=5)
         self.line3, = self.ax.plot([], [], '.-', lw=5)
@@ -353,6 +353,11 @@ class vector_test_class():
         
 
 if __name__ == "__main__":
+
+    calculator = shadow_calc()
+    orbit_ani = orbit_animation(calculator)
+    orbit_ani.do_animation()
+
     test_results ={}
     from astropy.coordinates import SkyCoord
     from astropy.coordinates import Angle, Latitude, Longitude
