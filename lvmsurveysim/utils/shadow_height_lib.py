@@ -220,8 +220,8 @@ def orbit_animation():
 
         self.ax.set_ylim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
         self.ax.set_xlim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
-        del xdata[:]
-        del ydata[:]
+        del self.xdata[:]
+        del self.ydata[:]
         self.line1.set_data(xdata, ydata)
         self.line2.set_data(xdata, ydata)
 
