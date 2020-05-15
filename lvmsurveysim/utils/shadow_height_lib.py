@@ -7,7 +7,6 @@ from skyfield.api import load
 from skyfield.api import Topos
 from skyfield.positionlib import position_from_radec, Geometric
 
-
 class shadow_calc(object):
     def __init__(self, observatory_name="LCO",
     observatory_elevation=2380.0*u.m,
@@ -190,10 +189,6 @@ class shadow_calc(object):
             return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
 class orbit_animation(object):
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
-    import matplotlib.patches as patches
-
     def __init__(self, calculator, jd0=None, djd=1/24.):
         if jd0 is None:
             self.jd0 = calculator.jd
@@ -203,9 +198,16 @@ class orbit_animation(object):
 
         self.calculator = calculator
 
+        import matplotlib.pyplot as plt
+        import matplotlib.animation as animation
+        import matplotlib.patches as patches
+
+        self.plt = plt
+        self.animation = animation
+        self.patches = patches
 
     def init_plotting_animation(self):
-        self.fig, self.ax = plt.subplots(figsize=(10,10))
+        self.fig, self.ax = self.plt.subplots(figsize=(10,10))
         self.line1, = self.ax.plot([], [], 'ro', lw=2)
         self.line2, = self.ax.plot([], [], '.-', lw=5)
         self.line3, = self.ax.plot([], [], '.-', lw=5)
@@ -225,7 +227,7 @@ class orbit_animation(object):
         self.line2.set_data(self.xdata, self.ydata)
 
     def do_animation(self):
-        ani = animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*365), repeat_delay=0,
+        ani = self.animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*365), repeat_delay=0,
                                         blit=False, interval=10, init_func=self.init_plotting_animation, repeat=0)
         import os
         ani.save("%s/tmp/im.mp4"%(os.environ["HOME"]))
@@ -263,7 +265,7 @@ class orbit_animation(object):
         self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 1.5, self.calculator.xyz_earth[0] + height_au * 1.5 ) )
         self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 1.5, self.calculator.xyz_earth[1] + height_au * 1.5 ) )
 
-        circ = patches.Circle( self.calculator.xyz_earth[0], self.calculator.xyz_earth[1], self.calculator.r_earth.to( "au" ).value, alpha=0.8, fc='yellow')
+        circ = self.patches.Circle( self.calculator.xyz_earth[0], self.calculator.xyz_earth[1], self.calculator.r_earth.to( "au" ).value, alpha=0.8, fc='yellow')
         self.ax.add_patch( circ )
 
         #self.line1.set_data( (x_heights * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
