@@ -205,6 +205,18 @@ def orbit_animation():
         self.calculator = calculator
 
     def init_plotting_animation(self,xdata,ydata,jd0):
+        self.fig, self.ax = plt.subplots(figsize=(10,10))
+        self.line1, = self.ax.plot([], [], 'ro', lw=2)
+        self.line2, = self.ax.plot([], [], '.-', lw=5)
+        self.line3, = self.ax.plot([], [], '.-', lw=5)
+        self.path, = self.ax.plot([],[],'-', lw=1)
+
+        self.ax.grid()
+        self.xdata, self.ydata = [], []
+        self.pathx, self.pathy = [], []
+
+
+
         self.ax.set_ylim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
         self.ax.set_xlim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
         del xdata[:]
@@ -234,8 +246,8 @@ def orbit_animation():
         else:
             self.calculator.xyz_observatory_zenith_m = self.calculator.sun.at(self.calculator.t).observe(self.calculator.earth+self.calculator.observatory_zenith_topo).position.m
 
-        N_ra = 23
-        N_dec = 7
+        N_ra = 24
+        N_dec = 9
         x_heights_m = np.zeros(len(N_ra * N_dec)+1)
         y_heights_m = np.zeros(len(N_ra * N_dec)+1)
 
@@ -263,7 +275,7 @@ def orbit_animation():
             self.line3.set_data( [ self.calculator.xyz_observatory[0] ] , [ self.calculator.xyz_observatory[1] ] )
             self.pathx.append( self.calculator.xyz_earth_m[0] )
             self.pathy.append( self.calculator.xyz_earth_m[1] )
-            self.path.set_data( pathx, pathy )
+            self.path.set_data( self.pathx, self.pathy )
         
             print("frame %i"%frame)
         else:
