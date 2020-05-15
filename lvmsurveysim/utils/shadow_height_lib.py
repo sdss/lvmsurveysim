@@ -265,7 +265,8 @@ def orbit_animation():
             circ = patches.Circle( self.calculator.xyz_earth[0], self.calculator.xyz_earth[1], self.calculator.r_earth.to( "au" ).value, alpha=0.8, fc='yellow')
             self.ax.add_patch( circ )
 
-            self.line1.set_data( (x_heights * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
+            #self.line1.set_data( (x_heights * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
+            self.line1.set_data( [ self.calculator.xyz_c[0] ], [ self.calculator.xyz_c[1] ] )
             self.line2.set_data( [ self.calculator.xyz_observatory_zenith[0] ], [ self.calculator.xyz_observatory_zenith[1] ] )
             self.line3.set_data( [ self.calculator.xyz_observatory[0] ] , [ self.calculator.xyz_observatory[1] ] )
             self.pathx.append( self.calculator.xyz_earth[0] )
