@@ -223,8 +223,6 @@ def orbit_animation():
         del ydata[:]
         self.line1.set_data(xdata, ydata)
         self.line2.set_data(xdata, ydata)
-        global day
-        day = jd0
 
     def do_animation(self):
         ani = animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*365), repeat_delay=0,
