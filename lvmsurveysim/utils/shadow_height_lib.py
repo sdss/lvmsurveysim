@@ -204,7 +204,8 @@ def orbit_animation():
 
         self.calculator = calculator
 
-    def init_plotting_animation(self,xdata,ydata,jd0):
+
+    def init_plotting_animation(self):
         self.fig, self.ax = plt.subplots(figsize=(10,10))
         self.line1, = self.ax.plot([], [], 'ro', lw=2)
         self.line2, = self.ax.plot([], [], '.-', lw=5)
