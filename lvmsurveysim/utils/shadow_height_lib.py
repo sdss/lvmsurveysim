@@ -331,9 +331,6 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
         return(theta)
 
 class vector_test_class():
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
-    import matplotlib.patches as patches
     def __init__(self, calculator):
         """
         This class performs tests on a calculator class instance.
