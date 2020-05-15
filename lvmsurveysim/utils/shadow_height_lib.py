@@ -189,7 +189,7 @@ class shadow_calc(object):
         else:
             return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
-def orbit_animation():
+class orbit_animation(object):
     import matplotlib.pyplot as plt
     import matplotlib.animation as animation
     import matplotlib.patches as patches
