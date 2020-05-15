@@ -80,6 +80,15 @@ class shadow_calc(object):
 
         self.update_time(jd)
 
+    def cone_ra_dec(self):
+        # This returns the cone RA,Dec for testing. 
+        # It has a shadow height that is analyically easy to calculate
+        observatory_to_c = self.xyz_c - self.xyz_observatory
+        dec = np.arcsin(observatory_to_c[2])
+        ra = np.arccos(observatory_to_c[0]/np.cos(dec))
+        return(ra,dec)
+
+
     def set_coordinates(self, new_coordinates=None):
         # Set coordinates and calculate unit vectors.
         self.coordinates = new_coordinates
@@ -97,7 +106,7 @@ class shadow_calc(object):
         self.t = self.ts.tt_jd(self.jd)
         self.update_xyz()
         self.update_vec_c()
-        self.co = self.c_xyz - self.xyz_observatory
+        self.co = self.xyz_c - self.xyz_observatory
 
     def update_xyz(self):
         """
@@ -120,7 +129,7 @@ class shadow_calc(object):
         """
         # We reverse the vector sun to earth explicitly with -1.0 for clarity
         self.v = -1.0*(self.xyz_earth - self.xyz_sun)/np.sqrt(np.sum(np.square(self.xyz_earth-self.xyz_sun)))
-        self.c_xyz = self.xyz_earth + self.v * self.d_ec.to("au").value
+        self.xyz_c = self.xyz_earth + self.v * self.d_ec.to("au").value
 
     def get_abcd(self, mask=False):
         if mask is False:
