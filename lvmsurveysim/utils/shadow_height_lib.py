@@ -196,7 +196,7 @@ class orbit_animation(object):
 
     def __init__(self, calculator, jd0=None, djd=1/24.):
         if jd0 is None:
-            self.jd0 = calculator.jd0
+            self.jd0 = calculator.jd
         else:
             self.jd0 = jd0
         self.djd = djd
