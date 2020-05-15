@@ -84,10 +84,18 @@ class shadow_calc(object):
         # This returns the cone RA,Dec for testing. 
         # It has a shadow height that is analyically easy to calculate
         observatory_to_c = self.xyz_c - self.xyz_observatory
-        dec = np.arcsin(observatory_to_c[2])
-        ra = np.arccos(observatory_to_c[0]/np.cos(dec))
-        return(ra,dec)
+        a = 180./np.pi
 
+        # Leave dec in steradian for just a moment
+        dec = np.arcsin(observatory_to_c[2])
+
+        # Use dec in steradians to solve for ra.
+        ra = np.arccos(observatory_to_c[0]/np.cos(dec)) * a 
+        
+        #Now convert to degree
+        dec *= a
+        
+        return(ra , dec)
 
     def set_coordinates(self, new_coordinates=None):
         # Set coordinates and calculate unit vectors.
