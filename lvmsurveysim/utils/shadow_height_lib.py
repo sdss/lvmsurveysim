@@ -240,41 +240,38 @@ def orbit_animation():
         self.calculator.t = self.calculator.ts.tt_jd( self.jd0 + frame*self.djd)
         self.calculator.update_positions()
 
-        if goFast:
-            self.calculator.xyz_observatory_zenith_m = self.calculator.xyz_earth_m + self.calculator.observatory_zenith_topo.at(self.calculator.t).position.m
+        self.calculator.xyz_observatory_zenithposition.au = self.calculator.xyz_earthposition.au + self.calculator.observatory_zenith_topo.at(self.calculator.t).position.au
 
-        else:
-            self.calculator.xyz_observatory_zenith_m = self.calculator.sun.at(self.calculator.t).observe(self.calculator.earth+self.calculator.observatory_zenith_topo).position.m
 
         N_ra = 24
         N_dec = 9
-        x_heights_m = np.zeros(len(N_ra * N_dec)+1)
-        y_heights_m = np.zeros(len(N_ra * N_dec)+1)
+        x_heightsposition.au = np.zeros(len(N_ra * N_dec)+1)
+        y_heights = np.zeros(len(N_ra * N_dec)+1)
 
         height_au = 3.0 * self.calculator.r_earth.to("au").value
         for ra_i, ra in enumerate(np.linspace(1,24,N_ra)):
             for dec_j, dec in enumerate(np.linspace(-90, 0, num=N_dec, endpoint=True)):
                 # for height in heights:
                     self.calculator.point_along_ray =  position_from_radec(ra, dec, distance=height_au, epoch=None, t=self.calculator.t, center=self.calculator.observatory_topo, target=None) #, observer_data=LCO_topo.at(t).observer_data) 
-                    self.calculator.xyz_along_ray_m = self.calculator.xyz_observatory_m + self.calculator.point_along_ray.position.m
-                    x_heights_m[ ra_i + dec_j*N_ra ] = self.calculator.xyz_along_ray_m[0]
-                    y_heights_m[ ra_i + dec_j*N_ra ] = self.calculator.xyz_along_ray_m[1]
+                    self.calculator.xyz_along_ray = self.calculator.xyz_observatory + self.calculator.point_along_ray.position.au
+                    x_heights[ ra_i + dec_j*N_ra ] = self.calculator.xyz_along_ray[0]
+                    y_heights[ ra_i + dec_j*N_ra ] = self.calculator.xyz_along_ray[1]
 
-        x_heights_m[-1] = self.calculator.xyz_earth_m[0]
-        y_heights_m[-1] = self.calculator.xyz_earth_m[1]
+        x_heights[-1] = self.calculator.xyz_earth[0]
+        y_heights[-1] = self.calculator.xyz_earth[1]
 
         if speedtest is False:
-            self.ax.set_xlim( ( self.calculator.xyz_earth_m[0] * u.m ).to( "au" ).value - height_au * 1.5, (self.calculator.xyz_earth_m[0] * u.m ).to( "au" ).value + height_au * 1.5 )
-            self.ax.set_ylim( ( self.calculator.xyz_earth_m[1] * u.m ).to( "au" ) - height_au * 1.5, (self.calculator.xyz_earth_m[1] * u.m).to( "au" ) + height_au * 1.5 )
+            self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 1.5, self.calculator.xyz_earth[0] + height_au * 1.5 ) )
+            self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 1.5, self.calculator.xyz_earth[1] + height_au * 1.5 ) )
 
-            circ = patches.Circle( ( self.calculator.xyz_earth_m[0] * u.m ).to( "au" ).value, ( self.calculator.xyz_earth_m[1] * u.m ).to( "au" ).value, self.calculator.r_earth.to( "au" ).value, alpha=0.8, fc='yellow') 
+            circ = patches.Circle( self.calculator.xyz_earth[0], self.calculator.xyz_earth[1], self.calculator.r_earth.to( "au" ).value, alpha=0.8, fc='yellow')
             self.ax.add_patch( circ )
 
-            self.line1.set_data( (x_heights_m * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
+            self.line1.set_data( (x_heights * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
             self.line2.set_data( [ self.calculator.xyz_observatory_zenith[0] ], [ self.calculator.xyz_observatory_zenith[1] ] )
             self.line3.set_data( [ self.calculator.xyz_observatory[0] ] , [ self.calculator.xyz_observatory[1] ] )
-            self.pathx.append( self.calculator.xyz_earth_m[0] )
-            self.pathy.append( self.calculator.xyz_earth_m[1] )
+            self.pathx.append( self.calculator.xyz_earth[0] )
+            self.pathy.append( self.calculator.xyz_earth[1] )
             self.path.set_data( self.pathx, self.pathy )
         
             print("frame %i"%frame)
