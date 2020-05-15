@@ -189,6 +189,25 @@ class shadow_calc(object):
         else:
             return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
+def this_animation():
+    def __init__(self, calculator, jd0, jd1, dhr):
+        self.jd0 = jd0
+        self.jd1 = dj1
+        self.dh  = dhr
+
+    def init_plotting_animation(self,xdata,ydata,jd0):
+        self.ax.set_ylim(-1.5 * self.r_earth.to("au").value, 1.5 * self.r_earth.to("au").value)
+        self.ax.set_xlim(-1.5 * self.r_earth.to("au").value, 1.5 * self.r_earth.to("au").value)
+        del xdata[:]
+        del ydata[:]
+        self.line1.set_data(xdata, ydata)
+        self.line2.set_data(xdata, ydata)
+        global day
+        day = jd0
+
+
+
+
 
 def vecmag(a, origin=[0,0,0]):
     """ Return the magnitude of a set of vectors around an abritrary origin """
