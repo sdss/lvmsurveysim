@@ -194,13 +194,12 @@ def orbit_animation():
     import matplotlib.animation as animation
     import matplotlib.patches as patches
 
-    def __init__(self, calculator, jd0, jd1, djd):
-
-        self.jd0 = jd0
-        self.jd1 = jd1
+    def __init__(self, calculator, jd0=None, djd=1/24.):
+        if jd0 is None:
+            self.jd0 = calculator.jd0
+        else:
+            self.jd0 = jd0
         self.djd = djd
-
-        self.jd_list = np.linspace(jd0, jd1, int((self.jd1-self.jd0)/self.djd))
 
         self.calculator = calculator
 
