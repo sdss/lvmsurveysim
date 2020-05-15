@@ -189,21 +189,97 @@ class shadow_calc(object):
         else:
             return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
-def this_animation():
-    def __init__(self, calculator, jd0, jd1, dhr):
+def orbit_animation():
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+    import matplotlib.patches as patches
+
+    def __init__(self, calculator, jd0, jd1, djd):
+
         self.jd0 = jd0
-        self.jd1 = dj1
-        self.dh  = dhr
+        self.jd1 = jd1
+        self.djd = djd
+
+        self.jd_list = np.linspace(jd0, jd1, int((self.jd1-self.jd0)/self.djd))
+
+        self.calculator = calculator
 
     def init_plotting_animation(self,xdata,ydata,jd0):
-        self.ax.set_ylim(-1.5 * self.r_earth.to("au").value, 1.5 * self.r_earth.to("au").value)
-        self.ax.set_xlim(-1.5 * self.r_earth.to("au").value, 1.5 * self.r_earth.to("au").value)
+        self.ax.set_ylim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
+        self.ax.set_xlim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
         del xdata[:]
         del ydata[:]
         self.line1.set_data(xdata, ydata)
         self.line2.set_data(xdata, ydata)
         global day
         day = jd0
+
+    def do_animation(self):
+        ani = animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*365), repeat_delay=0,
+                                        blit=False, interval=10, init_func=self.init_plotting_animation, repeat=0)
+        import os
+        ani.save("%s/tmp/im.mp4"%(os.environ["HOME"]))
+
+    def animation_update_positions(self, frame, speedtest=False, goFast=True):
+        if speedtest is False:
+            if len( self.ax.patches ) > 1:
+                del( self.ax.patches[-1] )
+
+        self.calculator.t = self.calculator.ts.tt_jd( self.jd0 + frame*self.djd)
+        self.calculator.update_positions()
+
+        if goFast:
+            self.calculator.xyz_observatory_zenith_m = self.calculator.xyz_earth_m + self.calculator.observatory_zenith_topo.at(self.calculator.t).position.m
+
+        else:
+            self.calculator.xyz_observatory_zenith_m = self.calculator.sun.at(self.calculator.t).observe(self.calculator.earth+self.calculator.observatory_zenith_topo).position.m
+
+        N_ra = 23
+        N_dec = 7
+        x_heights_m = np.zeros(len(N_ra * N_dec)+1)
+        y_heights_m = np.zeros(len(N_ra * N_dec)+1)
+
+        height_au = 3.0 * self.calculator.r_earth.to("au").value
+        for ra_i, ra in enumerate(np.linspace(1,24,N_ra)):
+            for dec_j, dec in enumerate(np.linspace(-90, 0, num=N_dec, endpoint=True)):
+                # for height in heights:
+                    self.calculator.point_along_ray =  position_from_radec(ra, dec, distance=height_au, epoch=None, t=self.calculator.t, center=self.calculator.observatory_topo, target=None) #, observer_data=LCO_topo.at(t).observer_data) 
+                    self.calculator.xyz_along_ray_m = self.calculator.xyz_observatory_m + self.calculator.point_along_ray.position.m
+                    x_heights_m[ ra_i + dec_j*N_ra ] = self.calculator.xyz_along_ray_m[0]
+                    y_heights_m[ ra_i + dec_j*N_ra ] = self.calculator.xyz_along_ray_m[1]
+
+        x_heights_m[-1] = self.calculator.xyz_earth_m[0]
+        y_heights_m[-1] = self.calculator.xyz_earth_m[1]
+
+        if speedtest is False:
+            self.ax.set_xlim( ( self.calculator.xyz_earth_m[0] * u.m ).to( "au" ).value - height_au * 1.5, (self.calculator.xyz_earth_m[0] * u.m ).to( "au" ).value + height_au * 1.5 )
+            self.ax.set_ylim( ( self.calculator.xyz_earth_m[1] * u.m ).to( "au" ) - height_au * 1.5, (self.calculator.xyz_earth_m[1] * u.m).to( "au" ) + height_au * 1.5 )
+
+            circ = patches.Circle( ( self.calculator.xyz_earth_m[0] * u.m ).to( "au" ).value, ( self.calculator.xyz_earth_m[1] * u.m ).to( "au" ).value, self.calculator.r_earth.to( "au" ).value, alpha=0.8, fc='yellow') 
+            self.ax.add_patch( circ )
+
+            self.line1.set_data( (x_heights_m * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
+            self.line2.set_data( [ self.calculator.xyz_observatory_zenith[0] ], [ self.calculator.xyz_observatory_zenith[1] ] )
+            self.line3.set_data( [ self.calculator.xyz_observatory[0] ] , [ self.calculator.xyz_observatory[1] ] )
+            self.pathx.append( self.calculator.xyz_earth_m[0] )
+            self.pathy.append( self.calculator.xyz_earth_m[1] )
+            self.path.set_data( pathx, pathy )
+        
+            print("frame %i"%frame)
+        else:
+            print("frame speed test %i"%frame)
+            pass
+
+        #line2.set_data([sun.at(t).position.au[0]],[sun.at(t).position.au[1]])
+        print("frame %i"%frame)
+
+    def defaults(self):
+        self.LCO_elevation = 2380
+        self.LCO_topo   = Topos('29.01597S', '70.69208W', elevation_m=LCO_elevation)
+
+        return(LCO_topo)
+
+
 
 
 
@@ -249,13 +325,16 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
         return(theta)
 
 class vector_test_class():
-    def __init__(self,
-    calculator):
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+    import matplotlib.patches as patches
+    def __init__(self, calculator):
         """
         This class performs tests on a calculator class instance.
         """
         super().__init__()
         self.calculator = calculator
+
 
     def test_jd(self, jd=2459458):
         calculator.update_time(2459458)
@@ -265,6 +344,7 @@ class vector_test_class():
                 sys.exit()
             else:
                 pass
+
         
 
 if __name__ == "__main__":
