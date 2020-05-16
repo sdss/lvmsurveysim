@@ -197,6 +197,7 @@ class orbit_animation(object):
         self.djd = djd
 
         self.calculator = calculator
+        self.calculator.observatory_zenith_topo = Topos(calculator.observatory_lat, calculator.observatory_lon, elevation_m=self.calculator.earth_radius.to("m").value*10)
 
         import matplotlib.pyplot as plt
         import matplotlib.animation as animation
@@ -219,8 +220,8 @@ class orbit_animation(object):
 
 
 
-        self.ax.set_ylim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
-        self.ax.set_xlim(-1.5 * self.calculator.r_earth.to("au").value, 1.5 * self.calculator.r_earth.to("au").value)
+        self.ax.set_ylim(-1.5 * self.calculator.earth_radius.to("au").value, 1.5 * self.calculator.earth_radius.to("au").value)
+        self.ax.set_xlim(-1.5 * self.calculator.earth_radius.to("au").value, 1.5 * self.calculator.earth_radius.to("au").value)
         del self.xdata[:]
         del self.ydata[:]
         self.line1.set_data(self.xdata, self.ydata)
@@ -230,18 +231,18 @@ class orbit_animation(object):
         ani = self.animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*365), repeat_delay=0,
                                         blit=False, interval=10, init_func=self.init_plotting_animation, repeat=0)
         import os
-        ani.save("%s/tmp/im.mp4"%(os.environ["HOME"]))
+        ani.save("/tmp/im.mp4")
 
     def animation_update_positions(self, frame):
         if len( self.ax.patches ) > 1:
             del( self.ax.patches[-1] )
 
         self.calculator.t = self.calculator.ts.tt_jd( self.jd0 + frame*self.djd)
-        self.calculator.update_positions()
+        self.calculator.update_time()
 
-        self.calculator.xyz_observatory_zenithposition.au = self.calculator.xyz_earthposition.au + self.calculator.observatory_zenith_topo.at(self.calculator.t).position.au
+        self.calculator.xyz_observatory_zenith = self.calculator.xyz_earth + self.calculator.observatory_zenith_topo.at(self.calculator.t).position.au
 
-        height_au = 3.0 * self.calculator.r_earth.to("au").value
+        height_au = 3.0 * self.calculator.earth_radius.to("au").value
 
         ######################################################################
         # The next set of lines calculates shadow heights. That's for later  #
@@ -265,7 +266,7 @@ class orbit_animation(object):
         self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 1.5, self.calculator.xyz_earth[0] + height_au * 1.5 ) )
         self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 1.5, self.calculator.xyz_earth[1] + height_au * 1.5 ) )
 
-        circ = self.patches.Circle( self.calculator.xyz_earth[0], self.calculator.xyz_earth[1], self.calculator.r_earth.to( "au" ).value, alpha=0.8, fc='yellow')
+        circ = self.patches.Circle((self.calculator.xyz_earth[0], self.calculator.xyz_earth[1]), self.calculator.earth_radius.to( "au" ).value, alpha=0.8, fc='yellow')
         self.ax.add_patch( circ )
 
         #self.line1.set_data( (x_heights * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
@@ -276,8 +277,6 @@ class orbit_animation(object):
         self.pathy.append( self.calculator.xyz_earth[1] )
         self.path.set_data( self.pathx, self.pathy )
     
-        print("frame %i"%frame)
-
         #line2.set_data([sun.at(t).position.au[0]],[sun.at(t).position.au[1]])
         print("frame %i"%frame)
 
