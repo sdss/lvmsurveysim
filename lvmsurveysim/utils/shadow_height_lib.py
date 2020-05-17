@@ -136,7 +136,7 @@ class shadow_calc(object):
         """
         # We reverse the vector sun to earth explicitly with -1.0 for clarity
         self.v = -1.0*(self.xyz_earth - self.xyz_sun)/np.sqrt(np.sum(np.square(self.xyz_earth-self.xyz_sun)))
-        self.xyz_c = self.xyz_earth + self.v * self.d_ec.to("au").value
+        self.xyz_c = self.xyz_earth - self.v * self.d_ec.to("au").value
 
     def get_abcd(self, mask=False):
         if mask is False:
@@ -206,7 +206,7 @@ class orbit_animation(object):
         self.plt = plt
         self.animation = animation
         self.patches = patches
-        self.fig, self.ax = self.plt.subplots(figsize=(10,10))
+        self.fig, self.ax = self.plt.subplots(figsize=(50,50))
 
     def init_plotting_animation(self):
         self.line1, = self.ax.plot([], [], 'ro', lw=2)
@@ -220,16 +220,16 @@ class orbit_animation(object):
 
 
 
-        self.ax.set_ylim(-1.5 * self.calculator.earth_radius.to("au").value, 1.5 * self.calculator.earth_radius.to("au").value)
-        self.ax.set_xlim(-1.5 * self.calculator.earth_radius.to("au").value, 1.5 * self.calculator.earth_radius.to("au").value)
+        self.ax.set_ylim(-150 * self.calculator.earth_radius.to("au").value, 150 * self.calculator.earth_radius.to("au").value)
+        self.ax.set_xlim(-150 * self.calculator.earth_radius.to("au").value, 150 * self.calculator.earth_radius.to("au").value)
         del self.xdata[:]
         del self.ydata[:]
         self.line1.set_data(self.xdata, self.ydata)
         self.line2.set_data(self.xdata, self.ydata)
 
     def do_animation(self):
-        ani = self.animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*365), repeat_delay=0,
-                                        blit=False, interval=10, init_func=self.init_plotting_animation, repeat=0)
+        ani = self.animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*30), repeat_delay=0,
+                                        blit=False, interval=100, init_func=self.init_plotting_animation, repeat=0)
         import os
         ani.save("/tmp/im.mp4")
 
@@ -237,8 +237,10 @@ class orbit_animation(object):
         if len( self.ax.patches ) > 1:
             del( self.ax.patches[-1] )
 
-        self.calculator.t = self.calculator.ts.tt_jd( self.jd0 + frame*self.djd)
-        self.calculator.update_time()
+        jd = self.jd0 + frame*self.djd
+
+        #self.calculator.t = self.calculator.ts.tt_jd( self.jd0 + frame*self.djd)
+        self.calculator.update_time(jd)
 
         self.calculator.xyz_observatory_zenith = self.calculator.xyz_earth + self.calculator.observatory_zenith_topo.at(self.calculator.t).position.au
 
@@ -263,8 +265,8 @@ class orbit_animation(object):
         # x_heights[-1] = self.calculator.xyz_earth[0]
         # y_heights[-1] = self.calculator.xyz_earth[1]
         ######################################################################
-        self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 1.5, self.calculator.xyz_earth[0] + height_au * 1.5 ) )
-        self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 1.5, self.calculator.xyz_earth[1] + height_au * 1.5 ) )
+        self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 150, self.calculator.xyz_earth[0] + height_au * 150 ) )
+        self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 150, self.calculator.xyz_earth[1] + height_au * 150 ) )
 
         circ = self.patches.Circle((self.calculator.xyz_earth[0], self.calculator.xyz_earth[1]), self.calculator.earth_radius.to( "au" ).value, alpha=0.8, fc='yellow')
         self.ax.add_patch( circ )
@@ -278,19 +280,12 @@ class orbit_animation(object):
         self.path.set_data( self.pathx, self.pathy )
     
         #line2.set_data([sun.at(t).position.au[0]],[sun.at(t).position.au[1]])
-        print("frame %i"%frame)
 
     def defaults(self):
         self.LCO_elevation = 2380
         self.LCO_topo   = Topos('29.01597S', '70.69208W', elevation_m=LCO_elevation)
 
         return(LCO_topo)
-
-
-
-
-
-
 
 def vecmag(a, origin=[0,0,0]):
     """ Return the magnitude of a set of vectors around an abritrary origin """
@@ -410,10 +405,10 @@ if __name__ == "__main__":
 
     try:
         test = "loop"
-        for jd in np.linspace(2459458, 2459458+365, 24*365):
+        for jd in np.linspace(2459458, 2459458+1, 24):
             calculator.update_time(jd)
             heights = calculator.get_heights(return_heights=True, unit="km")
-            print("height_v(jd=%f) = %f"%(jd, heights[0]))
+            #print("height_v(jd=%f) = %f"%(jd, heights[0]))
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
