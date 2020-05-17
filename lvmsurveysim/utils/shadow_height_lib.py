@@ -48,7 +48,6 @@ class shadow_calc(object):
         self.observatory_lon = observatory_lon
         self.observatory_topo = Topos(observatory_lat, observatory_lon, elevation_m=self.observatory_elevation.to("m").value)
         self.ts = load.timescale()
-        self.coordinates = None
        
         # define these at time self.t xyz_observatory_m, xyz_earth_m, xyz_sun_m
 
@@ -338,7 +337,7 @@ class vector_test_class():
 
     def test_jd(self, jd=2459458):
         calculator.update_time(2459458)
-        for i, (ra,dec) in enumerate(zip(self.calculator.coordinates[:,0], self.calculator.coordinates[:,1])):
+        for i, (ra,dec) in enumerate(zip(self.calculator.ra, self.calculator.dec)):
             ray_vector = position_from_radec(ra/15.0, dec, distance=1.0, epoch=None, t=self.calculator.t, center=self.calculator.observatory_topo, target=None).position.au
             if np.sqrt(np.sum(np.square(ray_vector - self.calculator.pointing_unit_vectors[i]))) > 1e-10:
                 sys.exit()
