@@ -67,7 +67,8 @@ class shadow_calc(object):
         self.d_ec = self.earth_radius * self.d_se / (self.sun_radius - self.earth_radius)
 
         # Opening angle of the shadow cone
-        self.shadow_cone_theta  = np.arctan(self.earth_radius/self.d_ec)
+        self.shadow_cone_theta  = np.arctan(self.earth_radius*1.1/self.d_ec)
+        self.shadow_cone_cos_theta_sqr = np.square(np.cos(self.shadow_cone_theta))
 
         # Finally, updated the xyz coordinate vectors of earth, sun and observatory.
         if jd is not False:
@@ -148,9 +149,9 @@ class shadow_calc(object):
         self.c = np.full(N_points, np.nan)
         self.delta = np.full(N_points, np.nan)
 
-        self.a[mask] = np.square(np.sum(self.pointing_unit_vectors[mask]*self.v,axis=1)) - np.square(np.cos(self.shadow_cone_theta))
-        self.b[mask] = 2*( np.sum(self.pointing_unit_vectors[mask]*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(self.pointing_unit_vectors[mask]*self.co, axis=1)*np.square(np.cos(self.shadow_cone_theta)))
-        self.c[mask] = np.square(np.sum(self.co*self.v)) - np.sum(self.co * self.co) * np.square(np.cos(self.shadow_cone_theta))
+        self.a[mask] = np.square(np.sum(self.pointing_unit_vectors[mask]*self.v,axis=1)) -  self.shadow_cone_cos_theta_sqr
+        self.b[mask] = 2*( np.sum(self.pointing_unit_vectors[mask]*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(self.pointing_unit_vectors[mask]*self.co, axis=1)*self.shadow_cone_cos_theta_sqr)
+        self.c[mask] = np.square(np.sum(self.co*self.v)) - np.sum(self.co * self.co) * self.shadow_cone_cos_theta_sqr
         self.delta[mask] = np.square(self.b[mask]) - 4 * self.a[mask] * self.c[mask]
 
     def solve_for_height(self, unit="km"):
@@ -170,7 +171,7 @@ class shadow_calc(object):
 
         # self.dist[self.delta < 0 ] = False
         # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
-        self.heights[self.heights != -9999.00] = (self.heights[self.heights != -9999.00]*u.au - self.earth_radius).to(unit)
+        self.heights[self.heights != -9999.00] = (self.heights[self.heights != -9999.00]*u.au + self.earth_radius).to(unit)
 
     def get_heights(self, jd=None, return_heights=True,unit=u.km):
         if jd is not None:
@@ -294,16 +295,6 @@ def vecmag(a, origin=[0,0,0]):
     else:
         return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
-
-def vecang(a, b, origin=[0,0,0],degree=False):
-    """ Compute the angle between a and b with an origion, or set of origins """
-
-    theta = np.arccos(np.sum(a-origin,b-origin,axis=1)/(vecmag(a,origin=origin) * vecmag(b,origin=origin)))
-
-    if degree:
-        return( np.rad2deg(theta) )
-    else:
-        return(theta)
 
 def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
     """
