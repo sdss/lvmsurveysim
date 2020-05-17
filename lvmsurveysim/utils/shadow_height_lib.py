@@ -96,15 +96,16 @@ class shadow_calc(object):
         
         return(ra , dec)
 
-    def set_coordinates(self, new_coordinates=None):
+    def set_coordinates(self, ra, dec):
         # Set coordinates and calculate unit vectors.
-        self.coordinates = new_coordinates
-        self.pointing_unit_vectors = np.zeros(shape=(len(self.coordinates),3))
+        self.ra = ra
+        self.dec = dec
+        self.pointing_unit_vectors = np.zeros(shape=(len(self.ra),3))
 
         a = np.pi / 180.
-        self.pointing_unit_vectors[:,0]= np.cos(self.coordinates[:,0]*a)*np.cos(self.coordinates[:,1]*a)
-        self.pointing_unit_vectors[:,1]= np.sin(self.coordinates[:,0]*a)*np.cos(self.coordinates[:,1]*a)
-        self.pointing_unit_vectors[:,2]= np.sin(self.coordinates[:,1]*a)
+        self.pointing_unit_vectors[:,0]= np.cos(self.ra*a)*np.cos(self.dec*a)
+        self.pointing_unit_vectors[:,1]= np.sin(self.ra*a)*np.cos(self.dec*a)
+        self.pointing_unit_vectors[:,2]= np.sin(self.dec*a)
 
     def update_time(self, jd=None):
         """ Update the time, and all time dependent vectors """
