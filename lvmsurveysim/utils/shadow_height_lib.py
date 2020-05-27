@@ -83,18 +83,17 @@ class shadow_calc(object):
         # This returns the cone RA,Dec for testing. 
         # It has a shadow height that is analyically easy to calculate
         observatory_to_c = self.xyz_c - self.xyz_observatory
-        a = 180./np.pi
 
         # Leave dec in steradian for just a moment
-        dec = np.arcsin(observatory_to_c[2])
+        dec = np.arctan(observatory_to_c[2]/np.sqrt(np.square(observatory_to_c[0])+np.square(observatory_to_c[1])))
 
         # Use dec in steradians to solve for ra.
-        ra = np.arccos(observatory_to_c[0]/np.cos(dec)) * a 
+        ra = np.degrees(np.arccos(observatory_to_c[0]/ (self.vecmag(observatory_to_c) * np.cos(dec))))
         
         #Now convert to degree
-        dec *= a
+        dec = np.degrees(dec)
         
-        return(ra , dec)
+        return ra, dec
 
     def set_coordinates(self, ra, dec):
         # Set coordinates and calculate unit vectors.
@@ -103,9 +102,9 @@ class shadow_calc(object):
         self.pointing_unit_vectors = np.zeros(shape=(len(self.ra),3))
 
         a = np.pi / 180.
-        self.pointing_unit_vectors[:,0]= np.cos(self.ra*a)*np.cos(self.dec*a)
-        self.pointing_unit_vectors[:,1]= np.sin(self.ra*a)*np.cos(self.dec*a)
-        self.pointing_unit_vectors[:,2]= np.sin(self.dec*a)
+        self.pointing_unit_vectors[:,0] = np.cos(self.ra*a)*np.cos(self.dec*a)
+        self.pointing_unit_vectors[:,1] = -np.sin(self.ra*a)*np.cos(self.dec*a)
+        self.pointing_unit_vectors[:,2] = np.sin(self.dec*a)
 
     def update_time(self, jd=None):
         """ Update the time, and all time dependent vectors """
@@ -158,20 +157,27 @@ class shadow_calc(object):
         self.heights = np.full(len(self.a), -9999.00)
         height_b1 = np.full(len(self.a), -9999.00)
         height_b2 = np.full(len(self.a), -9999.00)
-       
+
+        self.dist = np.full(len(self.a), -9999.00)
+        dist_b1 = np.full(len(self.a), -9999.00)
+        dist_b2 = np.full(len(self.a), -9999.00)
+
         # Get P distance to point.
         zero_delta = self.delta == 0
-        self.heights[zero_delta] = -self.b[zero_delta]/(2*self.a[zero_delta])
+        self.dist[zero_delta] = -self.b[zero_delta]/(2*self.a[zero_delta])
+
         positive_delta = self.delta > 0 
-        height_b1[positive_delta] = -self.b[positive_delta]+np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
-        height_b2[positive_delta] = -self.b[positive_delta]-np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
+        dist_b1[positive_delta] = -self.b[positive_delta]+np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
+        dist_b2[positive_delta] = -self.b[positive_delta]-np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
+
         self.heights[positive_delta] = np.min([height_b1[positive_delta], height_b2[positive_delta]], axis=0)
-        negative_delta = self.heights < 0
-        self.heights[negative_delta] = np.max([height_b1[negative_delta], height_b2[negative_delta]], axis=0)
+
+        negative_delta = self.delta < 0
+        self.heights[negative_delta] = -9999.00
 
         # self.dist[self.delta < 0 ] = False
         # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
-        self.heights[self.heights != -9999.00] = (self.heights[self.heights != -9999.00]*u.au + self.earth_radius).to(unit)
+        self.heights[self.heights != -9999.00] = (self.heights[self.heights != -9999.00]*u.au - self.earth_radius).to(unit)
 
     def get_heights(self, jd=None, return_heights=True,unit=u.km):
         if jd is not None:
@@ -190,7 +196,7 @@ class shadow_calc(object):
             return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
 class orbit_animation(object):
-    def __init__(self, calculator, jd0=None, djd=1/24.):
+    def __init__(self, calculator, jd0=None, djd=1/24., single=True):
         if jd0 is None:
             self.jd0 = calculator.jd
         else:
@@ -228,11 +234,38 @@ class orbit_animation(object):
         self.line1.set_data(self.xdata, self.ydata)
         self.line2.set_data(self.xdata, self.ydata)
 
-    def do_animation(self):
-        ani = self.animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*30), repeat_delay=0,
+    def do_animation(self, N_days=1.0):
+        ani = self.animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*N_days), repeat_delay=0,
                                         blit=False, interval=100, init_func=self.init_plotting_animation, repeat=0)
         import os
         ani.save("/tmp/im.mp4")
+
+    def snap_shot(self,jd,ra,dec):
+        self.init_plotting_animation()
+        self.calculator.set_coordinates(np.array([ra]),np.array([dec]))
+
+        self.calculator.update_time(jd)
+
+        self.calculator.xyz_observatory_zenith = self.calculator.xyz_earth + self.calculator.observatory_zenith_topo.at(self.calculator.t).position.au
+
+        height_au = 3.0 * self.calculator.earth_radius.to("au").value
+
+        self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 150, self.calculator.xyz_earth[0] + height_au * 150 ) )
+        self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 150, self.calculator.xyz_earth[1] + height_au * 150 ) )
+
+        circ = self.patches.Circle((self.calculator.xyz_earth[0], self.calculator.xyz_earth[1]), self.calculator.earth_radius.to( "au" ).value, alpha=0.8, fc='yellow')
+        self.ax.add_patch( circ )
+        
+        los_xyz =  self.calculator.xyz_observatory + self.calculator.d_ec.to("au").value * self.calculator.pointing_unit_vectors[0]
+
+        #self.line1.set_data( (x_heights * u.m).to( "au" ).value, ( y_heights * u.m ).to("au").value )
+        self.line1.set_data( [ self.calculator.xyz_c[0] ], [ self.calculator.xyz_c[1] ] )
+        self.line2.set_data( [ self.calculator.xyz_observatory_zenith[0] ], [ self.calculator.xyz_observatory_zenith[1] ] )
+        self.line3.set_data( [ self.calculator.xyz_observatory[0] ] , [ self.calculator.xyz_observatory[1] ] )
+        self.ax.plot([self.calculator.xyz_c[0], self.calculator.xyz_sun[0]],[self.calculator.xyz_c[1], self.calculator.xyz_sun[1]], alpha=0.5)
+        self.ax.plot([los_xyz[0], self.calculator.xyz_observatory[0]],[los_xyz[1], self.calculator.xyz_observatory[1]], c="k", alpha=0.5)
+        self.plt.show()
+
 
     def animation_update_positions(self, frame):
         if len( self.ax.patches ) > 1:
@@ -339,8 +372,12 @@ class vector_test_class():
 
 if __name__ == "__main__":
 
+    jd = 2459458.5+20 + 4.0/24.
     calculator = shadow_calc()
     orbit_ani = orbit_animation(calculator)
+    orbit_ani.calculator.update_time(jd)
+    ra, dec = orbit_ani.calculator.cone_ra_dec()
+    orbit_ani.snap_shot(jd=jd, ra=ra, dec=dec)
     orbit_ani.do_animation()
 
     test_results ={}
