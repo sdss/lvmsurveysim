@@ -851,10 +851,11 @@ class Scheduler(object):
                 pointing_index = observed_idx - target_index_first
 
                 # calculate shadow height for chosen observation
-                self.shadow_calc.update_time(jd=current_jd)
-                self.shadow_calc.set_coordinates(astropy.coordinates.SkyCoord([coordinates[observed_idx, 0]], [coordinates[observed_idx, 1]], unit='deg'))
-                hz = self.shadow_calc.get_heights(return_heights=True, unit="km")[0]
-
+                #self.shadow_calc.update_time(jd=current_jd)A
+                #self.shadow_calc.set_coordinates(numpy.array([coordinates[observed_idx,0]]), numpy.array([coordinates[observed_idx,1]]))
+                #hz = self.shadow_calc.get_heights(return_heights=True, unit="km")[0]
+                hz = 0.0
+                
                 # Record angular distance to moon
                 dist_to_moon = moon_to_pointings[observed_idx]
 
