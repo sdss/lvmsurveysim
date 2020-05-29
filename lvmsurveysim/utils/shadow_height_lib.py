@@ -349,25 +349,6 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
         return(np.rad2deg(theta))
     else:
         return(theta)
-
-class vector_test_class():
-    def __init__(self, calculator):
-        """
-        This class performs tests on a calculator class instance.
-        """
-        super().__init__()
-        self.calculator = calculator
-
-
-    def test_jd(self, jd=2459458):
-        calculator.update_time(2459458)
-        for i, (ra,dec) in enumerate(zip(self.calculator.ra, self.calculator.dec)):
-            ray_vector = position_from_radec(ra/15.0, dec, distance=1.0, epoch=None, t=self.calculator.t, center=self.calculator.observatory_topo, target=None).position.au
-            if np.sqrt(np.sum(np.square(ray_vector - self.calculator.pointing_unit_vectors[i]))) > 1e-10:
-                sys.exit()
-            else:
-                pass
-
         
 
 if __name__ == "__main__":
@@ -378,7 +359,7 @@ if __name__ == "__main__":
     orbit_ani.calculator.update_time(jd)
     ra, dec = orbit_ani.calculator.cone_ra_dec()
     orbit_ani.snap_shot(jd=jd, ra=ra, dec=dec)
-    orbit_ani.do_animation()
+    # orbit_ani.do_animation()
 
     test_results ={}
     from astropy.coordinates import SkyCoord
@@ -392,34 +373,23 @@ if __name__ == "__main__":
     except:
         test_results[test] = "Fail"
 
-    d_ra = 1.0
-    ra_min = 0.0
-    ra_max = 360.
-    ra_deg = np.linspace(ra_min, ra_max-d_ra, int( abs(ra_max - ra_min)/d_ra) )
-
-    d_dec = 0.0
-    dec_max = 0.0
-    dec_min = 0.0
-    dec_deg = np.linspace(dec_min, dec_max-d_dec, len(ra_deg))
-
     try:
-        test = "Set Coordinates"
-        calculator.set_coordinates(np.array([ra_deg, dec_deg]).transpose())
-        test_results[test] = "Pass"
+        test = "Shadow RA/DEC"
+        ra, dec = calculator.cone_ra_dec()
     except:
         test_results[test] = "Fail"
 
     try:
-        test = "unit vectors"
-        vector_test = vector_test_class(calculator)
-        vector_test.test_jd()
+        test = "Set Coordinates"
+        calculator.set_coordinates(np.array([ra]), np.array([dec]) )
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
 
     try:
         test = "set jd=2459458.5"
-        calculator.update_time(2459458)
+        jd = 2459458.5+20 + 4.0/24.
+        calculator.update_time(jd)
         test_results[test] = "Pass"
     except:
         test_results[test] = "Fail"
@@ -433,7 +403,7 @@ if __name__ == "__main__":
 
     try:
         test = "loop"
-        for jd in np.linspace(2459458, 2459458+1, 24):
+        for jd in np.linspace(jd, jd+1, 1/24.):
             calculator.update_time(jd)
             heights = calculator.get_heights(return_heights=True, unit="km")
             #print("height_v(jd=%f) = %f"%(jd, heights[0]))
