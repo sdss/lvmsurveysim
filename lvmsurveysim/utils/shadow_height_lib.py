@@ -64,10 +64,10 @@ class shadow_calc(object):
         self.d_se = 1*u.au
 
         # Distance from tip of the shadow cone to the earth
-        self.d_ec = self.earth_radius * self.d_se / (self.sun_radius - self.earth_radius)
+        self.d_ec = self.d_se * (self.earth_radius / self.sun_radius)
 
         # Opening angle of the shadow cone
-        self.shadow_cone_theta  = np.arctan(self.earth_radius*1.1/self.d_ec)
+        self.shadow_cone_theta  = np.arctan(self.earth_radius/self.d_ec)
         self.shadow_cone_cos_theta_sqr = np.square(np.cos(self.shadow_cone_theta))
 
         # Finally, updated the xyz coordinate vectors of earth, sun and observatory.
@@ -154,35 +154,33 @@ class shadow_calc(object):
         self.delta[mask] = np.square(self.b[mask]) - 4 * self.a[mask] * self.c[mask]
 
     def solve_for_height(self, unit="km"):
-        self.heights = np.full(len(self.a), -9999.00)
-        height_b1 = np.full(len(self.a), -9999.00)
-        height_b2 = np.full(len(self.a), -9999.00)
+        self.heights = np.full(len(self.a), np.nan)
+        height_b1 = np.full(len(self.a), np.nan)
+        height_b2 = np.full(len(self.a), np.nan)
 
-        self.dist = np.full(len(self.a), -9999.00)
-        dist_b1 = np.full(len(self.a), -9999.00)
-        dist_b2 = np.full(len(self.a), -9999.00)
+        self.dist = np.full(len(self.a), np.nan)
+        dist_b1 = np.full(len(self.a), np.nan)
+        dist_b2 = np.full(len(self.a), np.nan)
 
         # Get P distance to point.
-        zero_delta = self.delta == 0
-        self.dist[zero_delta] = -self.b[zero_delta]/(2*self.a[zero_delta])
+        positive_delta = self.delta >= 0 
+        dist_b1[positive_delta] = (-self.b[positive_delta]+np.sqrt(self.delta[positive_delta])) / (2*self.a[positive_delta])
+        dist_b2[positive_delta] = (-self.b[positive_delta]-np.sqrt(self.delta[positive_delta])) / (2*self.a[positive_delta])
 
-        positive_delta = self.delta > 0 
-        dist_b1[positive_delta] = -self.b[positive_delta]+np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
-        dist_b2[positive_delta] = -self.b[positive_delta]-np.sqrt(self.delta[positive_delta]) / (2*self.a[positive_delta])
+        dist_b1[dist_b1 < 0.0] = np.nan
+        dist_b2[dist_b2 < 0.0] = np.nan
 
-        self.heights[positive_delta] = np.min([height_b1[positive_delta], height_b2[positive_delta]], axis=0)
+        self.dist[positive_delta] = np.nanmin([dist_b1[positive_delta], dist_b2[positive_delta]], axis=0)
 
-        negative_delta = self.delta < 0
-        self.heights[negative_delta] = -9999.00
+        # caluclate xyz of each ra, using the distance to the shadow intersection and the normal vector form the observatory
+        pointing_xyz = self.pointing_unit_vectors * self.dist
 
-        # self.dist[self.delta < 0 ] = False
-        # Height, terrible naming, sorry, is given by the distance - radius of the earth. 
-        self.heights[self.heights != -9999.00] = (self.heights[self.heights != -9999.00]*u.au - self.earth_radius).to(unit)
+        self.heights = (self.vecmag(self.xyz_observatory + pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit)
 
     def get_heights(self, jd=None, return_heights=True,unit=u.km):
         if jd is not None:
             self.jd = jd
-        self.update_time()
+            self.update_time()
         self.get_abcd()
         self.solve_for_height(unit="km")
         if return_heights:
@@ -240,7 +238,7 @@ class orbit_animation(object):
         import os
         ani.save("/tmp/im.mp4")
 
-    def snap_shot(self,jd,ra,dec):
+    def snap_shot(self,jd,ra,dec, show=True):
         self.init_plotting_animation()
         self.calculator.set_coordinates(np.array([ra]),np.array([dec]))
 
@@ -264,7 +262,8 @@ class orbit_animation(object):
         self.line3.set_data( [ self.calculator.xyz_observatory[0] ] , [ self.calculator.xyz_observatory[1] ] )
         self.ax.plot([self.calculator.xyz_c[0], self.calculator.xyz_sun[0]],[self.calculator.xyz_c[1], self.calculator.xyz_sun[1]], alpha=0.5)
         self.ax.plot([los_xyz[0], self.calculator.xyz_observatory[0]],[los_xyz[1], self.calculator.xyz_observatory[1]], c="k", alpha=0.5)
-        self.plt.show()
+        if show:
+            self.plt.show()
 
 
     def animation_update_positions(self, frame):
@@ -320,35 +319,6 @@ class orbit_animation(object):
         self.LCO_topo   = Topos('29.01597S', '70.69208W', elevation_m=LCO_elevation)
 
         return(LCO_topo)
-
-def vecmag(a, origin=[0,0,0]):
-    """ Return the magnitude of a set of vectors around an abritrary origin """
-    if len(np.shape(origin)) == 1:
-        return np.sqrt(np.square(a[0] - origin[0]) + np.square(a[1] - origin[1]) + np.square(a[2] - origin[2]))
-    else:
-        return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
-
-
-def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
-    """
-    This is the projected angle to the horizon given two vector positions and a diameter of object b.
-    Units don't matter so long as they are all the same.
-    Default radius = Earth radius in meters.
-    """
-
-    theta = np.pi/2.0 - np.arccos( radius / vecmag( xyz, origin=xyz_center ) )
-    if hasattr(xyz, "unit") and hasattr(xyz_center, "unit"):
-        xyz = xyz.to("m").value
-        xyz_center = xyz_center.to("m").value
-    
-    if hasattr(radius, "unit"):
-        radius.to("m")
-
-    # Else we assume that the positions are already in meters.
-    if degree:
-        return(np.rad2deg(theta))
-    else:
-        return(theta)
         
 
 if __name__ == "__main__":
@@ -441,6 +411,33 @@ if __name__ == "__main__":
 #     #     ani.save("%s/tmp/im.mp4"%(os.environ["HOME"]))
 # #plt.show()
 
+# def vecmag(a, origin=[0,0,0]):
+#     """ Return the magnitude of a set of vectors around an abritrary origin """
+#     if len(np.shape(origin)) == 1:
+#         return np.sqrt(np.square(a[0] - origin[0]) + np.square(a[1] - origin[1]) + np.square(a[2] - origin[2]))
+#     else:
+#         return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
+
+# def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
+#     """
+#     This is the projected angle to the horizon given two vector positions and a diameter of object b.
+#     Units don't matter so long as they are all the same.
+#     Default radius = Earth radius in meters.
+#     """
+
+#     theta = np.pi/2.0 - np.arccos( radius / vecmag( xyz, origin=xyz_center ) )
+#     if hasattr(xyz, "unit") and hasattr(xyz_center, "unit"):
+#         xyz = xyz.to("m").value
+#         xyz_center = xyz_center.to("m").value
+    
+#     if hasattr(radius, "unit"):
+#         radius.to("m")
+
+#     # Else we assume that the positions are already in meters.
+#     if degree:
+#         return(np.rad2deg(theta))
+#     else:
+#         return(theta)
 
 # class vecmath(object):
 
