@@ -173,9 +173,13 @@ class shadow_calc(object):
         self.dist[positive_delta] = np.nanmin([dist_b1[positive_delta], dist_b2[positive_delta]], axis=0)
 
         # caluclate xyz of each ra, using the distance to the shadow intersection and the normal vector form the observatory
-        pointing_xyz = self.pointing_unit_vectors * self.dist
+        pointing_xyz = self.pointing_unit_vectors * self.dist + self.xyz_observatory
 
-        self.heights = (self.vecmag(self.xyz_observatory + pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit)
+        extra_line = ([self.xyz_observatory[0], pointing_xyz[0][0]],[self.xyz_observatory[1], pointing_xyz[0][1]])
+        self.animate = orbit_animation(self)
+        self.animate.snap_shot(jd=self.jd, ra=self.cone_ra_dec()[0], dec=self.cone_ra_dec()[1], show=True, extra=extra_line)
+
+        self.heights = vecmag(self.vecmag(pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit)
 
     def get_heights(self, jd=None, return_heights=True,unit=u.km):
         if jd is not None:
@@ -188,7 +192,7 @@ class shadow_calc(object):
 
     def vecmag(self, a, origin=[0,0,0]):
         """ Return the magnitude of a set of vectors around an abritrary origin """
-        if len(np.shape(origin)) == 1:
+        if len(np.shape(a)) == 1:
             return np.sqrt(np.square(a[0] - origin[0]) + np.square(a[1] - origin[1]) + np.square(a[2] - origin[2]))
         else:
             return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
@@ -238,7 +242,7 @@ class orbit_animation(object):
         import os
         ani.save("/tmp/im.mp4")
 
-    def snap_shot(self,jd,ra,dec, show=True):
+    def snap_shot(self,jd,ra,dec, show=True, extra=False):
         self.init_plotting_animation()
         self.calculator.set_coordinates(np.array([ra]),np.array([dec]))
 
@@ -248,8 +252,8 @@ class orbit_animation(object):
 
         height_au = 3.0 * self.calculator.earth_radius.to("au").value
 
-        self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 150, self.calculator.xyz_earth[0] + height_au * 150 ) )
-        self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 150, self.calculator.xyz_earth[1] + height_au * 150 ) )
+        self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 16, self.calculator.xyz_earth[0] + height_au * 16 ) )
+        self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 9, self.calculator.xyz_earth[1] + height_au * 9 ) )
 
         circ = self.patches.Circle((self.calculator.xyz_earth[0], self.calculator.xyz_earth[1]), self.calculator.earth_radius.to( "au" ).value, alpha=0.8, fc='yellow')
         self.ax.add_patch( circ )
@@ -262,8 +266,13 @@ class orbit_animation(object):
         self.line3.set_data( [ self.calculator.xyz_observatory[0] ] , [ self.calculator.xyz_observatory[1] ] )
         self.ax.plot([self.calculator.xyz_c[0], self.calculator.xyz_sun[0]],[self.calculator.xyz_c[1], self.calculator.xyz_sun[1]], alpha=0.5)
         self.ax.plot([los_xyz[0], self.calculator.xyz_observatory[0]],[los_xyz[1], self.calculator.xyz_observatory[1]], c="k", alpha=0.5)
+        if extra is not False:
+            #This will plot a line using arrays provided in the extra bin.
+            self.ax.plot(extra[0], extra[1])
         if show:
             self.plt.show()
+        else:
+            return self.plt
 
 
     def animation_update_positions(self, frame):
@@ -323,7 +332,7 @@ class orbit_animation(object):
 
 if __name__ == "__main__":
 
-    jd = 2459458.5+20 + 4.0/24.
+    jd = 2459458.5+20 + 4.75/24.
     calculator = shadow_calc()
     orbit_ani = orbit_animation(calculator)
     orbit_ani.calculator.update_time(jd)
@@ -358,7 +367,7 @@ if __name__ == "__main__":
 
     try:
         test = "set jd=2459458.5"
-        jd = 2459458.5+20 + 4.0/24.
+        jd = 2459458.5+20 + 4.75/24.
         calculator.update_time(jd)
         test_results[test] = "Pass"
     except:
