@@ -334,6 +334,8 @@ if __name__ == "__main__":
 
     jd = 2459458.5+20 + 4.75/24.
     # Initiate tests.
+    test_results ={}
+
     try:
         test = "Create Class"
         calculator = shadow_calc()
@@ -347,7 +349,6 @@ if __name__ == "__main__":
     orbit_ani.snap_shot(jd=jd, ra=ra, dec=dec)
     # orbit_ani.do_animation()
 
-    test_results ={}
     from astropy.coordinates import SkyCoord
     from astropy.coordinates import Angle, Latitude, Longitude
     from astropy import units as u
