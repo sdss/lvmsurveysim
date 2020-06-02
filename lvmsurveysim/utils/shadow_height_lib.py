@@ -175,9 +175,9 @@ class shadow_calc(object):
         # caluclate xyz of each ra, using the distance to the shadow intersection and the normal vector form the observatory
         pointing_xyz = self.pointing_unit_vectors * self.dist + self.xyz_observatory
 
-        extra_line = ([self.xyz_observatory[0], pointing_xyz[0][0]],[self.xyz_observatory[1], pointing_xyz[0][1]])
-        self.animate = orbit_animation(self)
-        self.animate.snap_shot(jd=self.jd, ra=self.cone_ra_dec()[0], dec=self.cone_ra_dec()[1], show=True, extra=extra_line)
+        # extra_line = ([self.xyz_observatory[0], pointing_xyz[0][0]],[self.xyz_observatory[1], pointing_xyz[0][1]])
+        # self.animate = orbit_animation(self)
+        # self.animate.snap_shot(jd=self.jd, ra=self.cone_ra_dec()[0], dec=self.cone_ra_dec()[1], show=True, extra=extra_line)
 
         self.heights = self.vecmag(self.vecmag(pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit)
 
@@ -190,12 +190,12 @@ class shadow_calc(object):
         if return_heights:
             return self.heights 
 
-    def vecmag(self, a, origin=[0,0,0]):
+    def vecmag(self, a):
         """ Return the magnitude of a set of vectors around an abritrary origin """
         if len(np.shape(a)) == 1:
-            return np.sqrt(np.square(a[0] - origin[0]) + np.square(a[1] - origin[1]) + np.square(a[2] - origin[2]))
+            return np.sqrt(np.square(a[0]) + np.square(a[1]) + np.square(a[2]))
         else:
-            return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
+            return np.sqrt(np.square(a[:, 0]) + np.square(a[:, 1]) + np.square(a[:, 2]))
 
 class orbit_animation(object):
     def __init__(self, calculator, jd0=None, djd=1/24., single=True):
@@ -430,7 +430,7 @@ if __name__ == "__main__":
 # def vecmag(a, origin=[0,0,0]):
 #     """ Return the magnitude of a set of vectors around an abritrary origin """
 #     if len(np.shape(origin)) == 1:
-#         return np.sqrt(np.square(a[0] - origin[0]) + np.square(a[1] - origin[1]) + np.square(a[2] - origin[2]))
+#         return np.sqrt(np.square(a[0]) + np.square(a[1]) + np.square(a[2]))
 #     else:
 #         return np.sqrt(np.square(a[:, 0] - origin[:, 0]) + np.square(a[:, 1] - origin[:, 1]) + np.square(a[:, 2] - origin[:, 2]))
 
