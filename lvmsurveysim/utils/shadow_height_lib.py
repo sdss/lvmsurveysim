@@ -179,7 +179,7 @@ class shadow_calc(object):
         self.animate = orbit_animation(self)
         self.animate.snap_shot(jd=self.jd, ra=self.cone_ra_dec()[0], dec=self.cone_ra_dec()[1], show=True, extra=extra_line)
 
-        self.heights = vecmag(self.vecmag(pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit)
+        self.heights = self.vecmag(self.vecmag(pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit)
 
     def get_heights(self, jd=None, return_heights=True,unit=u.km):
         if jd is not None:
