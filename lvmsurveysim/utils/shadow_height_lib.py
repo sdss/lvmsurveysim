@@ -252,8 +252,8 @@ class orbit_animation(object):
 
         height_au = 3.0 * self.calculator.earth_radius.to("au").value
 
-        self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 16, self.calculator.xyz_earth[0] + height_au * 16 ) )
-        self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 9, self.calculator.xyz_earth[1] + height_au * 9 ) )
+        self.ax.set_xlim( ( self.calculator.xyz_earth[0] - height_au * 160, self.calculator.xyz_earth[0] + height_au * 160 ) )
+        self.ax.set_ylim( ( self.calculator.xyz_earth[1] - height_au * 90, self.calculator.xyz_earth[1] + height_au * 90 ) )
 
         circ = self.patches.Circle((self.calculator.xyz_earth[0], self.calculator.xyz_earth[1]), self.calculator.earth_radius.to( "au" ).value, alpha=0.8, fc='yellow')
         self.ax.add_patch( circ )
@@ -270,6 +270,7 @@ class orbit_animation(object):
             #This will plot a line using arrays provided in the extra bin.
             self.ax.plot(extra[0], extra[1])
         if show:
+            self.plt.gca().set_aspect('equal', adjustable='box')
             self.plt.show()
         else:
             return self.plt
@@ -332,7 +333,7 @@ class orbit_animation(object):
 
 if __name__ == "__main__":
 
-    jd = 2459458.5+20 + 4.75/24.
+    jd = 2459458.5+20 + (4.75+2)/24.
     # Initiate tests.
     test_results ={}
 
