@@ -331,9 +331,8 @@ class orbit_animation(object):
         return(LCO_topo)
         
 
-if __name__ == "__main__":
-
-    jd = 2459458.5+20 + (4.75+2)/24.
+def test_shadow_calc():
+    jd = 2459458.5+20 + 4.75/24.
     # Initiate tests.
     test_results ={}
 
@@ -394,6 +393,10 @@ if __name__ == "__main__":
 
     for test in test_results.keys():
         print ("%s -> %s"%(test, test_results[test]))
+
+
+if __name__ == "__main__":
+    test_shadow_calc()
 
 #     if speedtest is False:
 #         import matplotlib.pyplot as plt
