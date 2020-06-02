@@ -332,7 +332,7 @@ class orbit_animation(object):
         
 
 def test_shadow_calc():
-    jd = 2459458.5+20 + 4.75/24.
+    jd = 2459458.5+20 + (4.75)/24.
     # Initiate tests.
     test_results ={}
 
@@ -346,6 +346,8 @@ def test_shadow_calc():
     orbit_ani = orbit_animation(calculator)
     orbit_ani.calculator.update_time(jd)
     ra, dec = orbit_ani.calculator.cone_ra_dec()
+    #Offset from the ra of the shadow cone by 30 degrees.
+    ra += 30.
     orbit_ani.snap_shot(jd=jd, ra=ra, dec=dec)
     # orbit_ani.do_animation()
 
