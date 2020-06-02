@@ -333,7 +333,14 @@ class orbit_animation(object):
 if __name__ == "__main__":
 
     jd = 2459458.5+20 + 4.75/24.
-    calculator = shadow_calc()
+    # Initiate tests.
+    try:
+        test = "Create Class"
+        calculator = shadow_calc()
+        test_results[test] = "Pass"
+    except:
+        test_results[test] = "Fail"
+
     orbit_ani = orbit_animation(calculator)
     orbit_ani.calculator.update_time(jd)
     ra, dec = orbit_ani.calculator.cone_ra_dec()
@@ -344,13 +351,6 @@ if __name__ == "__main__":
     from astropy.coordinates import SkyCoord
     from astropy.coordinates import Angle, Latitude, Longitude
     from astropy import units as u
-    # Initiate tests.
-    try:
-        test = "Create Class"
-        calculator = shadow_calc()
-        test_results[test] = "Pass"
-    except:
-        test_results[test] = "Fail"
 
     try:
         test = "Shadow RA/DEC"
