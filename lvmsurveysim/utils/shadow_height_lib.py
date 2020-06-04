@@ -347,9 +347,22 @@ def test_shadow_calc():
     orbit_ani.calculator.update_time(jd)
     ra, dec = orbit_ani.calculator.cone_ra_dec()
     #Offset from the ra of the shadow cone by 30 degrees.
-    ra += 30.
     orbit_ani.snap_shot(jd=jd, ra=ra, dec=dec)
     # orbit_ani.do_animation()
+
+    compare_old = True
+    if compare_old:
+        eph = load('de421.bsp')
+        import lvmsurveysim.utils.iterative_shadow_height_lib as iterative_shadow_height_lib
+        iter_calc = iterative_shadow_height_lib.shadow_calc(observatory_name='LCO', 
+                        observatory_elevation=2380*u.m,
+                        observatory_lat='29.0146S', observatory_lon='70.6926W',
+                        eph=eph, earth=eph['earth'], sun=eph['sun'])
+        iter_calc.update_t(jd)
+        old_h = iter_calc.height_from_radec(ra, dec, simple_output=True)['height']
+        new_h = calculator.get_heights(return_heights=True, unit="m")
+
+
 
     from astropy.coordinates import SkyCoord
     from astropy.coordinates import Angle, Latitude, Longitude
