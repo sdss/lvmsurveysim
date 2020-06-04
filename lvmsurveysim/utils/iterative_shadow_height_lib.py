@@ -56,11 +56,11 @@ def ang2horizon(xyz, xyz_center, radius=6.357e6, degree=True):
         return(theta)
 
 class shadow_calc():
-    def __init__(self, observatory_name="APO",
-    observatory_elevation=2788.0*u.m,
-    observatory_lat='32.7802777778N',
-    observatory_lon = '105.8202777778W',
-    jd=False,
+    def __init__(self, observatory_name="LCO",
+    observatory_elevation=2380.0*u.m,
+    observatory_lat='29.0146S',
+    observatory_lon = '70.6926W',
+    jd=2459458,
     eph=None,
     earth=None,
     sun=None):
@@ -206,7 +206,7 @@ class shadow_calc():
             elif ( (h_i == -1) and (h_m == -1) ):
                 return ( np.nan*u.m, np.nan, max_iteration )
 
-    def height_from_radec(self, ra, dec, dmin=500*u.km, dmax=1e5*u.km, n_subs=10, max_error=0.01, max_iteration=10, simple_output=True):
+    def height_from_radec(self, ra, dec, dmin=500*u.km, dmax=1e5*u.km, n_subs=10, max_error=0.01, max_iteration=10, simple_output=True, ra_degree=True):
 
         """
         You can get the xyz coordinates with the following code:
@@ -227,6 +227,9 @@ class shadow_calc():
 
         # Adding one to the required error, a fraction limited to 1, ensures that the first iteration proceeds.
         error = max_error + 1
+
+        if ra_degree:
+            ra = ra/15.0
 
         def get_first_illuminated_m(distances):
             """
