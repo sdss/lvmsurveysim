@@ -43,13 +43,25 @@ class shadow_calc(object):
         self.observatory_lon = observatory_lon
         self.observatory_topo = Topos(observatory_lat, observatory_lon, elevation_m=self.observatory_elevation.to("m").value)
         self.ts = load.timescale()
-       
-        # define these at time self.t xyz_observatory_m, xyz_earth_m, xyz_sun_m
 
         """
         These are going to be vectors which are the x,y,z positions of the puzzle.
         Credit for this solution to the intersection goes to:  Julien Guertault @ http://lousodrome.net/blog/light/2017/01/03/intersection-of-a-ray-and-a-cone/
         """
+        self.ra = None
+        self.dec = None
+        self.pointing_unit_vectors = None
+        self.xyz_earth = None
+        self.xyz_sun = None
+        self.xyz_observatory = None
+        self.v = None
+        self.xyz_c = None
+        self.a = None
+        self.b = None
+        self.c = None
+        self.delta = None
+        self.dist = None
+        self.heights = None
 
         # Those are very self explanitory 
         self.earth_radius=6.357e6*u.m
@@ -66,9 +78,9 @@ class shadow_calc(object):
         self.shadow_cone_cos_theta_sqr = np.square(np.cos(self.shadow_cone_theta))
 
         # Finally, updated the xyz coordinate vectors of earth, sun and observatory.
-        if jd is not False:
+        self.jd = jd
+        if jd is not None:
             self.t = self.ts.tt_jd(jd)
-
         else:
             self.t = self.ts.now()
 
