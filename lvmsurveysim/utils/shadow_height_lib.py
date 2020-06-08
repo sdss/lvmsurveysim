@@ -1,11 +1,9 @@
 #!/usr/bin/python3
-import time
 import numpy as np
 import sys
 from astropy import units as u
 from skyfield.api import load
 from skyfield.api import Topos
-from skyfield.positionlib import position_from_radec, Geometric
 
 class shadow_calc(object):
     def __init__(self, observatory_name="LCO",
@@ -15,10 +13,7 @@ class shadow_calc(object):
     jd=2459458,
     eph=None,
     earth=None,
-    sun=None,
-    d=None,
-    mask=None,
-    pointings=None):
+    sun=None):
         """
         Initialization sets a default observatory to LCO, and the default time to the date when initialized.
         """
@@ -154,10 +149,6 @@ class shadow_calc(object):
         self.delta[mask] = np.square(self.b[mask]) - 4 * self.a[mask] * self.c[mask]
 
     def solve_for_height(self, unit="km"):
-        self.heights = np.full(len(self.a), np.nan)
-        height_b1 = np.full(len(self.a), np.nan)
-        height_b2 = np.full(len(self.a), np.nan)
-
         self.dist = np.full(len(self.a), np.nan)
         dist_b1 = np.full(len(self.a), np.nan)
         dist_b2 = np.full(len(self.a), np.nan)
@@ -186,7 +177,7 @@ class shadow_calc(object):
             self.jd = jd
             self.update_time()
         self.get_abcd()
-        self.solve_for_height(unit="km")
+        self.solve_for_height(unit=unit)
         if return_heights:
             return self.heights 
 
@@ -198,7 +189,7 @@ class shadow_calc(object):
             return np.sqrt(np.square(a[:, 0]) + np.square(a[:, 1]) + np.square(a[:, 2]))
 
 class orbit_animation(object):
-    def __init__(self, calculator, jd0=None, djd=1/24., single=True):
+    def __init__(self, calculator, jd0=None, djd=1/24.):
         if jd0 is None:
             self.jd0 = calculator.jd
         else:
@@ -239,7 +230,6 @@ class orbit_animation(object):
     def do_animation(self, N_days=1.0):
         ani = self.animation.FuncAnimation(self.fig, self.animation_update_positions, frames=(24*N_days), repeat_delay=0,
                                         blit=False, interval=100, init_func=self.init_plotting_animation, repeat=0)
-        import os
         ani.save("/tmp/im.mp4")
 
     def snap_shot(self,jd,ra,dec, show=True, extra=False):
@@ -322,14 +312,7 @@ class orbit_animation(object):
         self.pathy.append( self.calculator.xyz_earth[1] )
         self.path.set_data( self.pathx, self.pathy )
     
-        #line2.set_data([sun.at(t).position.au[0]],[sun.at(t).position.au[1]])
-
-    def defaults(self):
-        self.LCO_elevation = 2380
-        self.LCO_topo   = Topos('29.01597S', '70.69208W', elevation_m=LCO_elevation)
-
-        return(LCO_topo)
-        
+        #line2.set_data([sun.at(t).position.au[0]],[sun.at(t).position.au[1]])        
 
 def test_shadow_calc():
     jd = 2459458.5+20 + (4.75)/24.
@@ -355,7 +338,6 @@ def test_shadow_calc():
     if compare_old:
         eph = load('de421.bsp')
         import lvmsurveysim.utils.iterative_shadow_height_lib as iterative_shadow_height_lib
-        from astropy import units as u
         iter_calc = iterative_shadow_height_lib.shadow_calc(observatory_name='LCO', 
                         observatory_elevation=2380*u.m,
                         observatory_lat='29.0146S', observatory_lon='70.6926W',
@@ -365,11 +347,6 @@ def test_shadow_calc():
         new_h = calculator.get_heights(return_heights=True, unit="m")
         print("old: %f; new: %f"%(old_h, new_h))
 
-
-
-    from astropy.coordinates import SkyCoord
-    from astropy.coordinates import Angle, Latitude, Longitude
-    from astropy import units as u
 
     try:
         test = "Shadow RA/DEC"
