@@ -104,9 +104,9 @@ class shadow_calc(object):
 
     def set_coordinates(self, ra, dec):
         # Set coordinates and calculate unit vectors.
-        if type(ra) is float:
+        if type(ra)  in [float, np.float, np.float32, np.float64, np.float128, int, np.int]:
             ra = np.array([ra])
-        if type(dec) is float:
+        if type(dec) in [float, np.float, np.float32, np.float64, np.float128, int, np.int]:
             dec = np.array([dec])
         self.ra = ra
         self.dec = dec
