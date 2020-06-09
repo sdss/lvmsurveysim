@@ -104,6 +104,10 @@ class shadow_calc(object):
 
     def set_coordinates(self, ra, dec):
         # Set coordinates and calculate unit vectors.
+        if type(ra) is float:
+            ra = np.array([ra])
+        if type(dec) is float:
+            dec = np.array([dec])
         self.ra = ra
         self.dec = dec
         self.pointing_unit_vectors = np.zeros(shape=(len(self.ra),3))
@@ -160,7 +164,7 @@ class shadow_calc(object):
         self.c[mask] = np.square(np.sum(self.co*self.v)) - np.sum(self.co * self.co) * self.shadow_cone_cos_theta_sqr
         self.delta[mask] = np.square(self.b[mask]) - 4 * self.a[mask] * self.c[mask]
 
-    def solve_for_height(self, unit="km"):
+    def solve_for_height(self, unit=u.km):
         self.dist = np.full(len(self.a), np.nan)
         dist_b1 = np.full(len(self.a), np.nan)
         dist_b2 = np.full(len(self.a), np.nan)
