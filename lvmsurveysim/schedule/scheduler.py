@@ -744,6 +744,9 @@ class Scheduler(object):
             night_plan['moon_ra'], night_plan['moon_dec'],
             coordinates[:, 0], coordinates[:, 1])
 
+        # set the coordinates to all targets in shadow height calculator
+        self.shadow_calc.set_coordinates(numpy.array(coordinates[:,0]), numpy.array(coordinates[:,1]))
+
         # The additional exposure time in this night
         new_observed = observed * 0.0
 
@@ -762,6 +765,9 @@ class Scheduler(object):
 
             # Get current LST
             current_lst = lvmsurveysim.utils.spherical.get_lst(current_jd, lon)
+
+            # advance shadow height calculator to current time
+            self.shadow_calc.update_time(jd=current_jd)
 
             # Get the altitude at the start and end of the proposed exposure.
             alt_start = ac(lst=current_lst)
@@ -798,6 +804,9 @@ class Scheduler(object):
             valid_priorities = target_priorities[valid_idx]
             valid_incomplete = incomplete[valid_idx]
             valid_tile_priorities = tile_prio[valid_idx]
+
+            # calculate shadow heights
+            hz = self.shadow_calc.get_heights(return_heights=True, mask=valid_idx, unit="km")[0]
 
             did_observe = False
 
@@ -849,12 +858,6 @@ class Scheduler(object):
 
                 # Get the index of the pointing within its target.
                 pointing_index = observed_idx - target_index_first
-
-                # calculate shadow height for chosen observation
-                self.shadow_calc.update_time(jd=current_jd)
-                self.shadow_calc.set_coordinates(numpy.array([coordinates[observed_idx,0]]), numpy.array([coordinates[observed_idx,1]]))
-                hz = self.shadow_calc.get_heights(return_heights=True, unit="km")[0]
-                #hz = 0.0
                 
                 # Record angular distance to moon
                 dist_to_moon = moon_to_pointings[observed_idx]
@@ -870,7 +873,7 @@ class Scheduler(object):
                                          dec=coordinates[observed_idx, 1],
                                          airmass=airmass,
                                          lunation=lunation,
-                                         shadow_height=hz,
+                                         shadow_height=hz[valid_priority_idx[obs_tile_idx]],
                                          dist_to_moon=dist_to_moon,
                                          lst=current_lst,
                                          exptime=exptime,
