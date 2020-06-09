@@ -110,7 +110,7 @@ class shadow_calc(object):
 
         a = np.pi / 180.
         self.pointing_unit_vectors[:,0] = np.cos(self.ra*a)*np.cos(self.dec*a)
-        self.pointing_unit_vectors[:,1] = -np.sin(self.ra*a)*np.cos(self.dec*a)
+        self.pointing_unit_vectors[:,1] = np.sin(self.ra*a)*np.cos(self.dec*a)
         self.pointing_unit_vectors[:,2] = np.sin(self.dec*a)
 
     def update_time(self, jd=None):
@@ -271,8 +271,9 @@ class orbit_animation(object):
         if extra is not False:
             #This will plot a line using arrays provided in the extra bin.
             self.ax.plot(extra[0], extra[1])
+
+        self.plt.gca().set_aspect('equal', adjustable='box')
         if show:
-            self.plt.gca().set_aspect('equal', adjustable='box')
             self.plt.show()
         else:
             return self.plt
