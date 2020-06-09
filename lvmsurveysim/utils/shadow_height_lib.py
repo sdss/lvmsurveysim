@@ -183,7 +183,7 @@ class shadow_calc(object):
         self.dist[positive_delta] = np.nanmin([dist_b1[positive_delta], dist_b2[positive_delta]], axis=0)
 
         # caluclate xyz of each ra, using the distance to the shadow intersection and the normal vector form the observatory
-        pointing_xyz = self.pointing_unit_vectors[:][mask] * self.dist + self.xyz_observatory
+        pointing_xyz = self.pointing_unit_vectors[mask] * self.dist[:,np.newaxis] + self.xyz_observatory
 
         # extra_line = ([self.xyz_observatory[0], pointing_xyz[0][0]],[self.xyz_observatory[1], pointing_xyz[0][1]])
         # self.animate = orbit_animation(self)
