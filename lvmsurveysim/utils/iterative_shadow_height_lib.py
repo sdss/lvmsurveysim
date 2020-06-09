@@ -206,7 +206,7 @@ class shadow_calc():
             elif ( (h_i == -1) and (h_m == -1) ):
                 return ( np.nan*u.m, np.nan, max_iteration )
 
-    def height_from_radec(self, ra, dec, dmin=500*u.km, dmax=1e5*u.km, n_subs=10, max_error=0.01, max_iteration=10, simple_output=True, ra_degree=True):
+    def height_from_radec(self, ra, dec, dmin=500*u.km, dmax=1e5*u.km, n_subs=10, max_error=0.01, max_iteration=10, simple_output=True, ra_degree=False):
 
         """
         You can get the xyz coordinates with the following code:

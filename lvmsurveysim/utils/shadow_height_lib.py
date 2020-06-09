@@ -164,8 +164,8 @@ class shadow_calc(object):
 
         # Get P distance to point.
         positive_delta = self.delta >= 0 
-        dist_b1[positive_delta] = (-self.b[positive_delta]+np.sqrt(self.delta[positive_delta])) / (2*self.a[positive_delta])
-        dist_b2[positive_delta] = (-self.b[positive_delta]-np.sqrt(self.delta[positive_delta])) / (2*self.a[positive_delta])
+        dist_b1[positive_delta] = -1*(-self.b[positive_delta]+np.sqrt(self.delta[positive_delta])) / (2*self.a[positive_delta])
+        dist_b2[positive_delta] = -1*(-self.b[positive_delta]-np.sqrt(self.delta[positive_delta])) / (2*self.a[positive_delta])
 
         dist_b1[dist_b1 < 0.0] = np.nan
         dist_b2[dist_b2 < 0.0] = np.nan
@@ -346,8 +346,7 @@ def test_shadow_calc():
     orbit_ani = orbit_animation(calculator)
     orbit_ani.calculator.update_time(jd)
     ra, dec = orbit_ani.calculator.cone_ra_dec()
-    #Offset from the ra of the shadow cone by 3.0 degrees.
-    ra += 3.0
+
     orbit_ani.snap_shot(jd=jd, ra=ra, dec=dec)
     # orbit_ani.do_animation()
 
@@ -361,10 +360,9 @@ def test_shadow_calc():
                         observatory_lat='29.0146S', observatory_lon='70.6926W',
                         eph=eph, earth=eph['earth'], sun=eph['sun'])
         iter_calc.update_t(jd)
-        old_h = iter_calc.height_from_radec(ra, dec, simple_output=True)['height']
+        old_h = iter_calc.height_from_radec(ra/15., dec, simple_output=True)['height']
         new_h = calculator.get_heights(return_heights=True, unit="m")
         print("old: %f; new: %f"%(old_h, new_h))
-
 
 
     from astropy.coordinates import SkyCoord
