@@ -184,11 +184,11 @@ class shadow_calc(object):
 
         self.heights = (self.vecmag(pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit).value
 
-    def get_heights(self, jd=None, return_heights=True,unit=u.km):
+    def get_heights(self, mask=None, jd=None, return_heights=True,unit=u.km):
         if jd is not None:
             self.jd = jd
             self.update_time()
-        self.get_abcd()
+        self.get_abcd(mask=mask)
         self.solve_for_height(unit=unit)
         if return_heights:
             return self.heights 
