@@ -147,24 +147,16 @@ class shadow_calc(object):
         self.v = -1.0*(self.xyz_earth - self.xyz_sun)/np.sqrt(np.sum(np.square(self.xyz_earth-self.xyz_sun)))
         self.xyz_c = self.xyz_earth - self.v * self.d_ec.to("au").value
 
-    def get_abcd(self, mask=None):
-        if mask is None:
-            mask = np.full(len(self.pointing_unit_vectors), True)
-
-        N_points = len(mask)
-        self.a = np.full(N_points, np.nan)
-        self.b = np.full(N_points, np.nan)
-        self.c = np.full(N_points, np.nan)
-        self.delta = np.full(N_points, np.nan)
-
-        self.a = np.square(np.sum(self.pointing_unit_vectors[mask]*self.v,axis=1)) -  self.shadow_cone_cos_theta_sqr
-        self.b = 2*( np.sum(self.pointing_unit_vectors[mask]*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(self.pointing_unit_vectors[mask]*self.co, axis=1)*self.shadow_cone_cos_theta_sqr)
-        self.c = np.square(np.sum(self.co*self.v)) - np.sum(self.co * self.co) * self.shadow_cone_cos_theta_sqr
-        self.delta = np.square(self.b) - 4 * self.a * self.c
-
     def solve_for_height(self, mask=None, unit="km"):
         if mask is None:
             mask = np.full(len(self.pointing_unit_vectors), True)
+
+        puv = self.pointing_unit_vectors[mask]
+
+        self.a = np.square(np.sum(puv*self.v,axis=1)) -  self.shadow_cone_cos_theta_sqr
+        self.b = 2*( np.sum(puv*self.v, axis=1) * np.sum(self.co*self.v) - np.sum(puv*self.co, axis=1)*self.shadow_cone_cos_theta_sqr)
+        self.c = np.square(np.sum(self.co*self.v)) - np.sum(self.co * self.co) * self.shadow_cone_cos_theta_sqr
+        self.delta = np.square(self.b) - 4 * self.a * self.c
 
         self.dist = np.full(len(self.a), np.nan)
         dist_b1 = np.full(len(self.a), np.nan)
@@ -181,11 +173,7 @@ class shadow_calc(object):
         self.dist[positive_delta] = np.nanmin([dist_b1[positive_delta], dist_b2[positive_delta]], axis=0)
 
         # caluclate xyz of each ra, using the distance to the shadow intersection and the normal vector form the observatory
-        pointing_xyz = self.pointing_unit_vectors[mask] * self.dist[:,np.newaxis] + self.xyz_observatory
-
-        # extra_line = ([self.xyz_observatory[0], pointing_xyz[0][0]],[self.xyz_observatory[1], pointing_xyz[0][1]])
-        # self.animate = orbit_animation(self)
-        # self.animate.snap_shot(jd=self.jd, ra=self.cone_ra_dec()[0], dec=self.cone_ra_dec()[1], show=True, extra=extra_line)
+        pointing_xyz = puv * self.dist[:,np.newaxis] + self.xyz_observatory
 
         self.heights = (self.vecmag(pointing_xyz - self.xyz_earth)*u.au - self.earth_radius).to(unit).value
 
@@ -193,7 +181,6 @@ class shadow_calc(object):
         if jd is not None:
             self.jd = jd
             self.update_time()
-        self.get_abcd(mask=mask)
         self.solve_for_height(mask=mask, unit=unit)
         if return_heights:
             return self.heights 
