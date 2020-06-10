@@ -806,7 +806,7 @@ class Scheduler(object):
             valid_tile_priorities = tile_prio[valid_idx]
 
             # calculate shadow heights
-            hz = self.shadow_calc.get_heights(return_heights=True, mask=valid_idx, unit="km")[0]
+            hz = self.shadow_calc.get_heights(return_heights=True, mask=valid_idx, unit="km")
 
             did_observe = False
 
@@ -834,9 +834,9 @@ class Scheduler(object):
                 max_tile_priority = numpy.max(valid_alt_tile_priority)
                 high_priority_tiles = numpy.where(valid_alt_tile_priority == max_tile_priority)[0]
 
-                # Gets the pointing with the highest altitude
-                obs_alt_idx = valid_alt_target_priority[high_priority_tiles].argmax()
-
+                # Gets the pointing with the highest altitude * shadow height
+                #obs_alt_idx = (hz[valid_priority_idx[high_priority_tiles]] * valid_alt_target_priority[high_priority_tiles]).argmax()
+                obs_alt_idx = hz[valid_priority_idx[high_priority_tiles]].argmax()
                 obs_tile_idx = high_priority_tiles[obs_alt_idx]
                 obs_alt = valid_alt_target_priority[obs_tile_idx]
 
