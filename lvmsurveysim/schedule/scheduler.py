@@ -621,6 +621,11 @@ class Scheduler(object):
              for idx in s])
 
         # Array with the airmass limit for each pointing
+        min_shadowheight_to_target = numpy.concatenate(
+            [numpy.repeat(self.targets[idx].min_shadowheight, len(self.pointings[idx]))
+             for idx in s])
+
+        # Array with the airmass limit for each pointing
         min_moon_to_target = numpy.concatenate(
             [numpy.repeat(self.targets[idx].min_moon_dist, len(self.pointings[idx]))
              for idx in s])
@@ -655,7 +660,7 @@ class Scheduler(object):
                     continue
 
                 observed += self.schedule_one_night(
-                    jd, plan, index_to_target, max_airmass_to_target,
+                    jd, plan, index_to_target, max_airmass_to_target, min_shadowheight_to_target,
                     priorities, tile_prio, coordinates, target_exposure_times,
                     exposure_quantums, min_moon_to_target, max_lunation,
                     observed, **kwargs)
@@ -669,7 +674,7 @@ class Scheduler(object):
             dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
                 float, float, float, float, float, float])
 
-    def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target,
+    def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, min_shadowheight_to_target,
                            target_priorities, tile_prio, coordinates, target_exposure_times,
                            exposure_quantums, target_min_moon_dist, max_lunation,
                            observed, zenith_avoidance=__ZENITH_AVOIDANCE__):
@@ -706,6 +711,8 @@ class Scheduler(object):
             tile.
         max_airmass : float
             The maximum airmass to allow.
+        min_shadowheight : float
+            The minimum shadow height to allow.
         moon_separation : float
             The minimum allowed Moon separation.
         max_lunation : float
@@ -782,9 +789,14 @@ class Scheduler(object):
             # Gets pointings that haven't been completely observed
             exptime_ok = (observed + new_observed) < target_exposure_times
 
+            # calculate shadow heights
+            hz = self.shadow_calc.get_heights(return_heights=True, mask=None, unit="km")
+            hz[numpy.isnan(hz)] = 0.0
+            hz_ok = (hz>min_shadowheight_to_target)
+
             # Creates a mask of valid pointings with correct Moon avoidance,
             # airmass, zenith avoidance and that have not been completed.
-            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & exptime_ok)[0]
+            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & exptime_ok & hz_ok)[0]
 
             # If there's nothing to observe, record the time slot as vacant (for record keeping)
             if len(valid_idx) == 0:
@@ -804,9 +816,6 @@ class Scheduler(object):
             valid_priorities = target_priorities[valid_idx]
             valid_incomplete = incomplete[valid_idx]
             valid_tile_priorities = tile_prio[valid_idx]
-
-            # calculate shadow heights
-            hz = self.shadow_calc.get_heights(return_heights=True, mask=valid_idx, unit="km")
 
             did_observe = False
 
@@ -835,8 +844,9 @@ class Scheduler(object):
                 high_priority_tiles = numpy.where(valid_alt_tile_priority == max_tile_priority)[0]
 
                 # Gets the pointing with the highest altitude * shadow height
+                obs_alt_idx = (valid_alt_target_priority[high_priority_tiles]).argmax()
                 #obs_alt_idx = (hz[valid_priority_idx[high_priority_tiles]] * valid_alt_target_priority[high_priority_tiles]).argmax()
-                obs_alt_idx = hz[valid_priority_idx[high_priority_tiles]].argmax()
+                #obs_alt_idx = hz[valid_priority_idx[high_priority_tiles]].argmax()
                 obs_tile_idx = high_priority_tiles[obs_alt_idx]
                 obs_alt = valid_alt_target_priority[obs_tile_idx]
 
@@ -873,7 +883,7 @@ class Scheduler(object):
                                          dec=coordinates[observed_idx, 1],
                                          airmass=airmass,
                                          lunation=lunation,
-                                         shadow_height=hz[valid_priority_idx[obs_tile_idx]],
+                                         shadow_height= hz[observed_idx], #hz[valid_priority_idx[obs_tile_idx]],
                                          dist_to_moon=dist_to_moon,
                                          lst=current_lst,
                                          exptime=exptime,

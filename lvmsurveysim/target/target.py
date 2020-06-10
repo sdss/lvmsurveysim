@@ -53,6 +53,8 @@ class Target(object):
         `~lvmsurveysim.telescope.Telescope` instance.
     max_airmass : float
         Maximum air mass to observe the given target
+    min_shadowheight : float
+        Minimum shadow height in km to observe the given target
     exptime : float
         Exposure time of an individual pointing
     n_exposures
@@ -83,6 +85,7 @@ class Target(object):
 
         self.observatory = kwargs.pop('observatory', 'BOTH')
         self.max_airmass = kwargs.pop('max_airmass', 1.75)
+        self.min_shadowheight = kwargs.pop('min_shadowheight', 1000.0)
         self.exptime = kwargs.pop('exptime', 900)
         self.n_exposures = kwargs.pop('n_exposures', 9)
         self.min_exposures = kwargs.pop('min_exposures', 3)
@@ -135,6 +138,7 @@ class Target(object):
                 observatory: APO {LCO, BOTH}
                 telecope: LVM-1m {LVM-160}
                 max_airmass: 1.75
+                min_shadowheight: 1000.0
                 exptime: 900
                 n_exposures: 1
                 min_exposures: 1
