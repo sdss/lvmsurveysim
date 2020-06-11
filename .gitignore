@@ -115,6 +115,7 @@ schedule_run.py
 *.npy
 *.mp4
 *.png
+*.pdf
 darks.ascii
 de421.bsp
 deltat.data
