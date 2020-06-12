@@ -789,14 +789,19 @@ class Scheduler(object):
             # Gets pointings that haven't been completely observed
             exptime_ok = (observed + new_observed) < target_exposure_times
 
-            # calculate shadow heights
-            hz = self.shadow_calc.get_heights(return_heights=True, mask=None, unit="km")
-            hz[numpy.isnan(hz)] = 0.0
+            # Creates a mask of viable pointings with correct Moon avoidance,
+            # airmass, zenith avoidance and that have not been completed.
+            valid_mask = alt_ok & moon_ok & airmass_ok & exptime_ok
+
+            # calculate shadow heights, but only for the viable pointings since it is a costly computation
+            hz = numpy.full(len(alt_ok), 0.0)
+            hz_valid = self.shadow_calc.get_heights(return_heights=True, mask=valid_mask, unit="km")
+            hz[valid_mask] = hz_valid
             hz_ok = (hz>min_shadowheight_to_target)
 
-            # Creates a mask of valid pointings with correct Moon avoidance,
-            # airmass, zenith avoidance and that have not been completed.
-            valid_idx = numpy.where(alt_ok & moon_ok & airmass_ok & exptime_ok & hz_ok)[0]
+            # add shadow height to the viability criteria of the pointings to create the final 
+            # subset that are candidates for observation
+            valid_idx = numpy.where(valid_mask & hz_ok)[0]
 
             # If there's nothing to observe, record the time slot as vacant (for record keeping)
             if len(valid_idx) == 0:
