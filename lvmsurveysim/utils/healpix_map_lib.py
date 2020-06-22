@@ -9,6 +9,7 @@ from astropy.coordinates import Galactic
 from astropy.time import Time
 import numpy as np
 import gc
+from lvmsurveysim.utils.healpix_plot_lib import healpix_shader
 
 verbose = False
 quiet = True
