@@ -11,7 +11,9 @@ def healpix_shader(data,
                     scale=False, 
                     cmaps=["Blues", "Greens", "Reds"],
                     background='w',
-                    title=""):
+                    title="",
+                    show_colorbar=True,
+                    plt=False):
     """Healpix shader.
 
     Parameters
@@ -31,9 +33,15 @@ def healpix_shader(data,
     """
 
     import healpy
-    import matplotlib.pyplot as plt
     import numpy as np
+    if plt == False:
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
     import matplotlib.colors as mcolors
+    import gc
+
+    if gui == False:
+        mpl.use('Agg')
 
     color_list = []
     for mask_i in range(len(masks)):
@@ -42,7 +50,10 @@ def healpix_shader(data,
         else:
             #Use the last cmap
             cmap = cmaps[-1]
-        color_list.append(plt.get_cmap(cmap)(np.linspace(0.,1,128)))
+        if type(cmap) == str:
+            color_list.append(plt.get_cmap(cmap)(np.linspace(0.,1,128)))
+        else:
+            color_list.append(cmap(np.linspace(0.,1,128)))
 
     colors = np.vstack(color_list)
     cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
@@ -85,7 +96,7 @@ def healpix_shader(data,
     if healpixMask != False:
         normalized_I_masked.mask = np.logical_not(healpixMask)
 
-    healpy.mollview(normalized_I_masked, nest=nest, cbar=True, cmap=cmap, rot=(0,0,0), min=0, max=norm*len(masks), xsize=4000, title=title)
+    healpy.mollview(normalized_I_masked, nest=nest, cbar=show_colorbar, cmap=cmap, rot=(0,0,0), min=0, max=norm*len(masks), xsize=4000, title=title)
 
     if graticule == True:
         healpy.graticule()
@@ -93,7 +104,9 @@ def healpix_shader(data,
         plt.savefig(outfile)
     if gui==True:
         plt.show()
+    plt.clf()
     plt.close()
+    gc.collect()
 
 if __name__ == "__main__":
     from astropy.io import fits
