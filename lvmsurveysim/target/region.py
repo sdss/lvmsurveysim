@@ -28,7 +28,8 @@ from . import _VALID_FRAMES
 
 
 __all__ = ['Region', 'EllipticalRegion', 'RectangularRegion',
-           'OverlapRegion', 'CircularRegion', 'PolygonalRegion']
+           'OverlapRegion', 'CircularRegion', 'PolygonalRegion',
+           'SparseGrid']
 
 
 def region_factory(cls, *args, **kwargs):
@@ -67,6 +68,8 @@ def region_factory(cls, *args, **kwargs):
             region = RectangularRegion(*args[1:], **kwargs)
         elif args[0] == 'polygon':
             region = PolygonalRegion(*args[1:], **kwargs)
+        elif args[0] == 'sparse_grid':
+            region = SparseGridRegion(*args[1:], **kwargs)
         else:
             raise ValueError('invalid region type.')
 
@@ -94,7 +97,7 @@ class Region(object, metaclass=RegionABC):
     Parameters:
         region_type (str):
             The type of region to return. Must be one of ``ellipse``,
-            ``circle``, or ``polygon``.
+            ``circle``, ``polygon`` or ``sparse_grid``.
         args, kwargs:
             Arguments and keywords arguments that will be passed to the class.
 
@@ -555,7 +558,7 @@ class PolygonalRegion(Region):
         """Creates a `Shapely`_ object representing the polygon."""
 
         poly = shapely.geometry.Polygon(self._orig_vertices.tolist())
-        poly_rot = shapely.affinity.rotate(poly, -self.pa.value)
+        poly_rot = shapely.affinity.rotatfe(poly, -self.pa.value)
 
         return poly_rot
 
@@ -611,6 +614,60 @@ class RectangularRegion(PolygonalRegion):
         The length along the second axis of the rectangle, in degrees.
     pa : float
         The position angle (North to East) of the rectangle.
+    frame : str
+        The coordinate frame in which the coordinates are. E.g., ``'icrs'`` or
+        ``'galactic'``. Must be one of the frames understood by
+        `~astropy.coordinates.SkyCoord`.
+
+    """
+
+    def __init__(self, coords, width, height, pa=0.0, frame='icrs'):
+
+        if not isinstance(coords, astropy.coordinates.SkyCoord):
+            assert len(coords) == 2, 'invalid number of coordinates.'
+            self.coords = astropy.coordinates.SkyCoord(coords[0],
+                                                       coords[1],
+                                                       frame=frame or 'icrs',
+                                                       unit='deg')
+        self.width = width * astropy.units.degree
+        self.height = height * astropy.units.degree
+        self.pa = pa * astropy.units.degree
+
+        self.frame = frame
+
+        width_deg = self.width.value / numpy.cos(self.get_coordinate(self.coords, 1).rad)
+        height_deg = self.height.value
+
+        x0 = self.get_coordinate(self.coords, 0).deg - width_deg / 2.
+        x1 = self.get_coordinate(self.coords, 0).deg + width_deg / 2.
+        y0 = self.get_coordinate(self.coords, 1).deg - height_deg / 2.
+        y1 = self.get_coordinate(self.coords, 1).deg + height_deg / 2.
+
+        PolygonalRegion.__init__(self,
+                                 vertices=[(x0, y0), (x0, y1), (x1, y1), (x1, y0)],
+                                 pa=self.pa.value,
+                                 frame=self.frame)
+
+class SparseGridRegion(PolygonalRegion):
+    """A class that represents a sparse grid, or net like region on the sky.
+
+    Creates a rectangular region and sub-divides this into verticle and horizontal stripes.
+
+    Parameters
+    ----------
+    coords : `tuple` or `~astropy.coordinates.SkyCoord`
+        A tuple of ``(coord1, coord2)`` in degrees or a
+        `~astropy.coordinates.SkyCoord` describing the centre of the rectangle.
+    width : float
+        The length along the first axis of the rectangle, in degrees.
+    height : float
+        The length along the second axis of the rectangle, in degrees.
+    pa : float
+        The position angle (North to East) of the rectangle.
+    Nx : int
+        Number of subdivisions in the X axis (RA or gal_lon)
+    Ny : int
+        Number of subdivisions in the Y axis (Dec or gal_lat)
     frame : str
         The coordinate frame in which the coordinates are. E.g., ``'icrs'`` or
         ``'galactic'``. Must be one of the frames understood by
