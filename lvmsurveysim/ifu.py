@@ -340,7 +340,7 @@ class IFU(object):
 
         return [subifu.get_patch(**kwargs) for subifu in self.subifus]
 
-    def get_tile_grid(self, region, scale):
+    def get_tile_grid(self, region, scale, sparse=None):
         """Returns a grid of positions that tile a region with this IFU.
 
         Parameters
@@ -350,7 +350,8 @@ class IFU(object):
             and y is Declination, both in degrees.
         scale : float
             The scale in degrees per mm.
-
+        sparse : float
+            Factor for sparse sampling. Stretches IFU length scale by the number.
         """
 
         if isinstance(scale, astropy.units.Quantity):
@@ -368,8 +369,9 @@ class IFU(object):
         ra0, dec0, ra1, dec1 = region_shapely.bounds
 
         # The size of the grid in RA and Dec, in degrees.
-        size_ra = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
-        size_dec = numpy.abs(dec1 - dec0)
+        sparse = sparse if sparse!=None else 1.0
+        size_ra = sparse * numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
+        size_dec = sparse * numpy.abs(dec1 - dec0)
 
         # Calculates the radius and apotheme of each subifu in degrees on the sky
         n_rows = self.subifus[0].n_rows
