@@ -95,6 +95,7 @@ class Target(object):
         self.groups = kwargs.pop('group', [])
         self.tiling_strategy = kwargs.pop('tiling_strategy', 'lowest_airmass')
         self.sparse = kwargs.pop('sparse', None)
+        self.overlap = kwargs.pop('overlap', True)
 
         telescope = kwargs.pop('telescope', None)
         assert telescope is not None, 'must specify a telescope keyword.'
