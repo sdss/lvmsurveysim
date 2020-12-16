@@ -1,4 +1,3 @@
-DEPRECATED
 lvmsurveysim
 ============
 
