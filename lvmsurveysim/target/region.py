@@ -28,8 +28,7 @@ from . import _VALID_FRAMES
 
 
 __all__ = ['Region', 'EllipticalRegion', 'RectangularRegion',
-           'OverlapRegion', 'CircularRegion', 'PolygonalRegion',
-           'SparseGrid']
+           'OverlapRegion', 'CircularRegion', 'PolygonalRegion']
 
 
 def region_factory(cls, *args, **kwargs):
@@ -68,8 +67,8 @@ def region_factory(cls, *args, **kwargs):
             region = RectangularRegion(*args[1:], **kwargs)
         elif args[0] == 'polygon':
             region = PolygonalRegion(*args[1:], **kwargs)
-        elif args[0] == 'sparse_grid':
-            region = SparseGridRegion(*args[1:], **kwargs)
+        # elif args[0] == 'sparse_grid':
+        #     region = SparseGridRegion(*args[1:], **kwargs)
         else:
             raise ValueError('invalid region type.')
 
@@ -558,7 +557,7 @@ class PolygonalRegion(Region):
         """Creates a `Shapely`_ object representing the polygon."""
 
         poly = shapely.geometry.Polygon(self._orig_vertices.tolist())
-        poly_rot = shapely.affinity.rotatfe(poly, -self.pa.value)
+        poly_rot = shapely.affinity.rotate(poly, -self.pa.value)
 
         return poly_rot
 
