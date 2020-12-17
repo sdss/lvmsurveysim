@@ -369,9 +369,8 @@ class IFU(object):
         ra0, dec0, ra1, dec1 = region_shapely.bounds
 
         # The size of the grid in RA and Dec, in degrees.
-        sparse = sparse if sparse!=None else 1.0
-        size_ra = sparse * numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
-        size_dec = sparse * numpy.abs(dec1 - dec0)
+        size_ra  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
+        size_dec = numpy.abs(dec1 - dec0)
 
         # Calculates the radius and apotheme of each subifu in degrees on the sky
         n_rows = self.subifus[0].n_rows
@@ -379,8 +378,9 @@ class IFU(object):
         aa_deg = numpy.sqrt(3) / 2. * rr_deg
 
         # The separation between grid points in RA and Dec
-        delta_ra = 3 * rr_deg
-        delta_dec = aa_deg
+        sparse = sparse if sparse!=None else 1.0
+        delta_ra = 3 * rr_deg * sparse
+        delta_dec = aa_deg * sparse
 
         # Calculates the initial positions of the grid points in RA and Dec.
         ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
