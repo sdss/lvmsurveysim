@@ -16,9 +16,9 @@ import seaborn
 import shapely.geometry
 import astropy.units
 
+import lvmsurveysim.geodesic_sphere
 import lvmsurveysim
 from lvmsurveysim import config
-import geodesic_sphere
 
 seaborn.set()
 current_palette = seaborn.color_palette()
@@ -90,9 +90,8 @@ class SubIFU(object):
     """
 
     def __init__(self, id_subifu, parent, centre, n_fibres, fibre_size=None):
-
         assert isinstance(centre, (list, tuple, numpy.ndarray)), 'centre is not a list'
-        assert isinstance(parent, IFU), 'parent must be an IFU object.'
+        #assert isinstance(parent, IFU), 'parent must be an IFU object.'
         assert len(centre) == 2, 'centre must be a 2D tuple.'
 
         assert n_fibres is not None, 'incorrect inputs.'
@@ -365,20 +364,21 @@ class IFU(object):
         else:
             raise ValueError(f'invalid region type: {type(region)}.')
 
-        # Determine the centroid and bounds of the region
-        centroid = numpy.array(region_shapely.centroid)
-        ra0, dec0, ra1, dec1 = region_shapely.bounds
+        points = []
+        # Calculates the radius and apotheme of each subifu in degrees on the sky
+        sparse = sparse if sparse!=None else 1.0
+        n_rows = self.subifus[0].n_rows
+        rr_deg = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
+        aa_deg = numpy.sqrt(3) / 2. * rr_deg
 
         if geodesic == False:
+            # Determine the centroid and bounds of the region
+            centroid = numpy.array(region_shapely.centroid)
+            ra0, dec0, ra1, dec1 = region_shapely.bounds
+
             # The size of the grid in RA and Dec, in degrees.
             size_ra  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
             size_dec = numpy.abs(dec1 - dec0)
-
-            # Calculates the radius and apotheme of each subifu in degrees on the sky
-            sparse = sparse if sparse!=None else 1.0
-            n_rows = self.subifus[0].n_rows
-            rr_deg = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
-            aa_deg = numpy.sqrt(3) / 2. * rr_deg
 
             # The separation between grid points in RA and Dec
             delta_ra = 3 * rr_deg
@@ -387,30 +387,31 @@ class IFU(object):
             # Calculates the initial positions of the grid points in RA and Dec.
             ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
             dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec.value, delta_dec.value)
+            points = numpy.zeros((len(dec_pos), len(ra_pos), 2))
+
+            # Offset each other row in RA by 1.5R
+            points[:, :, 0] = ra_pos
+            points[:, :, 0][1::2] += (1.5 * rr_deg.value)
+
+            # Set declination values
+            points[:, :, 1] = dec_pos[numpy.newaxis].T
+            points[:, :, 1] += centroid[1]
+
+            # The separations in the RA axis must be converted to RA using the
+            # local declination
+            points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
+            points[:, :, 0] += centroid[0]
+
+            # Reshape into a 2D list of points.
+            points = points.reshape((-1, 2))
         else:
-            s = geodesic_sphere.initialize_sphere(int(sparse))
-            x, y, z = geodesic_sphere.vecs_to_lists(s)
+            s = lvmsurveysim.geodesic_sphere.initialize_sphere(int(sparse))
+            x, y, z = lvmsurveysim.geodesic_sphere.vecs_to_lists(s)
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
-            ra_pos = c.ra.deg
-            dec_pos = c.dec.deg
-
-        points = numpy.zeros((len(dec_pos), len(ra_pos), 2))
-
-        # Offset each other row in RA by 1.5R
-        points[:, :, 0] = ra_pos
-        points[:, :, 0][1::2] += (1.5 * rr_deg.value)
-
-        # Set declination values
-        points[:, :, 1] = dec_pos[numpy.newaxis].T
-        points[:, :, 1] += centroid[1]
-
-        # The separations in the RA axis must be converted to RA using the
-        # local declination
-        points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
-        points[:, :, 0] += centroid[0]
-
-        # Reshape into a 2D list of points.
-        points = points.reshape((-1, 2))
+            sk.representation_type='spherical'
+            points = numpy.zeros((len(sk),2))
+            points[:,0] = sk.ra.deg
+            points[:,1] = sk.dec.deg
 
         # For each grid position create a Shapely circle with the radius of the IFU.
         points_shapely = list(
