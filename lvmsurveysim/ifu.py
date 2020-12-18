@@ -18,7 +18,7 @@ import astropy.units
 
 import lvmsurveysim
 from lvmsurveysim import config
-
+import geodesic_sphere
 
 seaborn.set()
 current_palette = seaborn.color_palette()
@@ -340,7 +340,7 @@ class IFU(object):
 
         return [subifu.get_patch(**kwargs) for subifu in self.subifus]
 
-    def get_tile_grid(self, region, scale, sparse=None):
+    def get_tile_grid(self, region, scale, sparse=None, geodesic=None):
         """Returns a grid of positions that tile a region with this IFU.
 
         Parameters
@@ -352,6 +352,7 @@ class IFU(object):
             The scale in degrees per mm.
         sparse : float
             Factor for sparse sampling. Stretches IFU length scale by the number.
+        geodesic : use geodesic sphere tiling, sparse gives depth in this case.
         """
 
         if isinstance(scale, astropy.units.Quantity):
