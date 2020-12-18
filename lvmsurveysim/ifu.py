@@ -373,14 +373,14 @@ class IFU(object):
         size_dec = numpy.abs(dec1 - dec0)
 
         # Calculates the radius and apotheme of each subifu in degrees on the sky
+        sparse = sparse if sparse!=None else 1.0
         n_rows = self.subifus[0].n_rows
-        rr_deg = n_rows * self.fibre_size / 1000 * scale / 2.
+        rr_deg = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
         aa_deg = numpy.sqrt(3) / 2. * rr_deg
 
         # The separation between grid points in RA and Dec
-        sparse = sparse if sparse!=None else 1.0
-        delta_ra = 3 * rr_deg * sparse
-        delta_dec = aa_deg * sparse
+        delta_ra = 3 * rr_deg
+        delta_dec = aa_deg
 
         # Calculates the initial positions of the grid points in RA and Dec.
         ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
