@@ -413,6 +413,8 @@ class IFU(object):
             points[:,0] = sk.ra.deg
             points[:,1] = sk.dec.deg
 
+        print(geodesic, len(points))
+
         # For each grid position create a Shapely circle with the radius of the IFU.
         points_shapely = list(
             map(lambda point: shapely.geometry.Point(point[0],

@@ -241,6 +241,7 @@ class Target(object):
             # warnings.warn(f'target {self.name}: no IFU provided. '
             #               f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
 
+        print('Tiling target ' + self.name)
         tiles = ifu.get_tile_grid(self.region, telescope.plate_scale, sparse=self.sparse, geodesic=self.geodesic)
         tiles = astropy.coordinates.SkyCoord(tiles[:, 0], tiles[:, 1],
                                              frame=self.frame, unit='deg')
