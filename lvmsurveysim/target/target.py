@@ -95,7 +95,7 @@ class Target(object):
         self.groups = kwargs.pop('group', [])
         self.tiling_strategy = kwargs.pop('tiling_strategy', 'lowest_airmass')
         self.overlap = kwargs.pop('overlap', True)
-        self.geodesic = kwargs.pop('overlap', False) # full sky tiling, use sparse for depth
+        self.geodesic = kwargs.pop('geodesic', False) # full sky tiling, use sparse for depth
         self.sparse = kwargs.pop('sparse', None)
 
         telescope = kwargs.pop('telescope', None)
