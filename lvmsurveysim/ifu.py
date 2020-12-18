@@ -390,7 +390,7 @@ class IFU(object):
         else:
             assert sparse>0, "Sparse parameter must be >0 for geodesic target"
             s = geodesic_sphere.initialize_sphere(int(sparse))
-            x, y, z = vecs_to_lists(s)
+            x, y, z = geodesic_sphere.vecs_to_lists(s)
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
             ra_pos = c.ra.deg
             dec_pos = c.dec.deg
