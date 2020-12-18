@@ -369,7 +369,7 @@ class IFU(object):
         centroid = numpy.array(region_shapely.centroid)
         ra0, dec0, ra1, dec1 = region_shapely.bounds
 
-        if geodesic == None:
+        if geodesic == False:
             # The size of the grid in RA and Dec, in degrees.
             size_ra  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
             size_dec = numpy.abs(dec1 - dec0)
@@ -388,7 +388,6 @@ class IFU(object):
             ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
             dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec.value, delta_dec.value)
         else:
-            assert sparse>0, "Sparse parameter must be >0 for geodesic target"
             s = geodesic_sphere.initialize_sphere(int(sparse))
             x, y, z = geodesic_sphere.vecs_to_lists(s)
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')

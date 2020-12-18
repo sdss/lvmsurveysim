@@ -70,6 +70,12 @@ class Target(object):
     overhead : float
         The overhead factor per exposure quantum for this target's observing
         scheme.
+    overlap:
+        calculate overlap between this target and others and discard, defaults to false
+    geodesic:
+        geodesic tiling of the full sphere instead of region
+    sparse:
+        sparse tiling factor, or depth value (number of subdivisions) in case of geodesic tiling
 
     Attributes
     ----------
