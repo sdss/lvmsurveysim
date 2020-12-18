@@ -369,23 +369,31 @@ class IFU(object):
         centroid = numpy.array(region_shapely.centroid)
         ra0, dec0, ra1, dec1 = region_shapely.bounds
 
-        # The size of the grid in RA and Dec, in degrees.
-        size_ra  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
-        size_dec = numpy.abs(dec1 - dec0)
+        if geodesic == None:
+            # The size of the grid in RA and Dec, in degrees.
+            size_ra  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
+            size_dec = numpy.abs(dec1 - dec0)
 
-        # Calculates the radius and apotheme of each subifu in degrees on the sky
-        sparse = sparse if sparse!=None else 1.0
-        n_rows = self.subifus[0].n_rows
-        rr_deg = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
-        aa_deg = numpy.sqrt(3) / 2. * rr_deg
+            # Calculates the radius and apotheme of each subifu in degrees on the sky
+            sparse = sparse if sparse!=None else 1.0
+            n_rows = self.subifus[0].n_rows
+            rr_deg = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
+            aa_deg = numpy.sqrt(3) / 2. * rr_deg
 
-        # The separation between grid points in RA and Dec
-        delta_ra = 3 * rr_deg
-        delta_dec = aa_deg
+            # The separation between grid points in RA and Dec
+            delta_ra = 3 * rr_deg
+            delta_dec = aa_deg
 
-        # Calculates the initial positions of the grid points in RA and Dec.
-        ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
-        dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec.value, delta_dec.value)
+            # Calculates the initial positions of the grid points in RA and Dec.
+            ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
+            dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec.value, delta_dec.value)
+        else:
+            assert sparse>0, "Sparse parameter must be >0 for geodesic target"
+            s = geodesic_sphere.initialize_sphere(int(sparse))
+            x, y, z = vecs_to_lists(s)
+            sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
+            ra_pos = c.ra.deg
+            dec_pos = c.dec.deg
 
         points = numpy.zeros((len(dec_pos), len(ra_pos), 2))
 
