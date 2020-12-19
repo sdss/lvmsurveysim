@@ -16,7 +16,7 @@ import seaborn
 import shapely.geometry
 import astropy.units
 
-import lvmsurveysim.geodesic_sphere
+import lvmsurveysim.utils.geodesic_sphere
 import lvmsurveysim
 from lvmsurveysim import config
 
@@ -405,8 +405,8 @@ class IFU(object):
             # Reshape into a 2D list of points.
             points = points.reshape((-1, 2))
         else:
-            s = lvmsurveysim.geodesic_sphere.initialize_sphere(int(sparse))
-            x, y, z = lvmsurveysim.geodesic_sphere.vecs_to_lists(s)
+            s = lvmsurveysim.utils.geodesic_sphere.initialize_sphere(int(sparse))
+            x, y, z = lvmsurveysim.utils.geodesic_sphere.vecs_to_lists(s)
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
             sk.representation_type='spherical'
             points = numpy.zeros((len(sk),2))
