@@ -83,7 +83,7 @@ def sphere(N):
       N_ring = int(N * np.abs(np.sin(theta)))
       # d_angle = 2*np.pi / N_ring/ 2.0
       # phis_ring = np.linspace(d_angle, 2*np.pi + d_angle, N_ring)
-      phis_ring = np.linspace(0, 2 * np.pi, N_ring, endpoint=True)
+      phis_ring = np.linspace(0, 2 * np.pi, N_ring, endpoint=False)
       tmp1_x = np.zeros(N_ring)
       tmp1_y = np.zeros(N_ring)
       tmp1_z = np.zeros(N_ring)
