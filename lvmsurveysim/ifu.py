@@ -405,8 +405,10 @@ class IFU(object):
             # Reshape into a 2D list of points.
             points = points.reshape((-1, 2))
         else:
-            s = lvmsurveysim.utils.geodesic_sphere.initialize_sphere(int(sparse))
-            x, y, z = lvmsurveysim.utils.geodesic_sphere.vecs_to_lists(s)
+            #s = lvmsurveysim.utils.geodesic_sphere.initialize_sphere(int(sparse))
+            #x, y, z = lvmsurveysim.utils.geodesic_sphere.vecs_to_lists(s)
+            #x, y, z = lvmsurveysim.utils.sphere.vecs_to_lists(s)
+            x, y, z = lvmsurveysim.utils.geodesic_sphere.sphere(int(sparse))
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
             sk.representation_type='spherical'
             points = numpy.zeros((len(sk),2))
