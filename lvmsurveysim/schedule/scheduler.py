@@ -241,29 +241,41 @@ class Scheduler(object):
         # Initialise the overlap dictionaries. Set the global_no_overlap to
         # True for all the pointings in the target tiling
         for idx in s:
-            name = self.targets[idx].name
-            overlap[name] = {}
-            overlap[name]['global_no_overlap'] = numpy.ones(len(self.pointings[idx]),
+            overlap[self.targets[idx].name] = {}
+            overlap[self.targets[idx].name]['global_no_overlap'] = numpy.ones(len(self.pointings[idx]),
                                                             dtype=numpy.bool)
-                                                            
+
+        # With all the dictionaries created overlap[target_name] we can now store overlap information between targets
+        for idx in s:
+            if self.targets[idx].overlap == False:
+                # s contains the index of all targets. If a target with index idx has overlap False, we need to intialize the dictionaries containing
+                # overlap information for later. This includes the overlap of idx with all others, as well as an entry of all other targets and their overlap with idx
+                # First create a copy of the target indexs
+                tmp_s = s.copy()
+                # Now remove idx, so that we can loop over i where i!=j in an efficient way.
+                del(tmp_s[idx])
+                for j in tmp_s:
+                    if j != idx:
+                        overlap[self.targets[j].name][self.targets[idx].name] = numpy.full(len(self.pointings[j][:].ra), False)
+                        overlap[self.targets[idx].name][self.targets[j].name] = numpy.full(len(self.pointings[idx][:].ra), False)
 
         #import spherical geometry routine to use for calculating polygons in spherical coordinates
         from spherical_geometry import polygon as spherical_geometry_polygon
 
-        for i_i, i in enumerate(sorted_indices[:-1]):
+        for index_of_i, target_index_i in enumerate(sorted_indices[:-1]):
 
-            if self.targets[i].overlap:
+            if self.targets[target_index_i].overlap:
                 # i has the highest priority because of the [::-1] reversal of the priority list
 
-                if self.targets[i].region.region_type == 'circle':
-                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[i].region.coords.transform_to('icrs').ra.deg,
-                    self.targets[i].region.coords.transform_to('icrs').dec.deg,\
-                    self.targets[i].region.r.deg,
+                if self.targets[target_index_i].region.region_type == 'circle':
+                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[target_index_i].region.coords.transform_to('icrs').ra.deg,
+                    self.targets[target_index_i].region.coords.transform_to('icrs').dec.deg,\
+                    self.targets[target_index_i].region.r.deg,
                     degrees=True)
 
-                elif self.targets[i].region.region_type == 'rectangle':
+                elif self.targets[target_index_i].region.region_type == 'rectangle':
                     # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                    shapely_i = self.targets[i].region.shapely
+                    shapely_i = self.targets[target_index_i].region.shapely
 
                     # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
                     # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
@@ -271,12 +283,12 @@ class Scheduler(object):
                     x_i, y_i = shapely_i.exterior.coords.xy
 
                     per_x, per_y = polygon_perimeter(x_i, y_i)
-                    c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[i].frame)
+                    c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[target_index_i].frame)
                     poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
 
                 else:
                     # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                    shapely_i = self.targets[i].region.shapely
+                    shapely_i = self.targets[target_index_i].region.shapely
 
                     # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
                     # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
@@ -285,14 +297,14 @@ class Scheduler(object):
 
                     # Convert the coordinates of the polygon into SkyCoordinates
                     # This logical statemetns that check for the type of coordinate
-                    c_i = astropy.coordinates.SkyCoord(x_i*u.degree, y_i*u.degree, frame=self.targets[i].frame)
+                    c_i = astropy.coordinates.SkyCoord(x_i*u.degree, y_i*u.degree, frame=self.targets[target_index_i].frame)
 
                     # Convert the x-y coordinates, now in SkyCoordinates into polygons in icrs. 
                     # This ensures that independent of what ever coordinate system i or j are in that the comparison is in the correct frame
                     poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_i.transform_to('icrs').ra.deg, c_i.transform_to('icrs').dec.deg)
 
 
-                for j in sorted_indices[i_i + 1:]:
+                for j in sorted_indices[index_of_i + 1:]:
                     if self.targets[j].overlap:
                         # j has a lower priority. So we are masking j with i
                         if self.targets[j].region.region_type == 'circle':
@@ -308,7 +320,7 @@ class Scheduler(object):
                             x_j, y_j = shapely_j.exterior.coords.xy
 
                             per_x, per_y = polygon_perimeter(x_j, y_j)
-                            c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[i].frame)
+                            c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[target_index_i].frame)
                             poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
 
                         else:
@@ -343,26 +355,26 @@ class Scheduler(object):
                             lat_j = self.pointings[j][:].dec.deg
 
                             #Initialize array to True. This doesn't matter. We loop over all values anyway, but it's nice.
-                            overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra),
+                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.pointings[j][:].ra),
                                                                     False)
                             t_start = time.time()
                             # Check array to see which is false.
                             for k in range(len(lon_j)):
                                 contains_True_False = poly_i.contains_radec(lon_j[k], lat_j[k], degrees=True)
 
-                                overlap[names[j]][names[i]][k] = numpy.logical_not(contains_True_False)
+                                overlap[names[j]][names[target_index_i]][k] = numpy.logical_not(contains_True_False)
 
                                 if contains_True_False and (self.verbos_level >= 2):
-                                    print("%s x %s overlap at %f, %f"%(self.targets[i].name, self.targets[j].name, lon_j[k], lat_j[k]))
+                                    print("%s x %s overlap at %f, %f"%(self.targets[target_index_i].name, self.targets[j].name, lon_j[k], lat_j[k]))
                             
                             if self.verbos_level >=1:
-                                print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[i].name, self.targets[j].name, time.time()-t_start))
+                                print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[target_index_i].name, self.targets[j].name, time.time()-t_start))
                         else:
-                            overlap[names[j]][names[i]] = numpy.full(len(self.pointings[j][:].ra),
+                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.pointings[j][:].ra),
                                                                     True)
 
-                # For functional use, create a global overlap mask, to be used when scheduling
-                overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[i]]
+                        # For functional use, create a global overlap mask, to be used when scheduling
+                        overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[target_index_i]]
 
         return overlap
 
