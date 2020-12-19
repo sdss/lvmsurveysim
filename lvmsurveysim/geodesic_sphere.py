@@ -71,11 +71,46 @@ def vecs_to_lists(vecs):
    z = [v.z for v in vecs]
    return x, y, z
 
+
+
+def sphere(N):
+   x = np.array([])
+   y = np.array([])
+   z = np.array([])
+
+   for t in np.linspace(0, 1, N):
+      theta = np.pi * t # from 0 to pi
+      N_ring = int(N * np.abs(np.sin(theta)))
+      # d_angle = 2*np.pi / N_ring/ 2.0
+      # phis_ring = np.linspace(d_angle, 2*np.pi + d_angle, N_ring)
+      phis_ring = np.linspace(0, 2 * np.pi, N_ring, endpoint=True)
+      tmp1_x = np.zeros(N_ring)
+      tmp1_y = np.zeros(N_ring)
+      tmp1_z = np.zeros(N_ring)
+      for i, phi_ring in enumerate(phis_ring):
+            tmp1_x[i] = np.sin(theta) * np.cos(phi_ring)
+            tmp1_y[i] = np.sin(theta) * np.sin(phi_ring)
+            tmp1_z[i] = np.cos(theta)
+      x = np.append(x, tmp1_x)
+      y = np.append(y, tmp1_y)
+      z = np.append(z, tmp1_z)
+   return x,y,z
+
+
 # test stuff
 
 # import matplotlib.pyplot as plt
 
-# def test(depth):
+# def test_sphere(N):
+#    import matplotlib.pyplot as plt
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d')
+#    x,y,z = sphere(N)
+#    ax.scatter(xs=x, ys=y, zs=z, zdir='z', s=2, c=None, depthshade=True)
+#    return fig
+
+
+# def test_geosphere(depth):
 #    s = initialize_sphere(depth)
 #    print(np.arccos(s[6].dot(s[7])) / np.pi * 180)
 #    x, y, z = vecs_to_lists(s)
