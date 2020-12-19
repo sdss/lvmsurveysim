@@ -34,5 +34,5 @@ observing_plan:
         good_weather: 0.7
 
 scheduler:
-    zenith_avoidance: 5
+    zenith_avoidance: 0.0
     timestep: 900
