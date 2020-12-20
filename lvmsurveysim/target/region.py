@@ -258,6 +258,7 @@ class Region(object, metaclass=RegionABC):
         vertices = [[], [], []]
 
         for idx in range(len(x)):
+            #TODO: this should not be appending every idx. If append is required, then create an array idx long and append 1x
 
             x0 = x[idx]
             y0 = y[idx]
