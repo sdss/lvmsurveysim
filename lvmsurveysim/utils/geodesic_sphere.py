@@ -74,6 +74,13 @@ def vecs_to_lists(vecs):
 
 
 def sphere(N):
+   '''
+   Simple tiling of the sphere by uniformly distributing N
+   samples in theta and N * sin(theta) in phi on a ring at each 
+   value of theta.
+
+   returns x,y,z coordinates on the unit sphere
+   '''
    x = np.array([])
    y = np.array([])
    z = np.array([])
