@@ -110,7 +110,6 @@ settings.json
 
 # Project generated files
 schedule_load.py
-schedule_run.py
 *.fits
 *.npy
 *.mp4
