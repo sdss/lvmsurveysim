@@ -53,8 +53,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'lvmsurveysim'
-copyright = u'2017, José Sánchez-Gallego'
-author = u'José Sánchez-Gallego'
+copyright = u'2017-2021 Niv Drory, Eric Pellegrini, José Sánchez-Gallego'
+author = u'Niv Drory, Eric Pellegrini, José Sánchez-Gallego'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
