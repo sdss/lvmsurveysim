@@ -79,7 +79,12 @@ def get_axes(projection='rectangular', frame='icrs', ylim=None):
                 tickStr.append('')
                 tickStr.append('${0:d}^h$'.format(tick_label))
 
-            ax.set_xticklabels(tickStr)  # we add the scale on the x axis
+            # Bug fix: if we have an even number of ticklabels, starting at 1 and skipping ever other will produce a mismatch in the number of tics and lables. 
+            # Temporary fix, try to set them, but don't break if the mismatch exists.
+            try:
+                ax.set_xticklabels(tickStr)  # we add the scale on the x axis
+            except:
+                pass
             ax.grid(True)
 
         else:
