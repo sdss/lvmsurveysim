@@ -6,9 +6,8 @@
 #os.environ["LVMCORE_DIR"] = "/Users/droryn/prog/lvm/lvmcore/"
 #https://in-the-sky.org/skymap2.php?year=2019&month=11&day=11&town=3884373
 #https://lambda.gsfc.nasa.gov/product/foreground/fg_halpha_get.cfm
-from lvmsurveysim.schedule import ObservingPlan, Scheduler
+from lvmsurveysim.schedule import ObservingPlan, Scheduler, TileDB
 from lvmsurveysim.target import TargetList
-import numpy as np
 import matplotlib.pyplot as plt
 
 #np.seterr(invalid='raise')
@@ -16,6 +15,12 @@ import matplotlib.pyplot as plt
 # Creates a list of targets/
 print('Creating target list ...')
 targets = TargetList(target_file='./targets.yaml')
+# Create tile database
+print('Creating tile database ...')
+tiledb = TileDB.load('lco_tiledb')
+#tiledb = TileDB(targets)
+#tiledb.tile_targets()
+#tiledb.save('lco_tiledb', overwrite=True)
 # Creates observing plans for APO and LCO for the range sep 2021 - jun 2025.
 print('Creating observing plans ...')
 lco_plan = ObservingPlan(2459458, 2460856, observatory='LCO') # baseline
@@ -25,16 +30,16 @@ lco_plan = ObservingPlan(2459458, 2460856, observatory='LCO') # baseline
 # Creates an Scheduler instance and runs the simulation
 print('Creating Scheduler ...')
 #scheduler = Scheduler(targets, observing_plans=[apo_plan,lco_plan])
-scheduler = Scheduler(targets, observing_plans=[lco_plan], verbos_level=1)
+scheduler = Scheduler(tiledb, observing_plans=[lco_plan], verbos_level=1)
 scheduler.run(progress_bar=True)
 
-# Save as FITS table
-#scheduler.save('lvmsurveysim_hz_1000', overwrite=True)
-# Load from as FITS table in a later session, no need to rerun:
-#scheduler=Scheduler.load('lvmsurveysim_hz_1000')
+# Load/Save from as FITS table in a later session, no need to rerun:
+# scheduler = Scheduler.load('lvmsurveysim_hz_1000')
+# scheduler.save('lvmsurveysim_hz_1000', overwrite=True) # Save as FITS table
+
+save=False
 
 # Plot and print:
-save=False
 scheduler.print_statistics()
 scheduler.plot_survey('LCO', use_groups=True)
 if save: plt.savefig('LCO_jd_1000.pdf')
