@@ -137,7 +137,10 @@ class TileDB(object):
                                 'targets with higher priority.', LVMSurveySimWarning)
 
 
-    def create_tile_table(self):        
+    def create_tile_table(self):
+        '''
+        Collect tile data and convert reformat into an astropy.Table instance.
+        '''        
         # Sorted list of target numbers which we will use to create master arrays of data we need
         # for scheduling
         s = sorted(self.tiles)
