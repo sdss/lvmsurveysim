@@ -9,7 +9,7 @@
 
 
 #
-#
+# Database holding a list of tiles to observe. Persistence is provided as load() and save() methods.
 #
 
 
@@ -61,7 +61,8 @@ def polygon_perimeter(x, y, n=1.0, min_points=5):
 
 
 class TileDB(object):
-    """Interfaces a database holding a list of tiles to observe
+    """Database holding a list of tiles to observe. Persistence is provided as
+    load() and save() methods.
 
     example usage:
         # tile a survey and save:
@@ -82,7 +83,18 @@ class TileDB(object):
         An astropy table with the results of tiling the target list. Includes
         coordinates, priorities, and observing constraints for each unique tile.
     """
+
     def __init__(self, targets):
+        """
+        Create a TileDB instance.
+
+        Parameters
+        ----------
+        targets : ~lvmsurveysim.target.target.TargetList
+            The `~lvmsuveysim.target.target.TargetList` object with the list of
+            targets of the survey.
+        """
+        assert isinstance(targets, lvmsurveysim.target.TargetList), "TargetList object expected in ctor of TileDB"
         self.targets = targets
         self.tiles = []
         self.tile_priorities = []
@@ -96,13 +108,19 @@ class TileDB(object):
         '''
         Tile a set of Targets with a given IFU. Overlapping targets are tiled such
         that the tiles in the higher priority target are retained.
+
+        Parameters
+        ----------
+        ifu : ~lvmsurveysim.target.ifu.IFU
+            The `~lvmsurveysim.target.ifu.IFU` object representing the IFU geometry
+            to tile with. If None, it will be read from the config file.
         '''
         self.ifu = ifu or IFU.from_config()
 
         # dict of target-number to list of astropy.SkyCoord
-        self.tiles = targets.get_tiling(ifu=self.ifu, to_frame='icrs')
+        self.tiles = self.targets.get_tiling(ifu=self.ifu, to_frame='icrs')
         # dict of target-number to nmpy.array of priorities
-        self.tile_priorities = targets.get_tile_priorities()
+        self.tile_priorities = self.targets.get_tile_priorities()
 
         self.tiling_type = 'hexagonal'
 
