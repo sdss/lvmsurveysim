@@ -17,12 +17,11 @@ import astropy
 import cycler
 import matplotlib.pyplot as plt
 import numpy
-import shapely.vectorized
 from matplotlib import animation
 from astropy import units as u
 
 import lvmsurveysim.target
-import lvmsurveysim.utils.spherical
+from lvmsurveysim.schedule.tiledb import TileDB
 from lvmsurveysim import IFU, config, log
 from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
 from lvmsurveysim.schedule.plan import ObservingPlan
@@ -46,30 +45,6 @@ __all__ = ['Scheduler', 'AltitudeCalculator']
 __ZENITH_AVOIDANCE__ = config['scheduler']['zenith_avoidance']
 __DEFAULT_TIME_STEP__ = config['scheduler']['timestep']
 
-def polygon_perimeter(x, y, n=1.0, min_points=5):
-    """ x and y are numpy type arrays. Function returns perimiter values every n-degree in length"""
-    x_perimeter = numpy.array([])
-    y_perimeter = numpy.array([])
-    for x1,x2,y1,y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
-        # Calculate the length of a segment, hopefully in degrees
-        dl = ((x2-x1)**2 + (y2-y1)**2)**0.5
-
-        n_dl = numpy.max([int(dl/n), min_points])
-        
-        if x1 != x2:
-            m = (y2-y1)/(x2-x1)
-            b = y2 - m*x2
-
-            interp_x = numpy.linspace(x1, x2, num=n_dl, endpoint=False)
-            interp_y = interp_x * m + b
-        
-        else:
-            interp_x = numpy.full(n_dl, x1)
-            interp_y = numpy.linspace(y1,y2, n_dl, endpoint=False)
-
-        x_perimeter = numpy.append(x_perimeter, interp_x)
-        y_perimeter = numpy.append(y_perimeter, interp_y)
-    return(x_perimeter, y_perimeter)
 
 class AltitudeCalculator(object):
     """Calculate the altitude of a constant set of objects at some global JD,
@@ -114,7 +89,7 @@ class AltitudeCalculator(object):
 
         """
 
-        if jd is not None:
+        if jd != None:
             dd = jd - 2451545.0
             lmst_rad = numpy.deg2rad(
                 (280.46061837 + 360.98564736629 * dd +
@@ -135,38 +110,31 @@ class Scheduler(object):
 
     Parameters
     ----------
-    targets : ~lvmsurveysim.target.target.TargetList
-        The `~lvmsuveysim.target.target.TargetList` object with the list of
-        targets to schedule.
+    tiledb : ~lvmsurveysim.schedule.tiledb.TileDB
+        The `~lvmsurveysim.schedule.tiledb.TileDB` instance with the table of
+        tiles to schedule.
     observing_plans : list of `.ObservingPlan` or None
         A list with the `.ObservingPlan` to use (one for each observatory).
         If `None`, the list will be created from the ``observing_plan``
         section in the configuration file.
     ifu : ~lvmsurveysim.ifu.IFU
         The `~lvmsurveysim.ifu.IFU` to use. Defaults to the one from the
-        configuration file.
-    remove_overlap : bool
-        If set, removes pointings in regions that overlap with other regions
-        with higher priority.
+        configuration file. Used only for plotting the survey footprint.
 
     Attributes
     ----------
-    overlap : dict
-        A dictionary with the masks of pointing overlaps between regions, and
-        the global no overlap mask for each region.
-    pointings : dict
-        A dictionary with the pointings for each one of the targets in
-        ``targets``. It is the direct result of calling
-        `TargetList.get_tiling
-        <lvmsurveysim.target.target.TargetList.get_tiling>`.
+    tiledb : ~lvmsurveysim.schedule.tiledb.TileDB
+        Instance of the tile database to observe.
     schedule : ~astropy.table.Table
         An astropy table with the results of the scheduling. Includes
         information about the JD of each observation, the target observed,
         the index of the pointing in the target tiling, coordinates, etc.
-
     """
 
-    def __init__(self, targets, observing_plans=None, ifu=None, remove_overlap=True, overlap=None, verbos_level=0):
+    def __init__(self, tiledb, observing_plans=None, ifu=None, verbos_level=0):
+
+        assert isinstance(tiledb, lvmsurveysim.schedule.tiledb.TileDB), \
+            'tiledb must be a lvmsurveysim.schedule.tiledb.TileDB instances.'
 
         if observing_plans is None:
             observing_plans = self._create_observing_plans()
@@ -179,13 +147,10 @@ class Scheduler(object):
                 'one of the items in observing_plans is not an instance of ObservingPlan.'
 
         self.observing_plans = observing_plans
-
-        self.targets = targets
+        self.tiledb = tiledb
+        self.targets = tiledb.targets
         self.ifu = ifu or IFU.from_config()
 
-        self.pointings = targets.get_tiling(ifu=self.ifu, to_frame='icrs')
-        self.tile_priorities = targets.get_tile_priorities()
-        self.tiling_type = 'hexagonal'
         self.verbos_level = verbos_level
 
         # init shadow height calculator, TODO: allow multiple observatories!
@@ -195,204 +160,25 @@ class Scheduler(object):
                                 observatory_lat='29.0146S', observatory_lon='70.6926W',
                                 eph=eph, earth=eph['earth'], sun=eph['sun'])
 
-        # Calculate overlap but don't apply the masks
-        self.overlap = overlap or self.get_overlap()
-
-        # Remove pointings that overlap with other regions.
-        if remove_overlap:
-
-            for ii in self.pointings:
-                tname = self.targets[ii].name
-
-                # Remove the overlapping tiles from the pointings and
-                # remove their tile priorities.
-                self.pointings[ii] = self.pointings[ii][
-                    self.overlap[tname]['global_no_overlap']]
-                self.tile_priorities[ii] = self.tile_priorities[ii][
-                    self.overlap[tname]['global_no_overlap']]
-
-                if len(self.pointings[ii]) == 0:
-                    warnings.warn(f'target {tname} completely overlaps with other '
-                                  'targets with higher priority.', LVMSurveySimWarning)
-
         self.schedule = None
 
     def __repr__(self):
 
         return (f'<Scheduler (observing_plans={len(self.observing_plans)}, '
-                f'n_target={len(self.pointings)})>')
+                f'tiles={len(self.tiledb)})>')
 
-    def get_overlap(self):
-        """Returns a dictionary of masks with the overlap between regions."""
-
-        overlap = {}
-
-        # Sort priorities.
-        s = sorted(self.pointings)
-
-        # Create an array of pointing to priority, one per target
-        priorities = numpy.array([self.targets[idx].priority for idx in s])
-
-        # Save the names ... why not
-        names = numpy.array([self.targets[idx].name for idx in s])
-
-        sorted_indices = numpy.argsort(priorities)[::-1]
-
-        # Initialise the overlap dictionaries. Set the global_no_overlap to
-        # True for all the pointings in the target tiling
-        for idx in s:
-            overlap[self.targets[idx].name] = {}
-            overlap[self.targets[idx].name]['global_no_overlap'] = numpy.ones(len(self.pointings[idx]),
-                                                            dtype=numpy.bool)
-
-        # With all the dictionaries created overlap[target_name] we can now store overlap information between targets
-        for idx in s:
-            if self.targets[idx].overlap == False:
-                # s contains the index of all targets. If a target with index idx has overlap False, we need to intialize the dictionaries containing
-                # overlap information for later. This includes the overlap of idx with all others, as well as an entry of all other targets and their overlap with idx
-                # First create a copy of the target indexs
-                tmp_s = s.copy()
-                # Now remove idx, so that we can loop over i where i!=j in an efficient way.
-                del(tmp_s[idx])
-                for j in tmp_s:
-                    if j != idx:
-                        overlap[self.targets[j].name][self.targets[idx].name] = numpy.full(len(self.pointings[j][:].ra), False)
-                        overlap[self.targets[idx].name][self.targets[j].name] = numpy.full(len(self.pointings[idx][:].ra), False)
-
-        #import spherical geometry routine to use for calculating polygons in spherical coordinates
-        from spherical_geometry import polygon as spherical_geometry_polygon
-
-        for index_of_i, target_index_i in enumerate(sorted_indices[:-1]):
-
-            if self.targets[target_index_i].overlap:
-                # i has the highest priority because of the [::-1] reversal of the priority list
-
-                if self.targets[target_index_i].region.region_type == 'circle':
-                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[target_index_i].region.coords.transform_to('icrs').ra.deg,
-                    self.targets[target_index_i].region.coords.transform_to('icrs').dec.deg,\
-                    self.targets[target_index_i].region.r.deg,
-                    degrees=True)
-
-                elif self.targets[target_index_i].region.region_type == 'rectangle':
-                    # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                    shapely_i = self.targets[target_index_i].region.shapely
-
-                    # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                    # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                    # Get the x-y coordinates which define the polygon of the region.
-                    x_i, y_i = shapely_i.exterior.coords.xy
-
-                    per_x, per_y = polygon_perimeter(x_i, y_i)
-                    c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[target_index_i].frame)
-                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
-
-                else:
-                    # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                    shapely_i = self.targets[target_index_i].region.shapely
-
-                    # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                    # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                    # Get the x-y coordinates which define the polygon of the region.
-                    x_i, y_i = shapely_i.exterior.coords.xy
-
-                    # Convert the coordinates of the polygon into SkyCoordinates
-                    # This logical statemetns that check for the type of coordinate
-                    c_i = astropy.coordinates.SkyCoord(x_i*u.degree, y_i*u.degree, frame=self.targets[target_index_i].frame)
-
-                    # Convert the x-y coordinates, now in SkyCoordinates into polygons in icrs. 
-                    # This ensures that independent of what ever coordinate system i or j are in that the comparison is in the correct frame
-                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_i.transform_to('icrs').ra.deg, c_i.transform_to('icrs').dec.deg)
-
-
-                for j in sorted_indices[index_of_i + 1:]:
-                    if self.targets[j].overlap:
-                        # j has a lower priority. So we are masking j with i
-                        if self.targets[j].region.region_type == 'circle':
-                            poly_j = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[j].region.coords.transform_to('icrs').ra.deg, self.targets[j].region.coords.transform_to('icrs').dec.deg, self.targets[j].region.r.deg, degrees=True)
-
-                        elif self.targets[j].region.region_type == 'rectangle':
-                            # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                            shapely_j = self.targets[j].region.shapely
-
-                            # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                            # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                            # Get the x-y coordinates which define the polygon of the region.
-                            x_j, y_j = shapely_j.exterior.coords.xy
-
-                            per_x, per_y = polygon_perimeter(x_j, y_j)
-                            c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[target_index_i].frame)
-                            poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
-
-                        else:
-                            # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly 
-                            shapely_j = self.targets[j].region.shapely
-                            
-                            # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                            # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                            # Get the x-y coordinates which define the polygon of the region.
-                            x_j, y_j = shapely_j.exterior.coords.xy
-
-                            # Convert the coordinates of the polygon into SkyCoordinates
-                            # This logical statemetns that check for the type of coordinate
-                            c_j = astropy.coordinates.SkyCoord(x_j*u.degree, y_j*u.degree, frame=self.targets[j].frame)
-
-                            # Convert the x-y coordinates, now in SkyCoordinates into polygons in icrs. 
-                            # This ensures that independent of what ever coordinate system i or j are in that the comparison is in the correct frame
-                            poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_j.transform_to('icrs').ra.deg, c_j.transform_to('icrs').dec.deg)
-
-                        # Use the spherical polygon intersection routine, replacing shapely which only works on cartesian grids.
-                        # short circuit the calculation on the tiles if the shapes do not overlap
-                        may_overlap = poly_i.intersects_poly(poly_j)
-
-                        # Note before proceeding to the next code block, if you are familiar with previous methods, we no longer have a miss match between
-                        # the region polygon coordinate frame and the coordinate frame of the tiles. Everything is converted to ICRS. This prevents us from having to convert everything
-                        # to galactic and store values, which took a lot of time for larger targets. This change seems to have off set the cost of looping over all tiles to calculate 
-                        # if it is contained by another target.
-
-                        if may_overlap is True:
-                            # shapes overlap, so now find all pointings of j that are within i:
-                            lon_j = self.pointings[j][:].ra.deg
-                            lat_j = self.pointings[j][:].dec.deg
-
-                            #Initialize array to True. This doesn't matter. We loop over all values anyway, but it's nice.
-                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.pointings[j][:].ra),
-                                                                    False)
-                            t_start = time.time()
-                            # Check array to see which is false.
-                            for k in range(len(lon_j)):
-                                contains_True_False = poly_i.contains_radec(lon_j[k], lat_j[k], degrees=True)
-
-                                overlap[names[j]][names[target_index_i]][k] = numpy.logical_not(contains_True_False)
-
-                                if contains_True_False and (self.verbos_level >= 2):
-                                    print("%s x %s overlap at %f, %f"%(self.targets[target_index_i].name, self.targets[j].name, lon_j[k], lat_j[k]))
-                            
-                            if self.verbos_level >=1:
-                                print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[target_index_i].name, self.targets[j].name, time.time()-t_start))
-                        else:
-                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.pointings[j][:].ra),
-                                                                    True)
-
-                        # For functional use, create a global overlap mask, to be used when scheduling
-                        overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[target_index_i]]
-
-        return overlap
 
     def save(self, path, overwrite=False):
-        """Saves the results to two files one FITS the other NPY.
-        The FITS file contains the schedule while the npy file contains
-        the overlap regions. The latter take too long to compute ..."""
-
+        """
+        Saves the results of the scheduling simulation to a FITS file.
+        """
         assert isinstance(self.schedule, astropy.table.Table), \
             'cannot save empty schedule. Execute Scheduler.run() first.'
 
-        targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
+        targfile = str(self.targets.filename) if self.targets.filename != None else 'NA'
         self.schedule.meta['targfile'] = targfile
 
-        self.schedule.meta['tiletype'] = self.tiling_type
-
         self.schedule.write(path+'.fits', format='fits', overwrite=overwrite)
-        numpy.save(path+'.npy', self.overlap)
 
     @classmethod
     def load(cls, path, targets=None, observing_plans=None, verbos_level=0):
@@ -420,7 +206,7 @@ class Scheduler(object):
         targets = targets or targfile
 
         if not isinstance(targets, lvmsurveysim.target.TargetList):
-            assert targets is not None and targets != 'NA', \
+            assert targets != None and targets != 'NA', \
                 'invalid or unavailable target file path.'
 
             if not os.path.exists(targets):
@@ -432,15 +218,7 @@ class Scheduler(object):
 
         observing_plans = observing_plans or []
 
-        tiling_type = schedule.meta.get('TILETYPE', None)
-        if tiling_type is None:
-            tiling_type = 'hexagonal'
-            warnings.warn('No TILETYPE found in schedule file. '
-                          'Assuming hexagonal tiling.', LVMSurveySimWarning)
-
-        overlap = numpy.load(path+'.npy', allow_pickle='TRUE').item()
-
-        scheduler = cls(targets, observing_plans=observing_plans, overlap=overlap, verbos_level=verbos_level)
+        scheduler = cls(targets, observing_plans=observing_plans, verbos_level=verbos_level)
         scheduler.schedule = schedule
 
         return scheduler
@@ -563,7 +341,7 @@ class Scheduler(object):
                 for patch in patches:
                     ax.add_patch(patch)
 
-        if observatory is not None:
+        if observatory != None:
             ax.set_title(f'Observatory: {observatory}')
 
         return fig
@@ -598,65 +376,14 @@ class Scheduler(object):
         # this an Astropy Table.
         self.schedule = []
 
-        # Create some master arrays with all the pointings for convenience.
-        s = sorted(self.pointings)
+        # shortcut
+        tdb = self.tiledb.tile_table
+        # observed exposure time for each pointing
+        observed = numpy.zeros(len(tdb), dtype=numpy.float)
 
-        # An array with the length of all the pointings indicating the index
-        # of the target it correspond to.
-        index_to_target = numpy.concatenate([numpy.repeat(idx, len(self.pointings[idx]))
-                                             for idx in s])
-
-        # All the coordinates
-        coordinates = numpy.vstack(
-            [numpy.array([self.pointings[idx].ra.deg, self.pointings[idx].dec.deg]).T
-             for idx in s])
-
-        # Create an array of the target's priority for each pointing
-        priorities = numpy.concatenate([numpy.repeat(self.targets[idx].priority,
-                                        len(self.pointings[idx]))
-                                        for idx in s])
-
-        # Array with the individual tile priorities
-        tile_prio = numpy.concatenate([self.tile_priorities[idx] for idx in s])
-
-        # Array with the total exposure time for each tile
-        target_exposure_times = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].n_exposures,
-                          len(self.pointings[idx]))
-             for idx in s])
-
-        # Array with exposure quanta (the minimum time to spend on a tile)
-        exposure_quantums = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].min_exposures,
-                          len(self.pointings[idx]))
-             for idx in s])
-
-        # Array with the airmass limit for each pointing
-        max_airmass_to_target = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].max_airmass, len(self.pointings[idx]))
-             for idx in s])
-
-        # Array with the airmass limit for each pointing
-        min_shadowheight_to_target = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].min_shadowheight, len(self.pointings[idx]))
-             for idx in s])
-
-        # Array with the airmass limit for each pointing
-        min_moon_to_target = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].min_moon_dist, len(self.pointings[idx]))
-             for idx in s])
-
-        # Array with the lunation limit for each pointing
-        max_lunation = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].max_lunation, len(self.pointings[idx]))
-             for idx in s])
-
-        # Mask with observed exposure time for each pointing
-        observed = numpy.zeros(len(index_to_target), dtype=numpy.float)
-
+        # range of dates for the survey
         min_date = numpy.min([numpy.min(plan['JD']) for plan in self.observing_plans])
         max_date = numpy.max([numpy.max(plan['JD']) for plan in self.observing_plans])
-
         dates = range(min_date, max_date + 1)
 
         if progress_bar:
@@ -676,9 +403,9 @@ class Scheduler(object):
                     continue
 
                 observed += self.schedule_one_night(
-                    jd, plan, index_to_target, max_airmass_to_target, min_shadowheight_to_target,
-                    priorities, tile_prio, coordinates, target_exposure_times,
-                    exposure_quantums, min_moon_to_target, max_lunation,
+                    jd, plan, tdb['TargetIndex'].data, tdb['RA'].data, tdb['DEC'].data,
+                    tdb['AirmassLimit'].data, tdb['HzLimit'].data, tdb['TargetPriority'].data, tdb['TilePriority'].data,
+                    tdb['TotalExptime'].data, tdb['VisitExptime'].data, tdb['MoonDistanceLimit'].data, tdb['LunationLimit'].data,
                     observed, **kwargs)
 
         # Convert schedule to Astropy Table.
@@ -690,8 +417,8 @@ class Scheduler(object):
             dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
                 float, float, float, float, float, float])
 
-    def schedule_one_night(self, jd, plan, index_to_target, max_airmass_to_target, min_shadowheight_to_target,
-                           target_priorities, tile_prio, coordinates, target_exposure_times,
+    def schedule_one_night(self, jd, plan, index_to_target, ra, dec, max_airmass_to_target, min_shadowheight_to_target,
+                           target_priorities, tile_prio, target_exposure_times,
                            exposure_quantums, target_min_moon_dist, max_lunation,
                            observed, zenith_avoidance=__ZENITH_AVOIDANCE__):
         """Schedules a single night at a single observatory.
@@ -707,15 +434,14 @@ class Scheduler(object):
         index_to_target : ~numpy.ndarray
             An array with the length of all the pointings indicating the index
             of the target it correspond to.
+        ra, dec ~numpu.ndarray
+            RA and DEC of tiles in degrees
         priorities : ~numpy.ndarray
             An array with the length of all the pointings indicating the
             priority of the target.
         tile_prio : ~numpy.ndarray
             An array with the length of all the pointings indicating the
             priority of the individual tiles.
-        coordinates : ~astropy.coordinates.SkyCoord
-            The coordinates of each one of the pointings, in the ICRS frame.
-            The ordering of the coordinates is the same as in ``target_index``.
         target_exposure_times : ~numpy.ndarray
             An array with the length of all pointings with total desired
             exposure time in s for each tile.
@@ -764,17 +490,16 @@ class Scheduler(object):
         lunation = night_plan['moon_phase'][0]
 
         moon_to_pointings = lvmsurveysim.utils.spherical.great_circle_distance(
-            night_plan['moon_ra'], night_plan['moon_dec'],
-            coordinates[:, 0], coordinates[:, 1])
+            night_plan['moon_ra'], night_plan['moon_dec'], ra, dec)
 
         # set the coordinates to all targets in shadow height calculator
-        self.shadow_calc.set_coordinates(numpy.array(coordinates[:,0]), numpy.array(coordinates[:,1]))
+        self.shadow_calc.set_coordinates(ra, dec)
 
         # The additional exposure time in this night
         new_observed = observed * 0.0
 
-        # Get the coordinates in radians, this speeds up the altitude calculation
-        ac = AltitudeCalculator(coordinates[:, 0], coordinates[:, 1], lon, lat)
+        # Fast altitude calculator
+        ac = AltitudeCalculator(ra, dec, lon, lat)
 
         # convert airmass to altitude, we'll work in altitude space for efficiency
         min_alt_for_target = 90.0 - numpy.rad2deg(numpy.arccos(1.0 / max_airmass_to_target))
@@ -900,8 +625,8 @@ class Scheduler(object):
                                          target_name=target_name,
                                          target_group=target_group,
                                          pointing_index=pointing_index,
-                                         ra=coordinates[observed_idx, 0], 
-                                         dec=coordinates[observed_idx, 1],
+                                         ra=ra[observed_idx], 
+                                         dec=dec[observed_idx],
                                          airmass=airmass,
                                          lunation=lunation,
                                          shadow_height= hz[observed_idx], #hz[valid_priority_idx[obs_tile_idx]],
@@ -970,7 +695,7 @@ class Scheduler(object):
         if observatory:
             t = t[t['observatory'] == observatory]
 
-        if lunation is not None:
+        if lunation != None:
             t = t[(t['lunation'] > lunation[0]) * (t['lunation'] <= lunation[1])]
 
         if return_lst:
@@ -1014,7 +739,7 @@ class Scheduler(object):
             if (tname != '-'):
                 target = self.targets[i]
                 tile_area[tname] = target.get_pixarea(ifu=self.ifu)
-                target_ntiles[tname] = len(self.pointings[i])
+                target_ntiles[tname] = len(numpy.where(self.tiledb.tile_table['TargetIndex'] == i)[0])
                 target_nvisits[tname] = float(target.n_exposures / target.min_exposures)
             else:
                 tile_area[tname] = -999
@@ -1055,10 +780,10 @@ class Scheduler(object):
                                            'exptime/h', 'timefrac', 'area', 'areafrac'],
                                     dtype=('S8', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
 
-        print('%s :' % (observatory if observatory is not None else 'APO+LCO'))
+        print('%s :' % (observatory if observatory != None else 'APO+LCO'))
         stats.pprint(max_lines=-1, max_width=-1)
 
-        if out_file is not None:
+        if out_file != None:
             stats.write(out_file, format=out_format, overwrite=overwrite_out)
 
         if return_table:
@@ -1120,7 +845,7 @@ class Scheduler(object):
             The Matplotlib figure of the plot.
         """
 
-        assert self.schedule is not None, 'you still have not run a simulation.'
+        assert self.schedule != None, 'you still have not run a simulation.'
 
         if not targets:
             targets = [target.name for target in self.targets]
@@ -1131,7 +856,7 @@ class Scheduler(object):
             bin_size = 1. if bin_size == 30. else bin_size
             assert cumulative is False, 'cumulative cannot be used with lst=True.'
 
-        if cumulative is not False:
+        if cumulative != False:
             bin_size = 1
 
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -1179,8 +904,7 @@ class Scheduler(object):
                 tindex = [target.name for target in self.targets].index(tname)
 
                 # plot each target
-                tt = self.get_target_time(tname, observatory=observatory,
-                                          lunation=lunation, return_lst=lst)
+                tt = self.get_target_time(tname, observatory=observatory, lunation=lunation, return_lst=lst)
 
                 if len(tt) == 0:
                     continue
@@ -1191,8 +915,8 @@ class Scheduler(object):
                 heights, bins = numpy.histogram(tt, bins=b)
                 heights = numpy.array(heights, dtype=float)
                 heights *= t.exptime * t.min_exposures / 3600.0
-
-                target_tot_time = len(self.pointings[tindex]) * t.exptime * t.n_exposures / 3600.
+                ntiles = len(numpy.where(self.tiledb.tile_table['TargetIndex'].data == tindex)[0])
+                target_tot_time = ntiles * t.exptime * t.n_exposures / 3600.
 
                 if skip_fast:
                     completion = heights.cumsum() / target_tot_time
@@ -1236,7 +960,7 @@ class Scheduler(object):
         elif cumulative == 'survey':
             ax.set_ylabel('Fraction of survey time spent on target')
 
-        ax.set_title(observatory if observatory is not None else 'APO+LCO')
+        ax.set_title(observatory if observatory != None else 'APO+LCO')
 
         if show_mpld3:
 
@@ -1410,7 +1134,7 @@ class Scheduler(object):
             plot cumulative histogram (>0), reverse accumulation (<0)
         """
         column = 'group' if group is True else 'target'
-        if tname is not None and tname is not 'ALL':
+        if tname != None and tname != 'ALL':
             t = self.schedule[self.schedule[column] == tname]
         else:
             t = self.schedule

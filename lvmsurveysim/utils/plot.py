@@ -75,8 +75,8 @@ def get_axes(projection='rectangular', frame='icrs', ylim=None):
             tick_labels = numpy.array(tick_labels / 15., int)
 
             tickStr = []
-            for tick_label in tick_labels[1::2]:
-                tickStr.append('')
+            for tick_label in tick_labels:
+                #tickStr.append('')
                 tickStr.append('${0:d}^h$'.format(tick_label))
 
             # Bug fix: if we have an even number of ticklabels, starting at 1 and skipping ever other will produce a mismatch in the number of tics and lables. 
