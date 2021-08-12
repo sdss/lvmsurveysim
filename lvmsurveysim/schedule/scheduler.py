@@ -598,7 +598,8 @@ class Scheduler(object):
         # this an Astropy Table.
         self.schedule = []
 
-        # Create some master arrays with all the pointings for convenience.
+        # Sorted list of target numbers which we will use to create master arrays of data we need
+        # for scheduling
         s = sorted(self.pointings)
 
         # An array with the length of all the pointings indicating the index
