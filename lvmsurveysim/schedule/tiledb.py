@@ -18,6 +18,7 @@ import numpy
 from astropy import units as u
 import time
 import os
+import hashlib
 import shapely.vectorized
 
 import lvmsurveysim.target
@@ -222,6 +223,8 @@ class TileDB(object):
             Overwrite the database file if it already exists. Default False
         """
         targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
+        targhash = self.md5(targfile)
+        self.tile_table.meta['targhash'] = targhash
         self.tile_table.meta['targfile'] = targfile
         self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
 
@@ -244,6 +247,7 @@ class TileDB(object):
         tile_table = astropy.table.Table.read(path+'.fits')
 
         targfile = tile_table.meta.get('TARGFILE', 'NA')
+        targhash = tile_table.meta.get('TARGHASH', 'NA')
         targets = targets or targfile
 
         if not isinstance(targets, lvmsurveysim.target.TargetList):
@@ -255,12 +259,22 @@ class TileDB(object):
                     f'the target file {targets!r} does not exists. '
                     'Please, call load with a targets parameter.')
 
+            assert targhash == cls.md5(targets), 'Target file md5 hash not identical to database value'
+
             targets = lvmsurveysim.target.TargetList(target_file=targets)
 
         tiledb = cls(targets)
         tiledb.tile_table = tile_table
 
         return tiledb
+
+    @classmethod
+    def md5(cls, fname):
+        hash_md5 = hashlib.md5()
+        with open(fname, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
 
 
     def get_overlap(self, verbose_level=1):
