@@ -113,28 +113,71 @@ class TileDB(object):
         self.create_tile_table()
 
 
-    def remove_overlap(self):
-        '''
-        Calculate and remove tiles in overlapping target regions. The tile belonging to the 
-        higher priority target is retained.
+    def save(self, path, overwrite=False):
+        """
+        Saves a tile database a FITS table.
 
-        Modifies the self.tiles and self.tile_priorities attributes to preserve a set of
-        non-overlapping tiles.
-        '''
-        # Calculate overlap but don't apply the masks
-        overlap = self.get_overlap()
+        Parameters
+        ----------
+        path : str or ~pathlib.Path
+            The path and basename of the tile database, no extension.
+            Expects to find 'path.fits'.
+        overwrite : bool
+            Overwrite the database file if it already exists. Default False
+        """
+        targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
+        targhash = self.md5(targfile)
+        self.tile_table.meta['targhash'] = targhash
+        self.tile_table.meta['targfile'] = targfile
+        self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
 
-        for ii in self.tiles:
-            tname = self.targets[ii].name
+    @classmethod
+    def load(cls, path, targets=None):
+        """Creates a new instance from a tile database FITS table file.
 
-            # Remove the overlapping tiles from the pointings and
-            # remove their tile priorities.
-            self.tiles[ii] = self.tiles[ii][overlap[tname]['global_no_overlap']]
-            self.tile_priorities[ii] = self.tile_priorities[ii][overlap[tname]['global_no_overlap']]
+        Parameters
+        ----------
+        path : str or ~pathlib.Path
+            The path and basename of the tile database, no extension.
+            Expects to find 'path.fits'.
+        targets : ~lvmsurveysim.target.target.TargetList or path-like
+            The `~lvmsurveysim.target.target.TargetList` object associated
+            with the tile database or a path to the target list to load. If
+            `None`, the ``TARGFILE`` value stored in the database file will be
+            used, if possible.
+        """
 
-            if len(self.tiles[ii]) == 0:
-                warnings.warn(f'target {tname} completely overlaps with other '
-                                'targets with higher priority.', LVMSurveySimWarning)
+        tile_table = astropy.table.Table.read(path+'.fits')
+
+        targfile = tile_table.meta.get('TARGFILE', 'NA')
+        targhash = tile_table.meta.get('TARGHASH', 'NA')
+        targets = targets or targfile
+
+        if not isinstance(targets, lvmsurveysim.target.TargetList):
+            assert targets is not None and targets != 'NA', \
+                'invalid or unavailable target file path.'
+
+            if not os.path.exists(targets):
+                raise LVMSurveySimError(
+                    f'the target file {targets!r} does not exists. '
+                    'Please, call load with a targets parameter.')
+
+            assert targhash == cls.md5(targets), 'Target file md5 hash not identical to database value'
+
+            targets = lvmsurveysim.target.TargetList(target_file=targets)
+
+        tiledb = cls(targets)
+        tiledb.tile_table = tile_table
+
+        return tiledb
+
+    @classmethod
+    def md5(cls, fname):
+        hash_md5 = hashlib.md5()
+        with open(fname, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
 
 
     def create_tile_table(self):
@@ -213,72 +256,28 @@ class TileDB(object):
                    'TotalExptime', 'VisitExptime'])
 
 
-    def save(self, path, overwrite=False):
-        """
-        Saves a tile database a FITS table.
+    def remove_overlap(self):
+        '''
+        Calculate and remove tiles in overlapping target regions. The tile belonging to the 
+        higher priority target is retained.
 
-        Parameters
-        ----------
-        path : str or ~pathlib.Path
-            The path and basename of the tile database, no extension.
-            Expects to find 'path.fits'.
-        overwrite : bool
-            Overwrite the database file if it already exists. Default False
-        """
-        targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
-        targhash = self.md5(targfile)
-        self.tile_table.meta['targhash'] = targhash
-        self.tile_table.meta['targfile'] = targfile
-        self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
+        Modifies the self.tiles and self.tile_priorities attributes to preserve a set of
+        non-overlapping tiles.
+        '''
+        # Calculate overlap but don't apply the masks
+        overlap = self.get_overlap()
 
-    @classmethod
-    def load(cls, path, targets=None):
-        """Creates a new instance from a tile database FITS table file.
+        for ii in self.tiles:
+            tname = self.targets[ii].name
 
-        Parameters
-        ----------
-        path : str or ~pathlib.Path
-            The path and basename of the tile database, no extension.
-            Expects to find 'path.fits'.
-        targets : ~lvmsurveysim.target.target.TargetList or path-like
-            The `~lvmsurveysim.target.target.TargetList` object associated
-            with the tile database or a path to the target list to load. If
-            `None`, the ``TARGFILE`` value stored in the database file will be
-            used, if possible.
-        """
+            # Remove the overlapping tiles from the pointings and
+            # remove their tile priorities.
+            self.tiles[ii] = self.tiles[ii][overlap[tname]['global_no_overlap']]
+            self.tile_priorities[ii] = self.tile_priorities[ii][overlap[tname]['global_no_overlap']]
 
-        tile_table = astropy.table.Table.read(path+'.fits')
-
-        targfile = tile_table.meta.get('TARGFILE', 'NA')
-        targhash = tile_table.meta.get('TARGHASH', 'NA')
-        targets = targets or targfile
-
-        if not isinstance(targets, lvmsurveysim.target.TargetList):
-            assert targets is not None and targets != 'NA', \
-                'invalid or unavailable target file path.'
-
-            if not os.path.exists(targets):
-                raise LVMSurveySimError(
-                    f'the target file {targets!r} does not exists. '
-                    'Please, call load with a targets parameter.')
-
-            assert targhash == cls.md5(targets), 'Target file md5 hash not identical to database value'
-
-            targets = lvmsurveysim.target.TargetList(target_file=targets)
-
-        tiledb = cls(targets)
-        tiledb.tile_table = tile_table
-
-        return tiledb
-
-    @classmethod
-    def md5(cls, fname):
-        hash_md5 = hashlib.md5()
-        with open(fname, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
-
+            if len(self.tiles[ii]) == 0:
+                warnings.warn(f'target {tname} completely overlaps with other '
+                                'targets with higher priority.', LVMSurveySimWarning)
 
     def get_overlap(self, verbose_level=1):
         """Returns a dictionary of masks with the overlap between regions."""
