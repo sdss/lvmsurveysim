@@ -257,7 +257,7 @@ class Scheduler(object):
                                        blit=True, repeat=False)
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
 
-    def plot(self, observatory=None, projection='mollweide', fast=False, annotate=False):
+    def plot(self, observatory=None, projection='mollweide', tname=None, fast=False, annotate=False):
         """Plots the observed pointings.
 
         Parameters
@@ -267,6 +267,8 @@ class Scheduler(object):
             the pointings.
         projection : str
             The projection to use, either ``'mollweide'`` or ``'rectangular'``.
+        tname : str
+            Select only a particular target name to plot
         fast : bool
             Plot IFU sized and shaped patches if `False`. This is the default.
             Allows accurate zooming and viewing. If `True`, plot scatter-plot
@@ -290,7 +292,10 @@ class Scheduler(object):
 
         fig, ax = get_axes(projection=projection)
 
-        data = self.schedule[self.schedule['target'] != '-']
+        if tname != None:
+            data = self.schedule[self.schedule['target'] == tname]
+        else:
+            data = self.schedule[self.schedule['target'] != '-']
 
         if observatory:
             data = data[data['observatory'] == observatory]
@@ -317,7 +322,7 @@ class Scheduler(object):
 
                 patches = [self.ifu.get_patch(scale=target.telescope.plate_scale,
                                               centre=[pointing['ra'], pointing['dec']],
-                                              edgecolor='None', linewidth=0.0,
+                                              edgecolor='k', linewidth=0.5,
                                               facecolor=sty['bgcolor'])[0]
                            for pointing in target_data]
 
