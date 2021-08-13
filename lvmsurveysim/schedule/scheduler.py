@@ -181,7 +181,7 @@ class Scheduler(object):
         self.schedule.write(path+'.fits', format='fits', overwrite=overwrite)
 
     @classmethod
-    def load(cls, path, targets=None, observing_plans=None, verbos_level=0):
+    def load(cls, path, tiledb=None, observing_plans=None, verbos_level=0):
         """Creates a new instance from a schedule file.
 
         Parameters
@@ -189,11 +189,8 @@ class Scheduler(object):
         path : str or ~pathlib.Path
             The path to the schedule file and the basename, no extension. The 
             routine expects to find path.fits and path.npy
-        targets : ~lvmsurveysim.target.target.TargetList or path-like
-            The `~lvmsurveysim.target.target.TargetList` object associated
-            with the schedule file or a path to the target list to load. If
-            `None`, the ``TARGFILE`` value stored in the schedule file will be
-            used, if possible.
+        tiledb : ~lvmsurveysim.schedule.tiledb.TileDB or path-like
+            Instance of the tile database to observe.
         observing_plans : list of `.ObservingPlan` or None
             A list with the `.ObservingPlan` to use (one for each observatory).
         verbose_level : int
@@ -202,23 +199,15 @@ class Scheduler(object):
 
         schedule = astropy.table.Table.read(path+'.fits')
 
-        targfile = schedule.meta.get('TARGFILE', 'NA')
-        targets = targets or targfile
+        if not isinstance(tiledb, lvmsurveysim.schedule.tiledb.TileDB):
+            assert tiledb != None and tiledb != 'NA', \
+                'invalid or unavailable tiledb file path.'
 
-        if not isinstance(targets, lvmsurveysim.target.TargetList):
-            assert targets != None and targets != 'NA', \
-                'invalid or unavailable target file path.'
-
-            if not os.path.exists(targets):
-                raise LVMSurveySimError(
-                    f'the target file {targets!r} does not exists. '
-                    'Please, call load with a targets parameter.')
-
-            targets = lvmsurveysim.target.TargetList(target_file=targets)
+            tiledb = TileDB.load(tiledb)
 
         observing_plans = observing_plans or []
 
-        scheduler = cls(targets, observing_plans=observing_plans, verbos_level=verbos_level)
+        scheduler = cls(tiledb, observing_plans=observing_plans, verbos_level=verbos_level)
         scheduler.schedule = schedule
 
         return scheduler

@@ -34,7 +34,7 @@ scheduler = Scheduler(tiledb, observing_plans=[lco_plan], verbos_level=1)
 scheduler.run(progress_bar=True)
 
 # Load/Save from as FITS table in a later session, no need to rerun:
-# scheduler = Scheduler.load('lvmsurveysim_hz_1000')
+# scheduler = Scheduler.load('lvmsurveysim_hz_1000', 'lco_tiledb')
 # scheduler.save('lvmsurveysim_hz_1000', overwrite=True) # Save as FITS table
 
 save=False
