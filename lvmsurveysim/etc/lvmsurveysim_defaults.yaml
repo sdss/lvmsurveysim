@@ -1,4 +1,5 @@
 
+tileid_start: 1000001 # start value for tile ids
 fibre_size: 107  # core dimater in microns
 
 ifu:

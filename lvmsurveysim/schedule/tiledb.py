@@ -99,6 +99,8 @@ class TileDB(object):
         self.targets = targets  # instance of lvmsurveysim.target.TargetList
         self.tiles = []         # dict of target-number to list of lvmsurveysim.target.Tile
         self.tile_table = []    # will hold astropy.Table of tile data
+        self.tileid_start = int(config['tileid_start']) # start value for tile ids
+        assert self.tileid_start > -1, "tileid_start value invalid, must be 0 or greater integer"
 
     def __repr__(self):
         return (f'<TileDB (N_tiles={len(self.taget_idx)})>')
@@ -209,6 +211,9 @@ class TileDB(object):
         # of the target it correspond to.
         target_idx = numpy.concatenate([numpy.repeat(idx, len(self.tiles[idx])) for idx in s])
 
+        # unique tile IDs
+        tileid = numpy.array(range(self.tileid_start, self.tileid_start+len(target_idx)), dtype=int)
+
         # An array with the target name
         target = numpy.concatenate([numpy.repeat(self.targets[idx].name, len(self.tiles[idx])) for idx in s])
 
@@ -256,10 +261,10 @@ class TileDB(object):
 
         # create astropy table with all the data
         self.tile_table = astropy.table.Table(
-            [target_idx, target, telescope, ra, dec, tile_pa, target_prio, tile_prio, 
+            [tileid, target_idx, target, telescope, ra, dec, tile_pa, target_prio, tile_prio, 
             max_airmass_to_target, max_lunation, min_shadowheight_to_target, min_moon_to_target, 
             target_exposure_times, exposure_quantums],
-            names=['TargetIndex', 'Target', 'Telescope', 'RA', 'DEC', 'PA', 'TargetPriority', 'TilePriority', 
+            names=['TileID', 'TargetIndex', 'Target', 'Telescope', 'RA', 'DEC', 'PA', 'TargetPriority', 'TilePriority', 
                    'AirmassLimit', 'LunationLimit', 'HzLimit', "MoonDistanceLimit",
                    'TotalExptime', 'VisitExptime'])
 

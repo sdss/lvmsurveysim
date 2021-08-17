@@ -396,8 +396,8 @@ class Scheduler(object):
                 if jd not in plan['JD'] or plan[plan['JD'] == jd]['is_clear'][0] == 0:
                     continue
 
-                observed += self.schedule_one_night(
-                    jd, plan, tdb['TargetIndex'].data, tdb['RA'].data, tdb['DEC'].data,
+                observed += self.schedule_one_night(jd, plan, tdb['TileID'].data,
+                    tdb['TargetIndex'].data, tdb['RA'].data, tdb['DEC'].data,
                     tdb['AirmassLimit'].data, tdb['HzLimit'].data, tdb['TargetPriority'].data, tdb['TilePriority'].data,
                     tdb['TotalExptime'].data, tdb['VisitExptime'].data, tdb['MoonDistanceLimit'].data, tdb['LunationLimit'].data,
                     observed, **kwargs)
@@ -405,13 +405,13 @@ class Scheduler(object):
         # Convert schedule to Astropy Table.
         self.schedule = astropy.table.Table(
             rows=self.schedule,
-            names=['JD', 'observatory', 'target', 'group', 'index', 'ra', 'dec',
+            names=['JD', 'observatory', 'target', 'group', 'tileid', 'index', 'ra', 'dec',
                 'pixel', 'nside', 'airmass', 'lunation', 'shadow_height', "moon_dist",
                 'lst', 'exptime', 'totaltime'],
-            dtype=[float, 'S10', 'S20', 'S20', int, float, float, int, int, float,
+            dtype=[float, 'S10', 'S20', 'S20', int, int, float, float, int, int, float,
                 float, float, float, float, float, float])
 
-    def schedule_one_night(self, jd, plan, index_to_target, ra, dec, max_airmass_to_target, min_shadowheight_to_target,
+    def schedule_one_night(self, jd, plan, tileid, index_to_target, ra, dec, max_airmass_to_target, min_shadowheight_to_target,
                            target_priorities, tile_prio, target_exposure_times,
                            exposure_quantums, target_min_moon_dist, max_lunation,
                            observed, zenith_avoidance=__ZENITH_AVOIDANCE__):
@@ -425,6 +425,8 @@ class Scheduler(object):
             The Julian Date to schedule. Must be included in ``plan``.
         plan : .ObservingPlan
             The observing plan to schedule for the night.
+        tileid : ~numpy.ndarray
+            An array with the (unique) ids of all tiles
         index_to_target : ~numpy.ndarray
             An array with the length of all the pointings indicating the index
             of the target it correspond to.
@@ -596,6 +598,7 @@ class Scheduler(object):
                 # observe it, give it one quantum of exposure
                 new_observed[observed_idx] += exposure_quantums[observed_idx]
 
+                tileid_observed = tileid[observed_idx]
                 target_index = index_to_target[observed_idx]
                 target_name = self.targets[target_index].name
                 groups = self.targets[target_index].groups
@@ -605,7 +608,6 @@ class Scheduler(object):
                 # Get the index of the first value in index_to_target that matches
                 # the index of the target.
                 target_index_first = numpy.nonzero(index_to_target == target_index)[0][0]
-
                 # Get the index of the pointing within its target.
                 pointing_index = observed_idx - target_index_first
                 
@@ -618,6 +620,7 @@ class Scheduler(object):
                 self._record_observation(current_jd, observatory,
                                          target_name=target_name,
                                          target_group=target_group,
+                                         tileid = tileid_observed,
                                          pointing_index=pointing_index,
                                          ra=ra[observed_idx], 
                                          dec=dec[observed_idx],
@@ -644,13 +647,13 @@ class Scheduler(object):
         return new_observed
 
     def _record_observation(self, jd, observatory, target_name='-', target_group='-',
-                            pointing_index=-1, ra=-999., dec=-999.,
+                            tileid=-1, pointing_index=-1, ra=-999., dec=-999.,
                             airmass=-999., lunation=-999., shadow_height=-999., dist_to_moon=-999.,
                             lst=-999.,
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
-        self.schedule.append((jd, observatory, target_name, target_group, pointing_index,
+        self.schedule.append((jd, observatory, target_name, target_group, tileid, pointing_index,
                               ra, dec, 0, 0, airmass, lunation, shadow_height, dist_to_moon, lst, exptime,
                               totaltime))
 
