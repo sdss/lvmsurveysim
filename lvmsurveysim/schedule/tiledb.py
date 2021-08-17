@@ -19,6 +19,7 @@ from astropy import units as u
 import time
 import os
 import hashlib
+from itertools import compress
 import shapely.vectorized
 
 import lvmsurveysim.target
@@ -95,10 +96,9 @@ class TileDB(object):
             targets of the survey.
         """
         assert isinstance(targets, lvmsurveysim.target.TargetList), "TargetList object expected in ctor of TileDB"
-        self.targets = targets
-        self.tiles = []
-        self.tile_priorities = []
-        self.tile_table = [] # will hold astropy.Table of tile data
+        self.targets = targets  # instance of lvmsurveysim.target.TargetList
+        self.tiles = []         # dict of target-number to list of lvmsurveysim.target.Tile
+        self.tile_table = []    # will hold astropy.Table of tile data
 
     def __repr__(self):
         return (f'<TileDB (N_tiles={len(self.taget_idx)})>')
@@ -117,13 +117,12 @@ class TileDB(object):
         '''
         self.ifu = ifu or IFU.from_config()
 
-        # dict of target-number to list of astropy.SkyCoord
+        # dict of target-number to list of lvmsurveysim.target.Tile
         self.tiles = self.targets.get_tiling(ifu=self.ifu, to_frame='icrs')
-        # dict of target-number to nmpy.array of priorities
-        self.tile_priorities = self.targets.get_tile_priorities()
 
         self.tiling_type = 'hexagonal'
 
+        # TODO: Convert to using ~Tile
         # Remove pointings that overlap with other regions.
         self.remove_overlap()
 
@@ -208,46 +207,37 @@ class TileDB(object):
 
         # An array with the length of all the pointings indicating the index
         # of the target it correspond to.
-        target_idx = numpy.concatenate([numpy.repeat(idx, len(self.tiles[idx]))
-                                             for idx in s])
+        target_idx = numpy.concatenate([numpy.repeat(idx, len(self.tiles[idx])) for idx in s])
 
         # An array with the target name
-        target = numpy.concatenate([numpy.repeat(self.targets[idx].name, len(self.tiles[idx]))
-                                             for idx in s])
+        target = numpy.concatenate([numpy.repeat(self.targets[idx].name, len(self.tiles[idx])) for idx in s])
 
         # An array with the target name
-        telescope = numpy.concatenate([numpy.repeat(self.targets[idx].telescope.name, len(self.tiles[idx]))
-                                             for idx in s])
+        telescope = numpy.concatenate([numpy.repeat(self.targets[idx].telescope.name, len(self.tiles[idx])) for idx in s])
 
-        # All the coordinates
-        coordinates = numpy.vstack(
-            [numpy.array([self.tiles[idx].ra.deg, self.tiles[idx].dec.deg]).T
-             for idx in s])
+        # All the coordinates and position angles
+        ra = numpy.concatenate([[t.coords.ra.deg for t in self.tiles[idx]] for idx in s])
+        dec = numpy.concatenate([[t.coords.dec.deg for t in self.tiles[idx]] for idx in s])
+        tile_pa = numpy.concatenate([[t.pa for t in self.tiles[idx]] for idx in s])
 
         # Create an array of the target's priority for each pointing
-        priorities = numpy.concatenate([numpy.repeat(self.targets[idx].priority,
-                                        len(self.tiles[idx]))
-                                        for idx in s])
+        target_prio = numpy.concatenate([numpy.repeat(self.targets[idx].priority, len(self.tiles[idx])) for idx in s])
 
         # Array with the individual tile priorities
-        tile_prio = numpy.concatenate([self.tile_priorities[idx] for idx in s])
+        tile_prio = numpy.concatenate([[t.priority for t in self.tiles[idx]] for idx in s])
 
         # Array with the total exposure time for each tile
         target_exposure_times = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].n_exposures,
-                          len(self.tiles[idx]))
+            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].n_exposures, len(self.tiles[idx]))
              for idx in s])
 
         # Array with exposure quanta (the minimum time to spend on a tile)
         exposure_quantums = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].min_exposures,
-                          len(self.tiles[idx]))
+            [numpy.repeat(self.targets[idx].exptime * self.targets[idx].min_exposures, len(self.tiles[idx]))
              for idx in s])
 
         # Array with the airmass limit for each pointing
-        max_airmass_to_target = numpy.concatenate(
-            [numpy.repeat(self.targets[idx].max_airmass, len(self.tiles[idx]))
-             for idx in s])
+        max_airmass_to_target = numpy.concatenate([numpy.repeat(self.targets[idx].max_airmass, len(self.tiles[idx])) for idx in s])
 
         # Array with the airmass limit for each pointing
         min_shadowheight_to_target = numpy.concatenate(
@@ -266,10 +256,10 @@ class TileDB(object):
 
         # create astropy table with all the data
         self.tile_table = astropy.table.Table(
-            [target_idx, target, telescope, coordinates[:, 0], coordinates[:, 1], priorities, tile_prio, 
+            [target_idx, target, telescope, ra, dec, tile_pa, target_prio, tile_prio, 
             max_airmass_to_target, max_lunation, min_shadowheight_to_target, min_moon_to_target, 
             target_exposure_times, exposure_quantums],
-            names=['TargetIndex', 'Target', 'Telescope', 'RA', 'DEC', 'TargetPriority', 'TilePriority', 
+            names=['TargetIndex', 'Target', 'Telescope', 'RA', 'DEC', 'PA', 'TargetPriority', 'TilePriority', 
                    'AirmassLimit', 'LunationLimit', 'HzLimit', "MoonDistanceLimit",
                    'TotalExptime', 'VisitExptime'])
 
@@ -279,8 +269,7 @@ class TileDB(object):
         Calculate and remove tiles in overlapping target regions. The tile belonging to the 
         higher priority target is retained.
 
-        Modifies the self.tiles and self.tile_priorities attributes to preserve a set of
-        non-overlapping tiles.
+        Modifies the self.tiles list to preserve a set of non-overlapping tiles.
         '''
         # Calculate overlap but don't apply the masks
         overlap = self.get_overlap()
@@ -289,9 +278,8 @@ class TileDB(object):
             tname = self.targets[ii].name
 
             # Remove the overlapping tiles from the pointings and
-            # remove their tile priorities.
-            self.tiles[ii] = self.tiles[ii][overlap[tname]['global_no_overlap']]
-            self.tile_priorities[ii] = self.tile_priorities[ii][overlap[tname]['global_no_overlap']]
+            # remove their tile priorities.            
+            self.tiles[ii] = list(compress(self.tiles[ii], overlap[tname]['global_no_overlap']))
 
             if len(self.tiles[ii]) == 0:
                 warnings.warn(f'target {tname} completely overlaps with other '
@@ -331,8 +319,8 @@ class TileDB(object):
                 del(tmp_s[idx])
                 for j in tmp_s:
                     if j != idx:
-                        overlap[self.targets[j].name][self.targets[idx].name] = numpy.full(len(self.tiles[j][:].ra), False)
-                        overlap[self.targets[idx].name][self.targets[j].name] = numpy.full(len(self.tiles[idx][:].ra), False)
+                        overlap[self.targets[j].name][self.targets[idx].name] = numpy.full(len(self.tiles[j]), False)
+                        overlap[self.targets[idx].name][self.targets[j].name] = numpy.full(len(self.tiles[idx]), False)
 
         #import spherical geometry routine to use for calculating polygons in spherical coordinates
         from spherical_geometry import polygon as spherical_geometry_polygon
@@ -426,12 +414,11 @@ class TileDB(object):
 
                         if may_overlap is True:
                             # shapes overlap, so now find all tiles of j that are within i:
-                            lon_j = self.tiles[j][:].ra.deg
-                            lat_j = self.tiles[j][:].dec.deg
+                            lon_j = [t.coords.ra.deg for t in self.tiles[j]] 
+                            lat_j = [t.coords.dec.deg for t in self.tiles[j]]
 
                             #Initialize array to True. This doesn't matter. We loop over all values anyway, but it's nice.
-                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.tiles[j][:].ra),
-                                                                    False)
+                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.tiles[j]), False)
                             t_start = time.time()
                             # Check array to see which is false.
                             for k in range(len(lon_j)):
@@ -445,8 +432,7 @@ class TileDB(object):
                             if verbose_level >=1:
                                 print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[target_index_i].name, self.targets[j].name, time.time()-t_start))
                         else:
-                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.tiles[j][:].ra),
-                                                                    True)
+                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.tiles[j]), True)
 
                         # For functional use, create a global overlap mask, to be used when scheduling
                         overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[target_index_i]]

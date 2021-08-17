@@ -24,6 +24,7 @@ import lvmsurveysim.utils.spherical
 from .. import config
 from ..telescope import Telescope
 from .region import Region
+from .tile import Tile
 
 
 __all__ = ['Target', 'TargetList']
@@ -202,7 +203,7 @@ class Target(object):
 
         return pixarea
 
-    def get_tiling(self, ifu=None, telescope=None, to_frame=None, force_retile=False):
+    def get_tiling(self, ifu=None, telescope=None, to_frame=None):
         """Tessellates the target region and returns a list of tile centres.
 
         Parameters
@@ -217,22 +218,13 @@ class Target(object):
             If ``return_coords``, the reference frame in which the coordinates
             should be returned. If `None`, defaults to the region internal
             reference frame.
-        force_retile : bool
-            Force recalculation of the tiles. Tiles are cached once calculated
-            and the cached ones are returned unless this flag is set.
 
         Returns
         -------
-        pixels : `~astropy.coordinates.SkyCoord`
-            A list of `~astropy.coordinates.SkyCoord` with the list of
-            tile centre coordinates.
-
+        tiles : list of `~lvmsurveysi.target.tile`
+            A list of `~lvmsurveysi.target.tile` with the list of
+            tile coordinates, priorities, and other data
         """
-
-        # return cached values unless told not to
-        if self.tiles is not None:
-            if force_retile is False:
-                return self.tiles
 
         telescope = telescope or self.telescope
 
@@ -249,13 +241,15 @@ class Target(object):
         if to_frame:
             tiles = tiles.transform_to(to_frame)
 
-        # cache the new tiles and invalidate the priorities
+        # cache the new tiles and the priorities
         self.tiles = tiles
-        self.tile_priorities = None
+        self.tile_priorities = self.get_tile_priorities()
+        # convert to tiles, set the PA to 0 for now
+        # TODO: figure out the position angle for the tiles!
+        return [Tile(self.tiles[i], 0.0, self.tile_priorities[i]) for i in range(len(self.tiles))]
 
-        return tiles
 
-    def get_tile_priorities(self, force_retile=False):
+    def get_tile_priorities(self):
         """Return an array with tile priorities according to the tiling
         strategy defined for this target.
 
@@ -264,12 +258,6 @@ class Target(object):
         priorities: ~numpy.array
             Array of length of number of tiles with the priority for each tile.
         """
-
-        # return cached values unless told not to
-        if self.tile_priorities is not None:
-            if force_retile is False:
-                return self.tile_priorities
-
         if self.tiling_strategy == 'lowest_airmass':
             self.tile_priorities = numpy.ones(len(self.tiles), dtype=int)
         elif self.tiling_strategy == 'center_first':
@@ -278,6 +266,7 @@ class Target(object):
             raise ValueError(f'invalid tiling strategy: {self.tiling_strategy}.')
 
         return self.tile_priorities
+
 
     def center_first_priorities_(self):
         """Return an array with tile priorities according for the center-first
@@ -308,6 +297,7 @@ class Target(object):
         """Plots the region. An alias for ``.Region.plot``."""
 
         return self.region.plot(*args, **kwargs)
+
 
     def plot_tiling(self, coords=None, ifu=None, frame=None, fig=None, **kwargs):
         """Plots the tiles within the region.
@@ -459,31 +449,12 @@ class TargetList(list):
             A dictionary in which the key is the index of the target in the
             `.TargetList` and its value the output of
             `.Target.get_tiling` called with ``kwarg`` parameters
-            (i.e., a `~astropy.coordinates.SkyCoord` object with the
-            position of the tile centres).
+            (i.e., a `~lvmsurveysim.target.Tile` list with the
+            coordinates, priorities and other data of the tiles).
 
         """
-
         return {ii: self[ii].get_tiling(**kwargs) for ii in range(len(self))}
 
-    def get_tile_priorities(self, **kwargs):
-        """Gets the tile priorities for all the targets in the set.
-
-        Parameters
-        ----------
-        kwargs : dict
-            Parameters to be passed to `.Target.get_tile_priorities`.
-
-        Returns
-        -------
-        tiling : dict
-            A dictionary in which the key is the index of the target in the
-            `.TargetList` and its value the output of
-            `.Target.get_tile_priorities` called with ``kwarg`` parameters.
-
-        """
-
-        return {ii: self[ii].get_tile_priorities(**kwargs) for ii in range(len(self))}
 
     def plot_tiling(self, frame='icrs', **kwargs):
         """Plots all the target pixels in a single Mollweide projection.
