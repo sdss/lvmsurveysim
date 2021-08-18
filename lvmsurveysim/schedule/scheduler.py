@@ -58,8 +58,7 @@ class Scheduler(object):
 
 
     def __repr__(self):
-        return (f'<Scheduler (observing_plans={len(self.observing_plans)}, '
-                f'tiles={len(self.tiledb.tile_table)})>')
+        return (f'<Scheduler (observing_plans={self.observing_plan.observatory})> ')
 
 
     def prepare_for_night(self, jd, plan, tiledb):
