@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 #
 # @Author: Niv Drory (drory@astro.as.utexas.edu)
-# @Date: 2021-08-06
 # @Filename: tiledb.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 #
@@ -124,7 +123,6 @@ class TileDB(object):
 
         self.tiling_type = 'hexagonal'
 
-        # TODO: Convert to using ~Tile
         # Remove pointings that overlap with other regions.
         self.remove_overlap()
 

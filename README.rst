@@ -1,7 +1,7 @@
 lvmsurveysim
 ============
 
-Survey simulations and tiling for LVM.
+Survey tiling, operations, and simulations for LVM.
 
 |travis| |coveralls| |docs| |py36|
 

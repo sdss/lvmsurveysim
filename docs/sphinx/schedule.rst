@@ -11,6 +11,12 @@ Observing plan
     :members:
 
 
+TileDB
+------
+.. autoclass:: lvmsurveysim.schedule.scheduler.TileDB
+    :members:
+
+
 Scheduler
 ---------
 
@@ -19,3 +25,11 @@ Scheduler
 
 .. autoclass:: lvmsurveysim.schedule.scheduler.AltitudeCalculator
     :special-members: __call__
+
+
+Simulator
+---------
+
+.. autoclass:: lvmsurveysim.schedule.scheduler.Simulator
+    :members:
+

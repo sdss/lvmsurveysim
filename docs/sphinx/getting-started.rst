@@ -33,24 +33,40 @@ The following code runs a simple simulation
 .. code-block:: python
     :linenos:
 
-    from lvmsurveysim.schedule import ObservingPlan, Scheduler
+    from lvmsurveysim.schedule import ObservingPlan, Simulator, TileDB
     from lvmsurveysim.target import TargetList
+    import matplotlib.pyplot as plt
 
     # Creates a list of targets/
-    targets = TargetList(target_file='targets.yaml')
+    targets = TargetList(target_file='./targets.yaml')
 
-    # Creates observing plans for APO and LCO for the range 2021-2025.
-    apo_plan = ObservingPlan(2459216, 2461041, observatory='APO')
-    lco_plan = ObservingPlan(2459216, 2461041, observatory='LCO')
+    # Create tile database and save
+    tiledb = TileDB(targets)
+    tiledb.tile_targets()
+    tiledb.save('lco_tiledb', overwrite=True)
 
-    # Creates an Scheduler instance and runs the simulation
+    # Alternatively, load a previously tiled survey from disk:
+    tiledb = TileDB.load('lco_tiledb')
 
-    scheduler = Scheduler(targets, observing_plans=[apo_plan, lco_plan])
-    scheduler.run(progress_bar=True)
-    scheduler.save('lvmsurveysim_results.fits', overwrite=True)
+    # Creates observing plans for LCO for the range sep 2021 - jun 2025.
+    lco_plan = ObservingPlan(2459458, 2460856, observatory='LCO') # baseline
 
-Note that in line 5 we provide the name of a file with the targets we want to observe. If that parameter is not provided the ``lvmcore`` target file will be used.
+    # Creates an Simulator instance and runs the simulation
+    sim = Simulator(tiledb, observing_plan=lco_plan, verbos_level=1)
 
-`scheduler.run <lvmsurveysim.schedule.scfheduler.Scheduler.run>` uses the default parameters for the simulation defined in the ``scheduler`` of the `configuration file <https://github.com/sdss/lvmsurveysim/blob/master/lvmsurveysim/etc/lvmsurveysim_defaults.yaml>`__. This can be overridden; for example calling ``scheduler.run(overhead=1)`` will run a simulation without overheads.
+    # Run the simulation
+    sim.run(progress_bar=True)
 
-A more complicated example, with some plotting of the inputs and outputs can be found `here <https://gist.github.com/albireox/3e88a206f557af98ae1e4de9ecc338c4>`__.
+    # evaluate the results:
+    sim.print_statistics()
+    sim.plot_survey('LCO', use_groups=True)
+    sim.plot_survey('LCO', use_groups=True, cumulative=True)
+    sim.plot_survey('LCO', lst=True, use_groups=True)
+    sim.plot(fast=True) # footprint
+    sim.plot_airmass(tname='ALL', group=True, norm=True)
+    sim.plot_shadow_height(tname='ALL', group=True, norm=True, cumulative=True, linear_log=True)
+
+
+Note that in line 6 we provide the name of a file with the targets we want to observe. If that parameter is not provided the ``lvmcore`` target file will be used.
+
+`sim.run <lvmsurveysim.schedule.scheduler.Simulator.run>` uses the default parameters for the simulation defined in the ``scheduler`` of the `configuration file <https://github.com/sdss/lvmsurveysim/blob/master/lvmsurveysim/etc/lvmsurveysim_defaults.yaml>`__.

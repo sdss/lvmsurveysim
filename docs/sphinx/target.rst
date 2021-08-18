@@ -16,27 +16,70 @@ While targets and regions can be initialised programatically, it is usually more
 
 .. code-block:: yaml
 
-    M33:
-        coords: [23.462100, 30.659942]
-        region_type: ellipse
+    LMC:
+        coords: [79.5135633, -68.5271292]
+        region_type: circle
         frame: icrs
         region_params:
-            a: 1.16
-            b: 0.666
-            pa: 0
-        priority: 2
-        telescope: LVM-1m
-
-    MW2:
-        coords: [[229.26093667,  -8.49621056],
-                 [214.06408833, -51.3662725],
-                 [227.68629528, -30.87828389]]
-        region_type: polygon
-        frame: galactic
-        priority: 1
+            r: 4.0
+        priority: 30
+        observatory: LCO
         telescope: LVM-160
+        max_airmass: 2.00
+        min_shadowheight: 1.0
+        exptime: 1200
+        n_exposures: 9
+        min_exposures: 3
+        min_moon_dist: 45
+        max_lunation: 0.25
+        overhead: 1.1
+        tiling_strategy: center_first
+        group: ["MCs"]
 
-In both cases we need to define the ``region_type`` and the coordinate ``frame`` (either ``icrs`` or ``galactic``) in which the coordinates are written. For ``M33`` we specify the ``coords`` of the centre of the ellipse and define the ``region_params`` with the major and minor axis lengths and the parallactic angle. All values must be in degrees. For ``MW2`` we provide a list of coordinates with all the vertices of the polygon. We also define the ``priority`` of the target for scheduling (higher priority means it is more likely to be observed) and the telescope we want to use to observe it.
+    ORION_SPARSE:
+        coords: [206.42, -17.74]
+        region_type: circle
+        frame: galactic
+        region_params:
+            r: 19.5
+        priority: 9
+        observatory: BOTH
+        telescope: LVM-160
+        max_airmass: 1.75
+        min_shadowheight: 500.0
+        exptime: 900
+        n_exposures: 1
+        min_exposures: 1
+        min_moon_dist: 60
+        max_lunation: 1.0
+        overhead: 1.1
+        tiling_strategy: center_first
+        sparse: 5
+        group: ["ORI"]
+
+    MW1:
+    coords: [315.0, 0.0]
+    region_type: rectangle
+    frame: galactic
+    region_params:
+        width: 150.0
+        height: 16.0
+        pa: 0
+    priority: 10
+    observatory: LCO
+    telescope: LVM-160
+    max_airmass: 1.75
+    min_shadowheight: 1000.0
+    exptime: 900
+    n_exposures: 1
+    min_exposures: 1
+    min_moon_dist: 60
+    max_lunation: 1.0
+    overhead: 1.1
+    tiling_strategy: lowest_airmass
+    group: ["MW"]
+
+In all cases we need to define the ``region_type`` and the coordinate ``frame`` (either ``icrs`` or ``galactic``) in which the coordinates are written. For ``M33`` we specify the ``coords`` of the centre of the ellipse and define the ``region_params`` with the major and minor axis lengths and the parallactic angle. All values must be in degrees. For ``MW2`` we provide a list of coordinates with all the vertices of the polygon. We also define the ``priority`` of the target for scheduling (higher priority means it is more likely to be observed) and the telescope we want to use to observe it.
 
 More examples of regions can be seen `here <https://github.com/sdss/lvmcore/blob/master/surveydesign/targets.yaml>`__.
 

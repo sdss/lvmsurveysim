@@ -25,10 +25,10 @@ telescopes:
         f: 3.7
 
 observing_plan:
-    APO:
-        start_date: 2459216
-        end_date: 2461041
-        good_weather: 0.6
+#    APO:
+#        start_date: 2459216
+#        end_date: 2461041
+#        good_weather: 0.6
     LCO:
         start_date: 2459216
         end_date: 2461041
