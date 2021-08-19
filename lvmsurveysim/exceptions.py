@@ -10,9 +10,9 @@
 # @Last modified time: 2019-03-12 11:04:45
 
 
-class LVMSurveySimWarning(UserWarning):
+class LVMSurveyOpsWarning(UserWarning):
     pass
 
 
-class LVMSurveySimError(Exception):
+class LVMSurveyOpsError(Exception):
     pass

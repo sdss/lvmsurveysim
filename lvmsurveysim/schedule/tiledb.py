@@ -23,7 +23,7 @@ import shapely.vectorized
 
 import lvmsurveysim.target
 from lvmsurveysim import IFU, config, log
-from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
+from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 from lvmsurveysim.schedule.plan import ObservingPlan
 import lvmsurveysim.utils.spherical
 
@@ -175,7 +175,7 @@ class TileDB(object):
                 'invalid or unavailable target file path.'
 
             if not os.path.exists(targets):
-                raise LVMSurveySimError(
+                raise LVMSurveyOpsError(
                     f'the target file {targets!r} does not exists. '
                     'Please, call load with a targets parameter.')
 
@@ -286,7 +286,7 @@ class TileDB(object):
 
             if len(self.tiles[ii]) == 0:
                 warnings.warn(f'target {tname} completely overlaps with other '
-                                'targets with higher priority.', LVMSurveySimWarning)
+                                'targets with higher priority.', LVMSurveyOpsWarning)
 
     def get_overlap(self, verbose_level=1):
         """Returns a dictionary of masks with the overlap between regions."""

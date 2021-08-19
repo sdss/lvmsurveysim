@@ -21,7 +21,7 @@ from lvmsurveysim.schedule.tiledb import TileDB
 from lvmsurveysim.schedule.scheduler import Scheduler
 from lvmsurveysim.schedule.plan import ObservingPlan
 from lvmsurveysim import IFU, config, log
-from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
+from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 from lvmsurveysim.schedule.plan import ObservingPlan
 from lvmsurveysim.schedule.altitude_calc import AltitudeCalculator
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
@@ -66,7 +66,7 @@ class Simulator(object):
         the index of the pointing in the target tiling, coordinates, etc.
     """
 
-    def __init__(self, tiledb, observing_plan=None, ifu=None, verbos_level=0):
+    def __init__(self, tiledb, observing_plan=None, ifu=None):
 
         assert isinstance(tiledb, TileDB), \
             'tiledb must be a lvmsurveysim.schedule.tiledb.TileDB instances.'
@@ -83,8 +83,6 @@ class Simulator(object):
         self.tiledb = tiledb
         self.targets = tiledb.targets
         self.ifu = ifu or IFU.from_config()
-
-        self.verbos_level = verbos_level
 
         self.schedule = None
 
@@ -106,7 +104,7 @@ class Simulator(object):
         self.schedule.write(path+'.fits', format='fits', overwrite=overwrite)
 
     @classmethod
-    def load(cls, path, tiledb=None, observing_plan=None, verbos_level=0):
+    def load(cls, path, tiledb=None, observing_plan=None):
         """Creates a new instance from a schedule file.
 
         Parameters
@@ -118,8 +116,6 @@ class Simulator(object):
             Instance of the tile database to observe.
         observing_plan : `.ObservingPlan` or None
             The `.ObservingPlan` to use (one for each observatory).
-        verbose_level : int
-            Verbosity level to pass to constructor of Schedule
         """
 
         schedule = astropy.table.Table.read(path+'.fits')
@@ -132,10 +128,154 @@ class Simulator(object):
 
         observing_plan = observing_plan or []
 
-        scheduler = cls(tiledb, observing_plan=observing_plan, verbos_level=verbos_level)
-        scheduler.schedule = schedule
+        sim = cls(tiledb, observing_plan=observing_plan)
+        sim.schedule = schedule
 
-        return scheduler
+        return sim
+
+
+    def run(self, progress_bar=True):
+        """Schedules the pointings for the whole survey defined 
+        in the observing plan.
+
+        Parameters
+        ----------
+        progress_bar : bool
+            If `True`, shows a progress bar.
+
+        """
+
+        # Make self.schedule a list so that we can add rows. Later we'll make
+        # this an Astropy Table.
+        self.schedule = []
+
+        plan = self.observing_plan
+
+        # Instance of the Scheduler
+        scheduler = Scheduler(plan)
+
+        # observed exposure time for each pointing
+        observed = numpy.zeros(len(self.tiledb.tile_table), dtype=numpy.float)
+
+        # range of dates for the survey
+        min_date = numpy.min(plan['JD'])
+        max_date = numpy.max(plan['JD'])
+        dates = range(min_date, max_date + 1)
+
+        if progress_bar:
+            generator = astropy.utils.console.ProgressBar(dates)
+        else:
+            generator = dates
+
+        for jd in generator:
+
+            if progress_bar is False:
+                log.info(f'scheduling JD={jd}.')
+
+            # Skips JDs not found in the plan or those that don't have good weather.
+            if jd not in plan['JD'] or plan[plan['JD'] == jd]['is_clear'][0] == 0:
+                continue
+
+            observed += self.schedule_one_night(jd, scheduler, observed)
+
+        # Convert schedule to Astropy Table.
+        self.schedule = astropy.table.Table(
+            rows=self.schedule,
+            names=['JD', 'observatory', 'target', 'group', 'tileid', 'index', 'ra', 'dec',
+                'airmass', 'lunation', 'shadow_height', "moon_dist", 'lst', 'exptime', 'totaltime'],
+            dtype=[float, 'S10', 'S20', 'S20', int, int, float, float, float,
+                float, float, float, float, float, float])
+
+
+    def schedule_one_night(self, jd, scheduler, observed):
+        """Schedules a single night at a single observatory.
+
+        This method is not intended to be called directly. Instead, use `.run`.
+
+        Parameters
+        ----------
+        jd : int
+            The Julian Date to schedule. Must be included in ``plan``.
+        scheduler : .Scheduler
+            The Scheduler instance that will determine the observing sequence.
+        observed : ~numpy.array
+            An array of the length of the tiledb that records the observing time
+            accumulated on each tile thus far
+
+        Returns
+        -------
+        exposure_times : `~numpy.ndarray`
+            Array with the exposure times in seconds added to each tile during
+            this night.
+
+        """
+
+        # initialize the scheduler for the night
+        scheduler.prepare_for_night(jd, self.observing_plan, self.tiledb)
+
+        # shortcut
+        tdb = self.tiledb.tile_table
+
+        # begin at twilight
+        current_jd = scheduler.evening_twi
+
+        # While the current time is before morning twilight ...
+        while current_jd < scheduler.morning_twi:
+
+            # obtain the next tile to observe
+            observed_idx, current_lst, hz, alt, lunation = scheduler.get_optimal_tile(current_jd, observed)
+
+            if observed_idx == -1:
+                # nothing available
+                self._record_observation(current_jd, self.observing_plan.observatory,
+                                         lst=current_lst,
+                                         exptime=self.time_step,
+                                         totaltime=self.time_step)
+                current_jd += (self.time_step) / 86400.0
+                continue
+
+            # observe it, give it one quantum of exposure
+            exptime = tdb['VisitExptime'].data[observed_idx]
+            observed[observed_idx] += exptime
+
+            # collect observation data to put in table
+            tileid_observed = tdb['TileID'].data[observed_idx]
+            target_index = tdb['TargetIndex'].data[observed_idx]
+            target_name = self.targets[target_index].name
+            groups = self.targets[target_index].groups
+            target_group = groups[0] if groups else 'None'
+            target_overhead = self.targets[target_index].overhead
+
+            # Get the index of the first value in index_to_target that matches
+            # the index of the target.
+            target_index_first = numpy.nonzero(tdb['TargetIndex'].data == target_index)[0][0]
+            # Get the index of the pointing within its target.
+            pointing_index = observed_idx - target_index_first
+            
+            # Record angular distance to moon
+            dist_to_moon = scheduler.moon_to_pointings[observed_idx]
+
+            # Update the table with the schedule.
+            airmass = 1.0 / numpy.cos(numpy.radians(90.0 - alt))
+            self._record_observation(current_jd, self.observing_plan.observatory,
+                                        target_name=target_name,
+                                        target_group=target_group,
+                                        tileid = tileid_observed,
+                                        pointing_index=pointing_index,
+                                        ra=tdb['RA'].data[observed_idx], 
+                                        dec=tdb['DEC'].data[observed_idx],
+                                        airmass=airmass,
+                                        lunation=lunation,
+                                        shadow_height= hz, #hz[valid_priority_idx[obs_tile_idx]],
+                                        dist_to_moon=dist_to_moon,
+                                        lst=current_lst,
+                                        exptime=exptime,
+                                        totaltime=exptime * target_overhead)
+
+            current_jd += exptime * target_overhead / 86400.0
+
+        return observed
+
 
     def animate_survey(self, filename='lvm_survey.mp4', step=100,
                        observatory=None, projection='mollweide'):
@@ -181,6 +321,7 @@ class Simulator(object):
         anim = animation.FuncAnimation(fig, animate, frames=range(1, ll), interval=1,
                                        blit=True, repeat=False)
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
+
 
     def plot(self, observatory=None, projection='mollweide', tname=None, fast=False, annotate=False):
         """Plots the observed pointings.
@@ -275,144 +416,6 @@ class Simulator(object):
         return ObservingPlan(start_date, end_date, observatory=observatory)
 
 
-    def run(self, progress_bar=True):
-        """Schedules the pointings.
-
-        Parameters
-        ----------
-        progress_bar : bool
-            If `True`, shows a progress bar.
-
-        """
-
-        # Make self.schedule a list so that we can add rows. Later we'll make
-        # this an Astropy Table.
-        self.schedule = []
-
-        plan = self.observing_plan
-
-        # Instance of the Scheduler
-        scheduler = Scheduler(plan, verbos_level=self.verbos_level)
-
-        # observed exposure time for each pointing
-        observed = numpy.zeros(len(self.tiledb.tile_table), dtype=numpy.float)
-
-        # range of dates for the survey
-        min_date = numpy.min(plan['JD'])
-        max_date = numpy.max(plan['JD'])
-        dates = range(min_date, max_date + 1)
-
-        if progress_bar:
-            generator = astropy.utils.console.ProgressBar(dates)
-        else:
-            generator = dates
-
-        for jd in generator:
-
-            if progress_bar is False:
-                log.info(f'scheduling JD={jd}.')
-
-            # Skips JDs not found in the plan or those that don't have good weather.
-            if jd not in plan['JD'] or plan[plan['JD'] == jd]['is_clear'][0] == 0:
-                continue
-
-            observed += self.schedule_one_night(jd, scheduler, observed)
-
-        # Convert schedule to Astropy Table.
-        self.schedule = astropy.table.Table(
-            rows=self.schedule,
-            names=['JD', 'observatory', 'target', 'group', 'tileid', 'index', 'ra', 'dec',
-                'airmass', 'lunation', 'shadow_height', "moon_dist", 'lst', 'exptime', 'totaltime'],
-            dtype=[float, 'S10', 'S20', 'S20', int, int, float, float, float,
-                float, float, float, float, float, float])
-
-
-    def schedule_one_night(self, jd, scheduler, observed):
-        """Schedules a single night at a single observatory.
-
-        This method is not intended to be called directly. Instead, use `.run`.
-
-        Parameters
-        ----------
-        jd : int
-            The Julian Date to schedule. Must be included in ``plan``.
-        plan : .ObservingPlan
-            The observing plan to schedule for the night.
-
-        Returns
-        -------
-        exposure_times : `~numpy.ndarray`
-            Array with the exposure times in seconds added to each tile during
-            this night.
-
-        """
-
-        # initialize the scheduler for the night
-        scheduler.prepare_for_night(jd, self.observing_plan, self.tiledb)
-
-        # shortcut
-        tdb = self.tiledb.tile_table
-
-        # begin at twilight
-        current_jd = scheduler.evening_twi
-
-        # While the current time is before morning twilight ...
-        while current_jd < scheduler.morning_twi:
-
-            # obtain the next tile to observe
-            observed_idx, current_lst, hz, alt, lunation = scheduler.get_optimal_tile(current_jd, observed)
-
-            if observed_idx == -1:
-                # nothing available
-                self._record_observation(current_jd, self.observing_plan.observatory,
-                                         lst=current_lst,
-                                         exptime=self.time_step,
-                                         totaltime=self.time_step)
-                current_jd += (self.time_step) / 86400.0
-                continue
-
-            # observe it, give it one quantum of exposure
-            exptime = tdb['VisitExptime'].data[observed_idx]
-            observed[observed_idx] += exptime
-
-            # collect observation data to put in table
-            tileid_observed = tdb['TileID'].data[observed_idx]
-            target_index = tdb['TargetIndex'].data[observed_idx]
-            target_name = self.targets[target_index].name
-            groups = self.targets[target_index].groups
-            target_group = groups[0] if groups else 'None'
-            target_overhead = self.targets[target_index].overhead
-
-            # Get the index of the first value in index_to_target that matches
-            # the index of the target.
-            target_index_first = numpy.nonzero(tdb['TargetIndex'].data == target_index)[0][0]
-            # Get the index of the pointing within its target.
-            pointing_index = observed_idx - target_index_first
-            
-            # Record angular distance to moon
-            dist_to_moon = scheduler.moon_to_pointings[observed_idx]
-
-            # Update the table with the schedule.
-            airmass = 1.0 / numpy.cos(numpy.radians(90.0 - alt))
-            self._record_observation(current_jd, self.observing_plan.observatory,
-                                        target_name=target_name,
-                                        target_group=target_group,
-                                        tileid = tileid_observed,
-                                        pointing_index=pointing_index,
-                                        ra=tdb['RA'].data[observed_idx], 
-                                        dec=tdb['DEC'].data[observed_idx],
-                                        airmass=airmass,
-                                        lunation=lunation,
-                                        shadow_height= hz, #hz[valid_priority_idx[obs_tile_idx]],
-                                        dist_to_moon=dist_to_moon,
-                                        lst=current_lst,
-                                        exptime=exptime,
-                                        totaltime=exptime * target_overhead)
-
-            current_jd += exptime * target_overhead / 86400.0
-
-        return observed
-
     def _record_observation(self, jd, observatory, target_name='-', target_group='-',
                             tileid=-1, pointing_index=-1, ra=-999., dec=-999.,
                             airmass=-999., lunation=-999., shadow_height=-999., dist_to_moon=-999.,
@@ -423,6 +426,7 @@ class Simulator(object):
         self.schedule.append((jd, observatory, target_name, target_group, tileid, pointing_index,
                               ra, dec, airmass, lunation, shadow_height, dist_to_moon, lst, exptime,
                               totaltime))
+
 
     def get_target_time(self, tname, group=False, observatory=None, lunation=None,
                         return_lst=False):

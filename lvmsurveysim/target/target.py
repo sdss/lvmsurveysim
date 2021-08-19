@@ -191,7 +191,7 @@ class Target(object):
         if ifu is None:
             ifu = IFU.from_config()
             # warnings.warn(f'target {self.name}: no IFU provided. '
-            #               f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
+            #               f'Using default IFU {ifu.name!r}.', LVMSurveyOpsWarning)
 
         assert pixarea is not None or (ifu is not None and telescope is not None), \
             'either pixarea or ifu and telescope need to be defined.'
@@ -231,7 +231,7 @@ class Target(object):
         if ifu is None:
             ifu = IFU.from_config()
             # warnings.warn(f'target {self.name}: no IFU provided. '
-            #               f'Using default IFU {ifu.name!r}.', LVMSurveySimWarning)
+            #               f'Using default IFU {ifu.name!r}.', LVMSurveyOpsWarning)
 
         print('Tiling target ' + self.name)
         tiles = ifu.get_tile_grid(self.region, telescope.plate_scale, sparse=self.sparse, geodesic=self.geodesic)

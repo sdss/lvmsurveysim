@@ -17,7 +17,7 @@ import lvmsurveysim.target
 from lvmsurveysim.schedule.tiledb import TileDB
 from lvmsurveysim.schedule.plan import ObservingPlan
 from lvmsurveysim import IFU, config, log
-from lvmsurveysim.exceptions import LVMSurveySimError, LVMSurveySimWarning
+from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 from lvmsurveysim.schedule.altitude_calc import AltitudeCalculator
 
 import skyfield.api
@@ -34,44 +34,74 @@ __all__ = ['Scheduler']
 class Scheduler(object):
     """Selects optimal tile from a list of targets (tile database) at a given JD
 
+    A typical usage scenario might look like:
+
+        plan = ObservingPlan(...)
+        tiledb = TileDB.load('lco_tiledb')
+        scheduler = Scheduler(plan)
+
+        # observed exposure time for each pointing
+        observed = numpy.zeros(len(tiledb), dtype=numpy.float)
+
+        # range of dates for the survey
+        dates = range(numpy.min(plan['JD']), numpy.max(plan['JD']) + 1)
+
+        for jd in dates:
+            scheduler.prepare_for_night(jd, plan, tiledb)
+            current_jd = now()
+            while current_jd < scheduler.morning_twi:
+                observed_idx, current_lst, hz, alt, lunation = scheduler.get_optimal_tile(current_jd, observed)
+                if observed_idx == -1
+                    NOTHING TO DO
+                else
+                    RECORD OBSERVATION of the tile
+                current_jd = now()
+
+
     Parameters
     ----------
     observing_plan : `.ObservingPlan`
         The `.ObservingPlan` to use. Contains dates and sun/moon data for the 
         duration of the survey as well as Observatory data.
+        The plan is only used to initialize the shadow height calculator with location
+        information of the observatory. The plan is not stored. The plan used for
+        scheduling is passed in `prepare_for_night()`.
     """
 
-    def __init__(self, observing_plan, verbos_level=0):
+    def __init__(self, observing_plan):
 
         assert isinstance(observing_plan, ObservingPlan), 'observing_plan is not an instance of ObservingPlan.'
-        self.observing_plan = observing_plan
+        self.observatory = observing_plan.observatory
+        self.lon = observing_plan.location.lon.deg
+        self.lat = observing_plan.location.lat.deg
 
-        self.verbos_level = verbos_level
         self.zenith_avoidance = config['scheduler']['zenith_avoidance']
 
         eph = skyfield.api.load('de421.bsp')
-        self.shadow_calc = shadow_height_lib.shadow_calc(observatory_name=observing_plan.observatory, 
+        self.shadow_calc = shadow_height_lib.shadow_calc(observatory_name=self.observatory, 
                                 observatory_elevation=observing_plan.location.height,
-                                observatory_lat=observing_plan.location.lat.deg, 
-                                observatory_lon=observing_plan.location.lon.deg,
+                                observatory_lat=self.lat, observatory_lon=self.lon,
                                 eph=eph, earth=eph['earth'], sun=eph['sun'])
 
 
     def __repr__(self):
-        return (f'<Scheduler (observing_plans={self.observing_plan.observatory})> ')
+        return (f'<Scheduler (observing_plans={self.observatory})> ')
 
 
     def prepare_for_night(self, jd, plan, tiledb):
-        """Schedules a single night at a single observatory.
+        """Initializes and caches various quantities to use for scheduling observations
+        for a given single JD. 
 
-        This method is not intended to be called directly. Instead, use `.run`.
+        This method MUST be called once for each JD prior to (repeatedly) 
+        calling `get_optimal_tile()` for a sequence of JDs between dusk and dawn the same day.
 
         Parameters
         ----------
         jd : int
             The Julian Date of the night to schedule. Must be included in ``plan``.
         plan : .ObservingPlan
-            The observing plan containing at least the night.
+            The observing plan containing at least the night corresponding to jd.
+            Must be for the same observatory as the plan passed in ctor.
         tiledb : .TileDB
             The tile database for the night (or survey)
         """
@@ -81,9 +111,6 @@ class Scheduler(object):
 
         assert isinstance(plan, ObservingPlan), \
             'one of the items in observing_plans is not an instance of ObservingPlan.'
-        self.observatory = plan.observatory
-        self.lon = plan.location.lon.deg
-        self.lat = plan.location.lat.deg
 
         self.maxpriority = max([t.priority for t in tiledb.targets])
 
@@ -117,12 +144,25 @@ class Scheduler(object):
 
 
     def get_optimal_tile(self, jd, observed):
-        """Returns the next tile to observe at a given jd
+        """Returns the next tile to observe at a given (float) jd.
+
+        jd must be between the times of evening and morning twilight on the id
+        previously passed to `prepare_for_night()`.
+
+        `get_optimal_tile()` can be called repeatedly for times during that night.
+
+        The scheduling algorithm first selects all tiles that fulfil the constraints on
+        lunation, zenith distance, airmass, moon distance and shadow height.
+        If there are tiles that have > 0 but less than the required visits, choose those
+        otherwise choose from the target with the highest priority.
+        If the target's tiling strategy assigns tile priorities, choose the tile with the 
+        hightest priority otherwise choose the one with the highest airmass.
 
         Parameters
         ----------
-        jd : int
-            The Julian Date to schedule. Must be included in ``plan``.
+        jd : float
+            The Julian Date to schedule. Must be between evening and morning twilight according
+            to the observing plan.
 
         observed : ~numpy.array
             Same length as len(tiledb).
@@ -130,7 +170,8 @@ class Scheduler(object):
             This is used to keep track of which tiles need additional time and which are completed.
 
             This record is kept by the caller and passed in, since an observation might fail 
-            in real life.
+            in real life. So accounting of actual observing time spent on target must be the
+            responsibility of the caller.
 
         Returns
         -------
@@ -146,10 +187,12 @@ class Scheduler(object):
             The lunation at time of the observation
         """
 
-        assert jd < self.morning_twi, "Twilight reached."
-        assert jd >= self.evening_twi, "Night not started yet."
+        if jd >= self.morning_twi or jd < self.evening_twi:
+            raise LVMSurveyOpsError(f'the time {jd} is not between {self.evening_twi} and {self.morning_twi}.')
+        
         tdb = self.tiledb.tile_table
-        assert len(tdb) == len(observed), "observed array and tiledb do not match."
+        if len(tdb) != len(observed):
+            raise LVMSurveyOpsError(f'length of tiledb {len(tdb)} != length of observed array {len(observed)}.')
 
         # Get current LST
         lst = lvmsurveysim.utils.spherical.get_lst(jd, self.lon)

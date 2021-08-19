@@ -28,7 +28,7 @@ lco_plan = ObservingPlan(2459458, 2460856, observatory='LCO') # baseline
 
 # Creates an Simulator instance and runs the simulation
 print('Creating Simulator ...')
-sim = Simulator(tiledb, observing_plan=lco_plan, verbos_level=1)
+sim = Simulator(tiledb, observing_plan=lco_plan)
 sim.run(progress_bar=True)
 
 # Load/Save from as FITS table in a later session, no need to rerun:
