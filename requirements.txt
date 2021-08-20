@@ -1,6 +1,5 @@
 # Tools
 ipython>=6.2.0
-click>=6.7
 seaborn>=0.8.1
 numpy>=1.11.2
 astropy>=1.2.1
