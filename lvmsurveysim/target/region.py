@@ -17,7 +17,6 @@ import matplotlib.patches
 import matplotlib.path
 import matplotlib.transforms
 import numpy
-import scipy
 import shapely.affinity
 import shapely.geometry
 
@@ -275,14 +274,13 @@ class Region(object, metaclass=RegionABC):
 
             x1 = x[idx + 1]
             y1 = y[idx + 1]
-            yinterp = scipy.interpolate.interp1d([x0, x1], [y0, y1])
 
             if numpy.sign(x0) != numpy.sign(x1):
-                y_new = yinterp(0.)
+                y_new = numpy.interpolate(0., [x0, x1], [y0, y1])
                 vertices[0].append([0., y_new])
                 vertices[1].append([0.001, y_new])
             elif (x0 < wrap and y1 > wrap) or (x0 > wrap and y1 < wrap):
-                y_new = yinterp(wrap)
+                y_new = numpy.interpolate(wrap, [x0, x1], [y0, y1])
                 vertices[1].append([wrap, y_new])
                 vertices[2].append([wrap, y_new])
 
