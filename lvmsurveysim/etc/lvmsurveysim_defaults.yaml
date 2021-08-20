@@ -1,9 +1,9 @@
-
+target_file: $LVMCORE_DIR/surveydesign/targets.yaml
 tileid_start: 1000001 # start value for tile ids
-fibre_size: 107  # core dimater in microns
 
 ifu:
     type: monolithic
+    fibre_size: 107  # core dimater in microns
     centres: [[0, 0]]
     #n_fibres: 1657	# 23 rings, hexagonal
     n_fibres: 1801  # 24 rings, as of PDR
@@ -13,8 +13,6 @@ ifu:
     # gaps: [[0, 0], [-0.75, -0.433012702], [0.75, -0.433012702], [0, 0.866025404]]
     # n_fibres: 1641
     # allow_rotation: false
-
-target_file: $LVMCORE_DIR/surveydesign/targets.yaml
 
 telescopes:
     LVM-1m:

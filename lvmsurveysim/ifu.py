@@ -107,7 +107,7 @@ class SubIFU(object):
         self.fibre_size = fibre_size
         if not isinstance(self.fibre_size, astropy.units.Quantity):
             if not self.fibre_size:
-                self.fibre_size = config['fibre_size']
+                self.fibre_size = config['ifu']['fibre_size']
             self.fibre_size *= astropy.units.micron
 
         self.polygon = self._create_polygon()
@@ -279,7 +279,7 @@ class IFU(object):
         self.fibre_size = fibre_size
         if not isinstance(self.fibre_size, astropy.units.Quantity):
             if not self.fibre_size:
-                self.fibre_size = config['fibre_size']
+                self.fibre_size = config['ifu']['fibre_size']
             self.fibre_size *= astropy.units.micron
 
         self.padding = padding
