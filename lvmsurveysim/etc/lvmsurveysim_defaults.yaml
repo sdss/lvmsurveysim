@@ -1,6 +1,13 @@
 target_file: $LVMCORE_DIR/surveydesign/targets.yaml
 tileid_start: 1000001 # start value for tile ids
 
+opsdb:
+    dbpath: ./lvmops.sqlite3 
+    pragmas:
+        journal_mode: wal
+        foreign_keys: 1
+
+
 ifu:
     type: monolithic
     fibre_size: 107  # core dimater in microns
