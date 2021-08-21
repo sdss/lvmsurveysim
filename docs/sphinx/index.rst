@@ -18,7 +18,6 @@ Reference
    ifu
    schedule
    utils
-   cli
    changelog
 
 |
