@@ -11,6 +11,7 @@
 # and save an astropy.Table into an sqlite3 database using a matching peewee model
 
 import astropy.table
+import numpy
 from peewee import *
 
 
@@ -33,14 +34,14 @@ def peewee2astropy(model):
    cols = model._meta.database.get_columns(model._meta.table_name)
    cnames = [c.name for c in cols]
 
+   cursor = model._meta.database.execute_sql('SELECT * from '+model._meta.table_name)
+   results = cursor.fetchall()
+
+   results = numpy.rec.fromrecords(list(results), names=cnames)
+
    table = astropy.table.Table()
-
-   rows = model.select()
-   inserts = []
-   for r in rows:
-      inserts.append([*iter(r.__data__.values())])
-
-   table.add_columns(list(zip(*inserts)), names=cnames)
+   for _, column in enumerate(results.dtype.names):
+      table.add_column(results[column], name=column)
 
    return table
 
