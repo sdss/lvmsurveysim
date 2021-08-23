@@ -71,7 +71,8 @@ def astropy2peewee(table, model, replace=False):
    tbc = table.colnames
    assert (len(dbc) == len(tbc)) & (set(dbc) == set(tbc)), "sets of columns do not match."
    if(replace==True):
-      model.replace_many(table).execute()
+      s = model.replace_many(table).execute()
    else:
-      model.insert_many(table).execute()
+      s = model.insert_many(table).execute()
+   return s
 
