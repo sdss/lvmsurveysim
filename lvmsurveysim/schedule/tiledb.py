@@ -64,7 +64,8 @@ def polygon_perimeter(x, y, n=1.0, min_points=5):
 
 class TileDB(object):
     """Database holding a list of tiles to observe. Persistence is provided as
-    load() and save() methods.
+    load() and save() methods which use the operations SQL database as default.
+    FITS tables are optional for simulations and development work.
 
     example usage:
         # tile a survey and save:
@@ -152,59 +153,80 @@ class TileDB(object):
         if len(idx) != 1:
             raise LVMSurveyOpsError(f'tileid {tileid} not found')
 
-        # TODO: Update record in database first, then update the cached table
+        # Update record in database first, then update the cached table
+        s = opsdb.OpsDB.update_tile_status(tileid, status)
+        assert s==1, 'Database error, more than one tileid updated.'
         self.tile_table['Status'][idx] = status
 
 
-    def save(self, path, overwrite=False, fits=False):
+    def save(self, path=None, overwrite=False, fits=False):
         """
-        Saves a tile database a FITS table.
+        Saves a tile table to the operations database, optionally into a FITS table.
+
+        The default is to update the tile database in SQL. No parameters are needed in 
+        this case.
 
         Parameters
         ----------
         path : str or ~pathlib.Path
-            The path and basename of the tile database, no extension.
+            Optional, the path and basename of the fits file, no extension.
             Expects to find 'path.fits'.
         overwrite : bool
             Overwrite the database file if it already exists. Default False
+        fits : bool
+            save to FITS table instead of database.
         """
         targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
         targhash = self.md5(targfile)
         if fits:
+            assert path != None, "path not provided for FITS save"
             self.tile_table.meta['targhash'] = targhash
             self.tile_table.meta['targfile'] = targfile
             self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
+            s = len(self.tile_table)
         else:
             # store tiles in the Ops DB
             with opsdb.OpsDB.get_db().atomic() as txn:
                 # add metadata:
-                opsdb.OpsDB.set_metadata(Key='targfile', Value=targfile)
-                opsdb.OpsDB.set_metadata(Key='targhash', Value=targhash)
+                opsdb.OpsDB.set_metadata('targfile', targfile)
+                opsdb.OpsDB.set_metadata('targhash', targhash)
                 # save tile table
-                s2a.astropy2peewee(self.tile_table, opsdb.Tile, replace=True)
+                s = s2a.astropy2peewee(self.tile_table, opsdb.Tile, replace=True)
+        return s
 
 
     @classmethod
-    def load(cls, path, targets=None, fits=False):
-        """Creates a new instance from a tile database FITS table file.
+    def load(cls, path=None, targets=None, fits=False):
+        """Creates a new instance from a tile database, or optionally read
+        from FITS table file. Default is read from SQL operations database.
 
         Parameters
         ----------
         path : str or ~pathlib.Path
-            The path and basename of the tile database, no extension.
+            Optional, the path and basename of the tile fits file, no extension.
             Expects to find 'path.fits'.
         targets : ~lvmsurveysim.target.target.TargetList or path-like
             The `~lvmsurveysim.target.target.TargetList` object associated
             with the tile database or a path to the target list to load. If
             `None`, the ``TARGFILE`` value stored in the database file will be
             used, if possible.
+        fits : bool
+            load from FITS table instead of database.
         """
 
-        tile_table = astropy.table.Table.read(path+'.fits')
+        if fits:
+            assert path != None, "path not provided for FITS save"
+            tile_table = astropy.table.Table.read(path+'.fits')
 
-        targfile = tile_table.meta.get('TARGFILE', 'NA')
-        targhash = tile_table.meta.get('TARGHASH', 'NA')
-        targets = targets or targfile
+            targfile = tile_table.meta.get('TARGFILE', 'NA')
+            targhash = tile_table.meta.get('TARGHASH', 'NA')
+            targets = targets or targfile
+        else:
+            with opsdb.OpsDB.get_db().atomic():
+                targfile = opsdb.OpsDB.get_metadata('targfile', default_value='NA')
+                targhash = opsdb.OpsDB.get_metadata('targhash', default_value='NA')
+                targets = targets or targfile
+                tile_table = s2a.peewee2astropy(opsdb.Tile)
 
         if not isinstance(targets, lvmsurveysim.target.TargetList):
             assert targets is not None and targets != 'NA', \

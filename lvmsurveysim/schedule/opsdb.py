@@ -9,6 +9,7 @@
 
 # operations database and data classes for a survey tile and a survey observation
 
+from lvmsurveysim.exceptions import LVMSurveyOpsError
 from peewee import *
 
 from lvmsurveysim import config
@@ -71,7 +72,7 @@ class OpsDB(object):
       pass
 
    @classmethod
-   def get_db():
+   def get_db(cls):
       return __lvm_ops_database__
 
    @classmethod
@@ -105,3 +106,15 @@ class OpsDB(object):
    @classmethod
    def del_metadata(cls, key):
       return Metadata.delete().where(Metadata.Key==key).execute()
+
+   @classmethod
+   def update_tile_status(cls, tileid, status):
+      with OpsDB.get_db().atomic():
+         s = Tile.update({Tile.Status:status}).where(Tile.TileID==tileid).execute()
+      if s==0:
+         raise LVMSurveyOpsError('Attempt to set status on unknown TildID '+str(tileid))
+      return s
+
+   @classmethod
+   def record_observation(cls, tileid, stuff):
+      pass
