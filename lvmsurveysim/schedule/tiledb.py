@@ -8,7 +8,7 @@
 
 
 #
-# Database holding a list of tiles to observe. Persistence is provided as load() and save() methods.
+# Interface to database holding a list of tiles to observe.
 #
 
 
@@ -26,6 +26,8 @@ from lvmsurveysim import IFU, config, log
 from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 from lvmsurveysim.schedule.plan import ObservingPlan
 import lvmsurveysim.utils.spherical
+import lvmsurveysim.utils.sqlite2astropy as s2a
+import lvmsurveysim.schedule.opsdb as opsdb
 
 numpy.seterr(invalid='raise')
 
@@ -82,6 +84,11 @@ class TileDB(object):
     tile_table : ~astropy.table.Table
         An astropy table with the results of tiling the target list. Includes
         coordinates, priorities, and observing constraints for each unique tile.
+        During scheduling, we need fast access to tile data in columnar (numpy.array)
+        format for various calculations. A Table is much more conventient for that 
+        than keeping the data as a collection of tiles.
+        We ensure synchronicity between updates to the Table and updates to the 
+        database.
     """
 
     def __init__(self, targets):
@@ -130,7 +137,26 @@ class TileDB(object):
         self.create_tile_table()
 
 
-    def save(self, path, overwrite=False):
+    def update_status(self, tileid, status):
+        """
+        Update the status field of a tile.
+
+        Parameters
+        ----------
+        tileid : Integer
+            the tile id of the tile to update.
+        status : Integer
+            the new status word.
+        """
+        idx = numpy.where(self.tile_table['TileID'] == tileid)[0]
+        if len(idx) != 1:
+            raise LVMSurveyOpsError(f'tileid {tileid} not found')
+
+        # TODO: Update record in database first, then update the cached table
+        self.tile_table['Status'][idx] = status
+
+
+    def save(self, path, overwrite=False, fits=False):
         """
         Saves a tile database a FITS table.
 
@@ -144,12 +170,22 @@ class TileDB(object):
         """
         targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
         targhash = self.md5(targfile)
-        self.tile_table.meta['targhash'] = targhash
-        self.tile_table.meta['targfile'] = targfile
-        self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
+        if fits:
+            self.tile_table.meta['targhash'] = targhash
+            self.tile_table.meta['targfile'] = targfile
+            self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
+        else:
+            # store tiles in the Ops DB
+            with opsdb.OpsDB.get_db().atomic() as txn:
+                # add metadata:
+                opsdb.OpsDB.set_metadata(Key='targfile', Value=targfile)
+                opsdb.OpsDB.set_metadata(Key='targhash', Value=targhash)
+                # save tile table
+                s2a.astropy2peewee(self.tile_table, opsdb.Tile, replace=True)
+
 
     @classmethod
-    def load(cls, path, targets=None):
+    def load(cls, path, targets=None, fits=False):
         """Creates a new instance from a tile database FITS table file.
 
         Parameters
@@ -257,14 +293,18 @@ class TileDB(object):
             [numpy.repeat(self.targets[idx].max_lunation, len(self.tiles[idx]))
              for idx in s])
 
+        # status flags for the tiles
+        status = numpy.full(len(tileid), 0, dtype=numpy.int64)
+
         # create astropy table with all the data
         self.tile_table = astropy.table.Table(
             [tileid, target_idx, target, telescope, ra, dec, tile_pa, target_prio, tile_prio, 
             max_airmass_to_target, max_lunation, min_shadowheight_to_target, min_moon_to_target, 
-            target_exposure_times, exposure_quantums],
+            target_exposure_times, exposure_quantums, status],
             names=['TileID', 'TargetIndex', 'Target', 'Telescope', 'RA', 'DEC', 'PA', 'TargetPriority', 'TilePriority', 
                    'AirmassLimit', 'LunationLimit', 'HzLimit', "MoonDistanceLimit",
-                   'TotalExptime', 'VisitExptime'])
+                   'TotalExptime', 'VisitExptime', 'Status'])
+
 
 
     def remove_overlap(self):
