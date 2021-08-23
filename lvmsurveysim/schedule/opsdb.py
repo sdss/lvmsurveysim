@@ -23,14 +23,17 @@ __lvm_ops_database__ = SqliteDatabase(None)
 # data model:
 
 class LVMOpsBaseModel(Model):
+   '''
+   Base class for LVM's peewee ORM models.
+   '''
    class Meta: 
       database = __lvm_ops_database__
 
-class test(LVMOpsBaseModel):
-   a = IntegerField()
-   b = IntegerField()
 
 class Tile(LVMOpsBaseModel):
+   '''
+   Peewee ORM class for LVM Survey Tiles
+   '''
    TileID = IntegerField(primary_key=True)
    TargetIndex = IntegerField()   # TODO: not sure this needs to go into the db, maybe create on the fly?
    Target = CharField()
@@ -50,6 +53,9 @@ class Tile(LVMOpsBaseModel):
 
 
 class Observation(LVMOpsBaseModel):
+   '''
+   Peewee ORM class for LVM Survey Observation records
+   '''
    ObsID = IntegerField(primary_key=True)
    TileID = ForeignKeyField(Tile, backref='observation')
    LST = FloatField()
@@ -59,6 +65,9 @@ class Observation(LVMOpsBaseModel):
 
 
 class Metadata(LVMOpsBaseModel):
+   '''
+   Peewee ORM class for LVM Survey Database Metadata
+   '''
    Key = CharField(unique=True)
    Value = CharField()
 
@@ -66,34 +75,56 @@ class Metadata(LVMOpsBaseModel):
 
 class OpsDB(object):
    """
-   Interface the operations database for LVM
+   Interface the operations database for LVM. Makes the rest of the 
+   LVM Operations software agnostic to peewee or any other ORM we
+   might be using one day.
    """
    def __init__(self):
       pass
 
    @classmethod
    def get_db(cls):
+      '''
+      Return the database instance. Should not be called outside this class.
+      '''
       return __lvm_ops_database__
 
    @classmethod
    def init(cls, dbpath=None):
+      '''
+      Intialize the database connection. Must be called exactly once upon start of the program.
+      '''
       dbpath = dbpath or config['opsdb']['dbpath']
       return __lvm_ops_database__.init(dbpath, pragmas=config['opsdb']['pragmas'])
 
    @classmethod
-   def create(cls, overwrite=False):
-      return __lvm_ops_database__.create_tables([test, Tile, Observation, Metadata])
+   def create_tables(cls, overwrite=False):
+      '''
+      Create the database tables needed for the LVM Ops DB. Should be called only 
+      once for the lifetime of the database.
+      '''
+      return __lvm_ops_database__.create_tables([Tile, Observation, Metadata])
 
    @classmethod
    def drop_tables(cls, models):
+      '''
+      Delete the tables. Should not be called during Operations. Development only.
+      '''
       return __lvm_ops_database__.drop_tables(models)
 
    @classmethod
    def close(cls):
+      '''
+      Close the database connection.
+      '''
       return __lvm_ops_database__.close()
 
    @classmethod
    def get_metadata(cls, key, default_value=None):
+      '''
+      Get the value associated with a key from the Metadata table.
+      Return the value, or `default_value` if not found.
+      '''
       try:
          return Metadata.get(Metadata.Key==key).Value
       except Metadata.DoesNotExist:
@@ -101,14 +132,24 @@ class OpsDB(object):
       
    @classmethod
    def set_metadata(cls, key, value):
+      '''
+      Set the value associated with a key from the Metadata table. 
+      Creates or replaces the key/value pair.
+      '''
       return Metadata.replace(Key=key, Value=value).execute()
 
    @classmethod
    def del_metadata(cls, key):
+      '''
+      Deletes the key/value pair from the Metadata table.
+      '''
       return Metadata.delete().where(Metadata.Key==key).execute()
 
    @classmethod
    def update_tile_status(cls, tileid, status):
+      '''
+      Update the tile Status column in the tile database.
+      '''
       with OpsDB.get_db().atomic():
          s = Tile.update({Tile.Status:status}).where(Tile.TileID==tileid).execute()
       if s==0:
@@ -117,4 +158,8 @@ class OpsDB(object):
 
    @classmethod
    def record_observation(cls, tileid, stuff):
+      '''
+      Record an LVM Observation in the database.
+      '''
+      #TODO: Implement. Also, how do we record test or calib data? Special TileIDs?
       pass
