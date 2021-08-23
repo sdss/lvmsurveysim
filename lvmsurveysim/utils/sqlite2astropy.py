@@ -14,6 +14,8 @@ import astropy.table
 import numpy
 from peewee import *
 
+__all__ = ['peewee2astropy', 'astropy2peewee']
+
 
 def peewee2astropy(model):
    '''

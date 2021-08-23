@@ -58,8 +58,7 @@ class Observation(LVMOpsBaseModel):
 
 
 class Metadata(LVMOpsBaseModel):
-   ID = IntegerField(primary_key=True)   # store key/value metadata, such as target.yaml path, md5, ...
-   Key = CharField()
+   Key = CharField(unique=True)
    Value = CharField()
 
 
@@ -70,6 +69,10 @@ class OpsDB(object):
    """
    def __init__(self):
       pass
+
+   @classmethod
+   def get_db():
+      return __lvm_ops_database__
 
    @classmethod
    def init(cls, dbpath=None):
@@ -87,3 +90,18 @@ class OpsDB(object):
    @classmethod
    def close(cls):
       return __lvm_ops_database__.close()
+
+   @classmethod
+   def get_metadata(cls, key, default_value=None):
+      try:
+         return Metadata.get(Metadata.Key==key).Value
+      except Metadata.DoesNotExist:
+         return default_value
+      
+   @classmethod
+   def set_metadata(cls, key, value):
+      return Metadata.replace(Key=key, Value=value).execute()
+
+   @classmethod
+   def del_metadata(cls, key):
+      return Metadata.delete().where(Metadata.Key==key).execute()
