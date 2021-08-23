@@ -58,6 +58,7 @@ class Observation(LVMOpsBaseModel):
    '''
    ObsID = IntegerField(primary_key=True)
    TileID = ForeignKeyField(Tile, backref='observation')
+   JD = FloatField()
    LST = FloatField()
    Hz = FloatField()
    Alt = FloatField()
@@ -157,9 +158,9 @@ class OpsDB(object):
       return s
 
    @classmethod
-   def record_observation(cls, tileid, stuff):
+   def record_observation(cls, TileID, jd, lst, hz, obs_alt, lunation):
       '''
       Record an LVM Observation in the database.
       '''
-      #TODO: Implement. Also, how do we record test or calib data? Special TileIDs?
-      pass
+      #TODO: how do we record test or calib data? Special TileIDs?
+      return Observation.insert(TileID=TileID, JD=jd, LST=lst, Hz=hz, Alt=obs_alt, Lunation=lunation).execute()
