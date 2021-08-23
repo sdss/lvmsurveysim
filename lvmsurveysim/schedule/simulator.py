@@ -6,8 +6,6 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
 import itertools
-import os
-import warnings
 
 import astropy
 import cycler
@@ -21,11 +19,8 @@ from lvmsurveysim.schedule.tiledb import TileDB
 from lvmsurveysim.schedule.scheduler import Scheduler
 from lvmsurveysim.schedule.plan import ObservingPlan
 from lvmsurveysim import IFU, config, log
-from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 from lvmsurveysim.schedule.plan import ObservingPlan
-from lvmsurveysim.schedule.altitude_calc import AltitudeCalculator
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
-import time
 
 try:
     import mpld3

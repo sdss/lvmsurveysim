@@ -22,12 +22,10 @@ import os
 import hashlib
 import itertools
 import cycler
-import shapely.vectorized
 
 import lvmsurveysim.target
-from lvmsurveysim import IFU, config, log
+from lvmsurveysim import IFU, config
 from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
-from lvmsurveysim.schedule.plan import ObservingPlan
 import lvmsurveysim.utils.spherical
 import lvmsurveysim.utils.sqlite2astropy as s2a
 import lvmsurveysim.schedule.opsdb as opsdb

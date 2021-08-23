@@ -5,19 +5,13 @@
 # @Filename: tiledb.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
-import itertools
-import os
-import warnings
-
-import astropy
 import numpy
-from astropy import units as u
 
 import lvmsurveysim.target
 from lvmsurveysim.schedule.tiledb import TileDB
 from lvmsurveysim.schedule.plan import ObservingPlan
-from lvmsurveysim import IFU, config, log
-from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
+from lvmsurveysim import config
+from lvmsurveysim.exceptions import LVMSurveyOpsError
 from lvmsurveysim.schedule.altitude_calc import AltitudeCalculator
 
 import skyfield.api
