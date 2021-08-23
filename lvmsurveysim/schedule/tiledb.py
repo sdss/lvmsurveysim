@@ -14,11 +14,14 @@
 
 import astropy
 import numpy
+import warnings
 from astropy import units as u
+import matplotlib.pyplot as plt
 import time
 import os
 import hashlib
-from itertools import compress
+import itertools
+import cycler
 import shapely.vectorized
 
 import lvmsurveysim.target
@@ -28,6 +31,7 @@ from lvmsurveysim.schedule.plan import ObservingPlan
 import lvmsurveysim.utils.spherical
 import lvmsurveysim.utils.sqlite2astropy as s2a
 import lvmsurveysim.schedule.opsdb as opsdb
+from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
 
 numpy.seterr(invalid='raise')
 
@@ -344,7 +348,7 @@ class TileDB(object):
 
             # Remove the overlapping tiles from the pointings and
             # remove their tile priorities.            
-            self.tiles[ii] = list(compress(self.tiles[ii], overlap[tname]['global_no_overlap']))
+            self.tiles[ii] = list(itertools.compress(self.tiles[ii], overlap[tname]['global_no_overlap']))
 
             if len(self.tiles[ii]) == 0:
                 warnings.warn(f'target {tname} completely overlaps with other '

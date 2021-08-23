@@ -72,7 +72,7 @@ class Metadata(LVMOpsBaseModel):
    Key = CharField(unique=True)
    Value = CharField()
 
-
+# TODO: use db.bind(modesl) instead of init() and make OpsDB a singleton
 
 class OpsDB(object):
    """
