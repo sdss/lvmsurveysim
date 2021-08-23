@@ -17,10 +17,10 @@ print('Creating target list ...')
 targets = TargetList(target_file='./targets.yaml')
 # Create tile database
 print('Creating tile database ...')
-tiledb = TileDB.load('lco_tiledb')
-#tiledb = TileDB(targets)
-#tiledb.tile_targets()
-#tiledb.save('lco_tiledb', overwrite=True)
+tiledb = TileDB.load('lco_tiledb', fits=True)
+# tiledb = TileDB(targets)
+# tiledb.tile_targets()
+# tiledb.save('lco_tiledb', fits=True, overwrite=True)
 
 # Creates observing plans for LCO for the range sep 2021 - jun 2025.
 print('Creating observing plan ...')
