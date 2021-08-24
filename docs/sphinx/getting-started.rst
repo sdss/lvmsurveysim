@@ -43,10 +43,10 @@ The following code runs a simple simulation
     # Create tile database and save
     tiledb = TileDB(targets)
     tiledb.tile_targets()
-    tiledb.save('lco_tiledb', overwrite=True)
+    tiledb.save('lco_tiledb', fits=True, overwrite=True)
 
     # Alternatively, load a previously tiled survey from disk:
-    tiledb = TileDB.load('lco_tiledb')
+    tiledb = TileDB.load('lco_tiledb', fits=True)
 
     # Creates observing plans for LCO for the range sep 2021 - jun 2025.
     lco_plan = ObservingPlan(2459458, 2460856, observatory='LCO') # baseline
