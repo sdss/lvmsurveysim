@@ -22,11 +22,6 @@ from lvmsurveysim import IFU, config, log
 from lvmsurveysim.schedule.plan import ObservingPlan
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
 
-try:
-    import mpld3
-except ImportError:
-    mpld3 = None
-
 
 numpy.seterr(invalid='raise')
 
