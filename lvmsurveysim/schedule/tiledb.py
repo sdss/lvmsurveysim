@@ -69,6 +69,24 @@ class TileDB(object):
     load() and save() methods which use the operations SQL database as default.
     FITS tables are optional for simulations and development work.
 
+    The model for a row in the tile database is held in the 
+    `~lvmsurveysim.scheduler.opsdb.Tile` class. However, internally, we hold the 
+    database as a `~astropy.table.Table` to make operations on columns 
+    (which dominate scheduling) more efficient.
+
+    There are a few special TileIDs that describe virtual Tiles, such as
+    the dome flat screen, a test exposure, and a NONE Tile. These allow for a strong
+    relationship between the Tile database and the Observation database, such that 
+    each Observation points to exactly one Tile. The special Tiles occupy the
+    TileIDs below the configuration parameter 'tileid_start', while the survey
+    tiles start with 'tileid_start' and extend to higher numbers.
+
+    The tile database also stores some metadata about the Tiles, among others the
+    path of the target description file used to generate the tiles, the md5 
+    checksum of that file (which is compared against the loaded target list to 
+    ensure compatibility) and the tileid_start value. These metadata are stored
+    in a separate table in SQL, or as FITS header keywords in the FITS files.
+
     example usage:
         # tile a survey and save:
         targets = TargetList(target_file='./targets.yaml')
