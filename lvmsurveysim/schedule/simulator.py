@@ -120,6 +120,7 @@ class Simulator(object):
                 'invalid or unavailable tiledb file path.'
 
             tiledb = TileDB.load(tiledb)
+            #TODO: select only science tiles to simulate, drop special tiles
 
         observing_plan = observing_plan or []
 

@@ -35,21 +35,21 @@ class Tile(LVMOpsBaseModel):
    Peewee ORM class for LVM Survey Tiles
    '''
    TileID = IntegerField(primary_key=True)
-   TargetIndex = IntegerField()   # TODO: not sure this needs to go into the db, maybe create on the fly?
-   Target = CharField()
-   Telescope = CharField()
-   RA = FloatField()
-   DEC = FloatField()
-   PA = FloatField()
-   TargetPriority = IntegerField()
-   TilePriority = IntegerField()
-   AirmassLimit = FloatField()
-   LunationLimit = FloatField()
-   HzLimit = FloatField()
-   MoonDistanceLimit = FloatField()
-   TotalExptime = FloatField()
-   VisitExptime = FloatField()
-   Status = IntegerField()       # think bit-field to keep more fine-grained status information
+   TargetIndex = IntegerField(null=True)   # TODO: not sure this needs to go into the db, maybe create on the fly?
+   Target = CharField(null=False)
+   Telescope = CharField(null=False)
+   RA = FloatField(null=True)
+   DEC = FloatField(null=True)
+   PA = FloatField(null=True)
+   TargetPriority = IntegerField(null=True)
+   TilePriority = IntegerField(null=True)
+   AirmassLimit = FloatField(null=True)
+   LunationLimit = FloatField(null=True)
+   HzLimit = FloatField(null=True)
+   MoonDistanceLimit = FloatField(null=True)
+   TotalExptime = FloatField(null=True)
+   VisitExptime = FloatField(null=True)
+   Status = IntegerField(null=False)       # think bit-field to keep more fine-grained status information
 
 
 class Observation(LVMOpsBaseModel):
@@ -57,12 +57,13 @@ class Observation(LVMOpsBaseModel):
    Peewee ORM class for LVM Survey Observation records
    '''
    ObsID = IntegerField(primary_key=True)
+   ObsType = CharField(null=False)         # SCI, CAL, FLAT, DARK, BIAS, TEST, ...
    TileID = ForeignKeyField(Tile, backref='observation')
-   JD = FloatField()
-   LST = FloatField()
-   Hz = FloatField()
-   Alt = FloatField()
-   Lunation = FloatField()
+   JD = FloatField(null=False)
+   LST = FloatField(null=True)
+   Hz = FloatField(null=True)
+   Alt = FloatField(null=True)
+   Lunation = FloatField(null=True)
 
 
 class Metadata(LVMOpsBaseModel):
@@ -72,7 +73,6 @@ class Metadata(LVMOpsBaseModel):
    Key = CharField(unique=True)
    Value = CharField()
 
-# TODO: use db.bind(modesl) instead of init() and make OpsDB a singleton
 
 class OpsDB(object):
    """
@@ -99,12 +99,17 @@ class OpsDB(object):
       return __lvm_ops_database__.init(dbpath, pragmas=config['opsdb']['pragmas'])
 
    @classmethod
-   def create_tables(cls, overwrite=False):
+   def create_tables(cls):
       '''
       Create the database tables needed for the LVM Ops DB. Should be called only 
       once for the lifetime of the database.
       '''
-      return __lvm_ops_database__.create_tables([Tile, Observation, Metadata])
+      with OpsDB.get_db().atomic():
+         __lvm_ops_database__.create_tables([Tile, Observation, Metadata])
+         # Create special, non-science tiles to allow TileIDs to be universal
+         Tile.insert(TileID=0, Target='NONE', Telescope='LVM-160', Status=0).execute()
+         Tile.insert(TileID=1, Target='Test', Telescope='LVM-160', Status=0).execute()
+         Tile.insert(TileID=1001, Target='DomeCal', Telescope='LVM-160', Status=0).execute()
 
    @classmethod
    def drop_tables(cls, models):
@@ -158,9 +163,9 @@ class OpsDB(object):
       return s
 
    @classmethod
-   def record_observation(cls, TileID, jd, lst, hz, obs_alt, lunation):
+   def record_observation(cls, TileID, obstype, jd, lst, hz, obs_alt, lunation):
       '''
       Record an LVM Observation in the database.
       '''
-      #TODO: how do we record test or calib data? Special TileIDs?
-      return Observation.insert(TileID=TileID, JD=jd, LST=lst, Hz=hz, Alt=obs_alt, Lunation=lunation).execute()
+      return Observation.insert(TileID=TileID, ObsType=obstype, 
+                                JD=jd, LST=lst, Hz=hz, Alt=obs_alt, Lunation=lunation).execute()
