@@ -184,6 +184,7 @@ class TileDB(object):
             assert path != None, "path not provided for FITS save"
             self.tile_table.meta['targhash'] = targhash
             self.tile_table.meta['targfile'] = targfile
+            self.tile_table.meta['scitile1'] = self.tileid_start
             self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
             s = len(self.tile_table)
         else:
@@ -192,6 +193,7 @@ class TileDB(object):
                 # add metadata:
                 opsdb.OpsDB.set_metadata('targfile', targfile)
                 opsdb.OpsDB.set_metadata('targhash', targhash)
+                opsdb.OpsDB.set_metadata('scitile1', self.tileid_start)
                 # save tile table
                 s = s2a.astropy2peewee(self.tile_table, opsdb.Tile, replace=True)
         return s
@@ -222,11 +224,13 @@ class TileDB(object):
 
             targfile = tile_table.meta.get('TARGFILE', 'NA')
             targhash = tile_table.meta.get('TARGHASH', 'NA')
+            scitile1 = tile_table.meta.get('SCITILE1')
             targets = targets or targfile
         else:
             with opsdb.OpsDB.get_db().atomic():
                 targfile = opsdb.OpsDB.get_metadata('targfile', default_value='NA')
                 targhash = opsdb.OpsDB.get_metadata('targhash', default_value='NA')
+                scitile1 = opsdb.OpsDB.get_metadata('scitile1')
                 targets = targets or targfile
                 tile_table = s2a.peewee2astropy(opsdb.Tile)
 
@@ -245,6 +249,8 @@ class TileDB(object):
 
         tiledb = cls(targets)
         tiledb.tile_table = tile_table
+        if (scitile1 != None):
+            tiledb.tileid_start = int(scitile1)
 
         return tiledb
 
