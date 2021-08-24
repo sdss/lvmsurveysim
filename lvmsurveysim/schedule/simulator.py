@@ -63,8 +63,12 @@ class Simulator(object):
 
     def __init__(self, tiledb, observing_plan=None, ifu=None):
 
-        assert isinstance(tiledb, TileDB), \
+        assert isinstance(tiledb, lvmsurveysim.schedule.tiledb.TileDB), \
             'tiledb must be a lvmsurveysim.schedule.tiledb.TileDB instances.'
+
+        # get rid of the special tiles, we do not need them for the simulator
+        tdb = tiledb.tile_table
+        tiledb.tile_table = tdb[numpy.where(tdb['TileID'] >= tiledb.tileid_start)[0]]
 
         if observing_plan is None:
             observing_plan = self._create_observing_plan()
@@ -120,7 +124,6 @@ class Simulator(object):
                 'invalid or unavailable tiledb file path.'
 
             tiledb = TileDB.load(tiledb)
-            #TODO: select only science tiles to simulate, drop special tiles
 
         observing_plan = observing_plan or []
 
