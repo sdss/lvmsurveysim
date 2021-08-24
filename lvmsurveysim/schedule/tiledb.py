@@ -112,7 +112,7 @@ class TileDB(object):
         assert self.tileid_start > -1, "tileid_start value invalid, must be 0 or greater integer"
 
     def __repr__(self):
-        return (f'<TileDB (N_tiles={len(self.taget_idx)})>')
+        return (f'<TileDB (N_tiles={len(self.tile_table)})>')
 
 
     def tile_targets(self, ifu=None):
