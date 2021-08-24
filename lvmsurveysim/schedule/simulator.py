@@ -597,9 +597,6 @@ class Simulator(object):
         skip_fast : bool
             If set, do not plot targets that complete in the first 20% of the
             survey.
-        show_mpld3 : bool
-            If `True`, opens a browser window with an interactive version of
-            the plot.
 
         Return
         ------
@@ -723,36 +720,6 @@ class Simulator(object):
             ax.set_ylabel('Fraction of survey time spent on target')
 
         ax.set_title(observatory if observatory != None else 'APO+LCO')
-
-        if show_mpld3:
-
-            if mpld3 is None:
-                raise ImportError('show_mpld3 requires installing the mpld3 package.')
-
-            handles, labels = ax.get_legend_handles_labels()
-
-            # Resize the figure depending on the number of targets so that the
-            # legend is not cut off.
-            vsize = len(labels) / 8 * 2.5
-            vsize = vsize if vsize > 8 else 8
-
-            fig.set_size_inches(12, vsize)
-
-            # Adjust the bottom of the plot so that it does not vertically
-            # grow too much with figure size.
-            fig.subplots_adjust(bottom=0.2 + 0.15 * vsize / 8)
-
-            interactive_legend = mpld3.plugins.InteractiveLegendPlugin(
-                handles, labels,
-                start_visible=False, alpha_unsel=0.4, alpha_over=1.7)
-
-            mpld3.plugins.connect(fig, interactive_legend)
-
-            mpld3.show()
-
-            # Restore figsize and margins
-            fig.set_size_inches(12, 8)
-            fig.subplots_adjust(bottom=0.1)
 
         # Move legend outside the plot
         ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0), ncol=ncols)
