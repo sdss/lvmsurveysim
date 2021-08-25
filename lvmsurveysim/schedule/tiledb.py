@@ -18,8 +18,6 @@ import warnings
 from astropy import units as u
 import matplotlib.pyplot as plt
 import time
-import os
-import hashlib
 import itertools
 import cycler
 
@@ -27,7 +25,6 @@ import lvmsurveysim.target
 from lvmsurveysim import IFU, config
 from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 import lvmsurveysim.utils.spherical
-import lvmsurveysim.utils.sqlite2astropy as s2a
 import lvmsurveysim.schedule.opsdb as opsdb
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
 
@@ -65,14 +62,12 @@ def polygon_perimeter(x, y, n=1.0, min_points=5):
 
 
 class TileDB(object):
-    """Database holding a list of tiles to observe. Persistence is provided as
-    load() and save() methods which use the operations SQL database as default.
+    """Database holding a list of tiles to observe. Persistence is provided 
+    through the OpsDB interface. The operations SQL database is the default.
     FITS tables are optional for simulations and development work.
 
-    The model for a row in the tile database is held in the 
-    `~lvmsurveysim.scheduler.opsdb.Tile` class. However, internally, we hold the 
-    database as a `~astropy.table.Table` to make operations on columns 
-    (which dominate scheduling) more efficient.
+    Internally, we hold the database as a `~astropy.table.Table` to make operations 
+    on columns (which dominate scheduling) most efficient.
 
     There are a few special TileIDs that describe virtual Tiles, such as
     the dome flat screen, a test exposure, and a NONE Tile. These allow for a strong
@@ -92,10 +87,12 @@ class TileDB(object):
         targets = TargetList(target_file='./targets.yaml')
         t = TileDB(targets)
         t.tile_targets()
-        t.save('tile_db')
+        OpsDB.save_tiledb(tiledb) # save to SQL
+        OpsDB.save_tiledb(tiledb, fits=True, path='tiledb') # save to FITS
 
         # load a tile database, also loads the targetfile (stored as metadata in the db)
-        t = TileDB.load('tile_db')
+        t = OpsDB.load_tiledb()  # load from SQL
+        t = OpsDB.load_tiledb(fits=True, path='tiledb')  # load from FITS
 
     Attributes
     ----------
@@ -112,7 +109,7 @@ class TileDB(object):
         database.
     """
 
-    def __init__(self, targets):
+    def __init__(self, targets, tile_tab=None, tileid_start=None):
         """
         Create a TileDB instance.
 
@@ -121,12 +118,17 @@ class TileDB(object):
         targets : ~lvmsurveysim.target.target.TargetList
             The `~lvmsuveysim.target.target.TargetList` object with the list of
             targets of the survey.
+        tile_tab : ~astropy.table.Table
+            Optional, the astropy table containing the tiles. Can be None if tiling has not
+            occurred yet
+        tileid_start : Integer
+            optional, ID of first science tile.
         """
         assert isinstance(targets, lvmsurveysim.target.TargetList), "TargetList object expected in ctor of TileDB"
-        self.targets = targets  # instance of lvmsurveysim.target.TargetList
-        self.tiles = []         # dict of target-number to list of lvmsurveysim.target.Tile
-        self.tile_table = []    # will hold astropy.Table of tile data
-        self.tileid_start = int(config['tiledb']['tileid_start']) # start value for tile ids
+        self.targets = targets    # instance of lvmsurveysim.target.TargetList
+        self.tiles = None         # dict of target-number to list of lvmsurveysim.target.Tile
+        self.tile_table = tile_tab# will hold astropy.Table of tile data
+        self.tileid_start = tileid_start or int(config['tiledb']['tileid_start']) # start value for tile ids
         assert self.tileid_start > -1, "tileid_start value invalid, must be 0 or greater integer"
 
     def __repr__(self):
@@ -177,108 +179,6 @@ class TileDB(object):
         s = opsdb.OpsDB.update_tile_status(tileid, status)
         assert s==1, 'Database error, more than one tileid updated.'
         self.tile_table['Status'][idx] = status
-
-
-    def save(self, path=None, overwrite=False, fits=False):
-        """
-        Saves a tile table to the operations database, optionally into a FITS table.
-
-        The default is to update the tile database in SQL. No parameters are needed in 
-        this case.
-
-        Parameters
-        ----------
-        path : str or ~pathlib.Path
-            Optional, the path and basename of the fits file, no extension.
-            Expects to find 'path.fits'.
-        overwrite : bool
-            Overwrite the database file if it already exists. Default False
-        fits : bool
-            save to FITS table instead of database.
-        """
-        targfile = str(self.targets.filename) if self.targets.filename is not None else 'NA'
-        targhash = self.md5(targfile)
-        if fits:
-            assert path != None, "path not provided for FITS save"
-            self.tile_table.meta['targhash'] = targhash
-            self.tile_table.meta['targfile'] = targfile
-            self.tile_table.meta['scitile1'] = self.tileid_start
-            self.tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
-            s = len(self.tile_table)
-        else:
-            # store tiles in the Ops DB
-            with opsdb.OpsDB.get_db().atomic() as txn:
-                # add metadata:
-                opsdb.OpsDB.set_metadata('targfile', targfile)
-                opsdb.OpsDB.set_metadata('targhash', targhash)
-                opsdb.OpsDB.set_metadata('scitile1', self.tileid_start)
-                # save tile table
-                s = s2a.astropy2peewee(self.tile_table, opsdb.Tile, replace=True)
-        return s
-
-
-    @classmethod
-    def load(cls, path=None, targets=None, fits=False):
-        """Creates a new instance from a tile database, or optionally read
-        from FITS table file. Default is read from SQL operations database.
-
-        Parameters
-        ----------
-        path : str or ~pathlib.Path
-            Optional, the path and basename of the tile fits file, no extension.
-            Expects to find 'path.fits'.
-        targets : ~lvmsurveysim.target.target.TargetList or path-like
-            The `~lvmsurveysim.target.target.TargetList` object associated
-            with the tile database or a path to the target list to load. If
-            `None`, the ``TARGFILE`` value stored in the database file will be
-            used, if possible.
-        fits : bool
-            load from FITS table instead of database.
-        """
-
-        if fits:
-            assert path != None, "path not provided for FITS save"
-            tile_table = astropy.table.Table.read(path+'.fits')
-
-            targfile = tile_table.meta.get('TARGFILE', 'NA')
-            targhash = tile_table.meta.get('TARGHASH', 'NA')
-            scitile1 = tile_table.meta.get('SCITILE1')
-            targets = targets or targfile
-        else:
-            with opsdb.OpsDB.get_db().atomic():
-                targfile = opsdb.OpsDB.get_metadata('targfile', default_value='NA')
-                targhash = opsdb.OpsDB.get_metadata('targhash', default_value='NA')
-                scitile1 = opsdb.OpsDB.get_metadata('scitile1')
-                targets = targets or targfile
-                tile_table = s2a.peewee2astropy(opsdb.Tile)
-
-        if not isinstance(targets, lvmsurveysim.target.TargetList):
-            assert targets is not None and targets != 'NA', \
-                'invalid or unavailable target file path.'
-
-            if not os.path.exists(targets):
-                raise LVMSurveyOpsError(
-                    f'the target file {targets!r} does not exists. '
-                    'Please, call load with a targets parameter.')
-
-            assert targhash == cls.md5(targets), 'Target file md5 hash not identical to database value'
-
-            targets = lvmsurveysim.target.TargetList(target_file=targets)
-
-        tiledb = cls(targets)
-        tiledb.tile_table = tile_table
-        if (scitile1 != None):
-            tiledb.tileid_start = int(scitile1)
-
-        return tiledb
-
-    @classmethod
-    def md5(cls, fname):
-        hash_md5 = hashlib.md5()
-        with open(fname, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
 
 
     def create_tile_table(self):
@@ -352,7 +252,6 @@ class TileDB(object):
             names=['TileID', 'TargetIndex', 'Target', 'Telescope', 'RA', 'DEC', 'PA', 'TargetPriority', 'TilePriority', 
                    'AirmassLimit', 'LunationLimit', 'HzLimit', "MoonDistanceLimit",
                    'TotalExptime', 'VisitExptime', 'Status'])
-
 
 
     def remove_overlap(self):

@@ -6,7 +6,7 @@
 #os.environ["LVMCORE_DIR"] = "/Users/droryn/prog/lvm/lvmcore/"
 #https://in-the-sky.org/skymap2.php?year=2019&month=11&day=11&town=3884373
 #https://lambda.gsfc.nasa.gov/product/foreground/fg_halpha_get.cfm
-from lvmsurveysim.schedule import ObservingPlan, Simulator, TileDB
+from lvmsurveysim.schedule import ObservingPlan, Simulator, TileDB, OpsDB
 from lvmsurveysim.target import TargetList
 import matplotlib.pyplot as plt
 
@@ -16,11 +16,15 @@ import matplotlib.pyplot as plt
 print('Creating target list ...')
 targets = TargetList(target_file='./targets.yaml')
 # Create tile database
-print('Creating tile database ...')
-tiledb = TileDB.load('lco_tiledb', fits=True)
+print('Loading tile database ...')
+#tiledb = OpsDB.load_tiledb(path='lco_tiledb', fits=True)
+OpsDB.init()
+tiledb = OpsDB.load_tiledb()
+
+print('Tiling Survey ...')
 # tiledb = TileDB(targets)
 # tiledb.tile_targets()
-# tiledb.save('lco_tiledb', fits=True, overwrite=True)
+# OpsDB.save_tiledb(tiledb, fits=True, path='lco_tiledb', overwrite=True)
 
 # Creates observing plans for LCO for the range sep 2021 - jun 2025.
 print('Creating observing plan ...')
@@ -52,3 +56,14 @@ if save: plt.savefig('LCO_airmass_1000.pdf')
 sim.plot_shadow_height(tname='ALL', group=True, norm=True, cumulative=True, linear_log=True)
 if save: plt.savefig('LCO_hz_1000.pdf')
 if save: sim.animate_survey(filename='lvm_survey_1000.mp4')
+
+
+
+# - create db
+# - tile
+#  - save to FITS or DB
+# - run sim
+#  - save results, save plots
+#  - load sim, run plots?
+# - ops
+# - - interactive mode, load, create objects, drop to prompt?

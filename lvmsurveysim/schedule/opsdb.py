@@ -11,8 +11,14 @@
 
 from lvmsurveysim.exceptions import LVMSurveyOpsError
 from peewee import *
+import lvmsurveysim.utils.sqlite2astropy as s2a
+import hashlib
+import os
+import astropy
 
 from lvmsurveysim import config
+import lvmsurveysim.target
+import lvmsurveysim.schedule.tiledb
 
 # we will determine the db name and properties at runtime from config
 # see http://docs.peewee-orm.com/en/latest/peewee/database.html#run-time-database-configuration
@@ -38,17 +44,17 @@ class Tile(LVMOpsBaseModel):
    TargetIndex = IntegerField(null=True)   # TODO: not sure this needs to go into the db, maybe create on the fly?
    Target = CharField(null=False)
    Telescope = CharField(null=False)
-   RA = FloatField(null=True)
-   DEC = FloatField(null=True)
-   PA = FloatField(null=True)
-   TargetPriority = IntegerField(null=True)
-   TilePriority = IntegerField(null=True)
-   AirmassLimit = FloatField(null=True)
-   LunationLimit = FloatField(null=True)
-   HzLimit = FloatField(null=True)
-   MoonDistanceLimit = FloatField(null=True)
-   TotalExptime = FloatField(null=True)
-   VisitExptime = FloatField(null=True)
+   RA = FloatField(null=True, default=0)
+   DEC = FloatField(null=True, default=0)
+   PA = FloatField(null=True, default=0)
+   TargetPriority = IntegerField(null=True, default=0)
+   TilePriority = IntegerField(null=True, default=0)
+   AirmassLimit = FloatField(null=True, default=0)
+   LunationLimit = FloatField(null=True, default=0)
+   HzLimit = FloatField(null=True, default=0)
+   MoonDistanceLimit = FloatField(null=True, default=0)
+   TotalExptime = FloatField(null=True, default=0)
+   VisitExptime = FloatField(null=True, default=0)
    Status = IntegerField(null=False)       # think bit-field to keep more fine-grained status information
 
 
@@ -169,3 +175,111 @@ class OpsDB(object):
       '''
       return Observation.insert(TileID=TileID, ObsType=obstype, 
                                 JD=jd, LST=lst, Hz=hz, Alt=obs_alt, Lunation=lunation).execute()
+
+   @classmethod
+   def save_tiledb(cls, tiledb, fits=False, path=None, overwrite=False):
+      """
+      Saves a tile table to the operations database, optionally into a FITS table.
+
+      The default is to update the tile database in SQL. No parameters are needed in 
+      this case.
+
+      Parameters
+      ----------
+      tiledb : `~lvmsurveysim.scheduler.TileDB`
+         The instance of a tile database to save
+      fits : bool
+         Optional, save to FITS table instead of database.
+      path : str or ~pathlib.Path
+         Optional, the path and basename of the fits file, no extension.
+         Expects to find 'path.fits'.
+      overwrite : bool
+         Optional, overwrite the FITS file if it already exists. Default False
+      """
+      targfile = str(tiledb.targets.filename) if tiledb.targets.filename is not None else 'NA'
+      targhash = cls.md5(targfile)
+      tile_table = tiledb.tile_table
+      if fits:
+         assert path != None, "path not provided for FITS save"
+         tile_table.meta['targhash'] = targhash
+         tile_table.meta['targfile'] = targfile
+         tile_table.meta['scitile1'] = tiledb.tileid_start
+         tile_table.write(path+'.fits', format='fits', overwrite=overwrite)
+         s = len(tile_table)
+      else:
+         # store tiles in the Ops DB
+         with cls.get_db().atomic():
+               # add metadata:
+               cls.set_metadata('targfile', targfile)
+               cls.set_metadata('targhash', targhash)
+               cls.set_metadata('scitile1', tiledb.tileid_start)
+               # save tile table
+               s = s2a.astropy2peewee(tile_table, Tile, replace=True)
+      return s
+
+   @classmethod
+   def md5(cls, fname):
+      hash_md5 = hashlib.md5()
+      with open(fname, "rb") as f:
+         for chunk in iter(lambda: f.read(4096), b""):
+               hash_md5.update(chunk)
+      return hash_md5.hexdigest()
+
+   @classmethod
+   def load_tiledb(cls, targets=None, fits=False, path=None):
+      """Load a tile database from the opsdb, or optionally read
+      from FITS table file. Default is read from SQL operations database.
+
+      Parameters
+      ----------
+      targets : ~lvmsurveysim.target.target.TargetList or path-like
+         Optional, the `~lvmsurveysim.target.target.TargetList` object associated
+         with the tile database or a path to the target list to load. If
+         `None`, the ``TARGFILE`` value stored in the database file will be
+         used to find abd load the correct target list.
+      fits : boolean
+         Optional, load from a FITS table rather than SQL
+      path : str or ~pathlib.Path
+         Optional, the path and basename of the tile fits file, no extension.
+         Expects to find 'path.fits'.
+
+      Returns
+      -------
+      ~lvmsurveysim.schedule.TileDB
+         TileDB instance
+      """
+
+      if fits:
+         assert path != None, "path not provided for FITS save"
+         tile_table = astropy.table.Table.read(path+'.fits')
+
+         targfile = tile_table.meta.get('TARGFILE', 'NA')
+         targhash = tile_table.meta.get('TARGHASH', 'NA')
+         scitile1 = tile_table.meta.get('SCITILE1')
+         targets = targets or targfile
+      else:
+         with cls.get_db().atomic():
+               targfile = cls.get_metadata('targfile', default_value='NA')
+               targhash = cls.get_metadata('targhash', default_value='NA')
+               scitile1 = cls.get_metadata('scitile1')
+               targets = targets or targfile
+               tile_table = s2a.peewee2astropy(Tile)
+
+      if not isinstance(targets, lvmsurveysim.target.TargetList):
+         assert targets is not None and targets != 'NA', \
+               'invalid or unavailable target file path.'
+
+         if not os.path.exists(targets):
+               raise LVMSurveyOpsError(
+                  f'the target file {targets!r} does not exists. '
+                  'Please, call load with a targets parameter.')
+
+         assert targhash == cls.md5(targets), 'Target file md5 hash not identical to database value'
+
+         targets = lvmsurveysim.target.TargetList(target_file=targets)
+
+      if (scitile1 != None):
+         scitile1 = int(scitile1)
+      tiledb = lvmsurveysim.schedule.TileDB(targets, tile_tab=tile_table, tileid_start=scitile1)
+
+      return tiledb
