@@ -40,13 +40,17 @@ The following code runs a simple simulation
     # Creates a list of targets/
     targets = TargetList(target_file='./targets.yaml')
 
-    # Create tile database and save
+    print('Loading tile database ...')
+    tiledb = OpsDB.load_tiledb(path='lco_tiledb', fits=True)
+    # or load it from the database
+    OpsDB.init()
+    tiledb = OpsDB.load_tiledb()
+
+    # Alternatively, tile the survey
+    print('Tiling Survey ...')
     tiledb = TileDB(targets)
     tiledb.tile_targets()
-    tiledb.save('lco_tiledb', fits=True, overwrite=True)
-
-    # Alternatively, load a previously tiled survey from disk:
-    tiledb = TileDB.load('lco_tiledb', fits=True)
+    OpsDB.save_tiledb(tiledb) # or: , fits=True, path='lco_tiledb', overwrite=True)
 
     # Creates observing plans for LCO for the range sep 2021 - jun 2025.
     lco_plan = ObservingPlan(2459458, 2460856, observatory='LCO') # baseline
