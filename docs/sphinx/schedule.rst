@@ -13,14 +13,14 @@ Observing plan
 
 TileDB
 ------
-.. autoclass:: lvmsurveysim.schedule.scheduler.TileDB
+.. automodule:: lvmsurveysim.schedule.scheduler.tiledb
     :members:
 
 
 Scheduler
 ---------
 
-.. autoclass:: lvmsurveysim.schedule.scheduler.Scheduler
+.. automodule:: lvmsurveysim.schedule.scheduler
     :members:
 
 .. autoclass:: lvmsurveysim.schedule.scheduler.AltitudeCalculator
@@ -30,6 +30,19 @@ Scheduler
 Simulator
 ---------
 
-.. autoclass:: lvmsurveysim.schedule.scheduler.Simulator
+.. automodule:: lvmsurveysim.schedule.scheduler.simulator
     :members:
 
+
+OpsDB
+-----
+
+.. automodule:: lvmsurveysim.schedule.scheduler.opsdb
+    :members:
+
+
+MoonModel
+---------
+
+.. automodule:: lvmsurveysim.schedule.scheduler.moon_model
+    :members:

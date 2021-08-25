@@ -18,3 +18,25 @@ lvmsurveysim.utils
     :members:
     :show-inheritance:
     :undoc-members:
+
+.. automodule:: lvmsurveysim.utils.shadow_height_lib
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. automodule:: lvmsurveysim.utils.sqlite2astropy
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. automodule:: lvmsurveysim.utils.geodesic_sphere
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. automodule:: lvmsurveysim.utils.convert_sim_to_healpix
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+
