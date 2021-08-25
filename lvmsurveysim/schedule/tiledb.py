@@ -126,7 +126,7 @@ class TileDB(object):
         self.targets = targets  # instance of lvmsurveysim.target.TargetList
         self.tiles = []         # dict of target-number to list of lvmsurveysim.target.Tile
         self.tile_table = []    # will hold astropy.Table of tile data
-        self.tileid_start = int(config['tileid_start']) # start value for tile ids
+        self.tileid_start = int(config['tiledb']['tileid_start']) # start value for tile ids
         assert self.tileid_start > -1, "tileid_start value invalid, must be 0 or greater integer"
 
     def __repr__(self):

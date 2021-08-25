@@ -377,7 +377,7 @@ class TargetList(list):
 
             if target_file is None:
                 target_file = pathlib.Path(
-                    os.path.expanduser(os.path.expandvars(config['target_file'])))
+                    os.path.expanduser(os.path.expandvars(config['tiledb']['target_file'])))
             else:
                 target_file = pathlib.Path(target_file)
 

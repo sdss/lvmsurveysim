@@ -1,5 +1,6 @@
-target_file: $LVMCORE_DIR/surveydesign/targets.yaml
-tileid_start: 1000001 # start value for tile ids
+tiledb:
+    target_file: $LVMCORE_DIR/surveydesign/targets.yaml
+    tileid_start: 1000001 # start value for tile ids
 
 opsdb:
     dbpath: ./lvmops.sqlite3 
@@ -7,19 +8,12 @@ opsdb:
         journal_mode: wal
         foreign_keys: 1
 
-
 ifu:
     type: monolithic
-    fibre_size: 107  # core dimater in microns
+    fibre_size: 107  # spaxel size in microns, must correspond to f-number in telescope
     centres: [[0, 0]]
-    #n_fibres: 1657	# 23 rings, hexagonal
     n_fibres: 1801  # 24 rings, as of PDR
     allow_rotation: false
-    # type: non_abuttable_triangle:
-    # centres: [[-0.75, 0.433012702], [0.75, 0.433012702], [0, -0.866025404]]
-    # gaps: [[0, 0], [-0.75, -0.433012702], [0.75, -0.433012702], [0, 0.866025404]]
-    # n_fibres: 1641
-    # allow_rotation: false
 
 telescopes:
     LVM-1m:
