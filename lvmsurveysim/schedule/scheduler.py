@@ -51,7 +51,6 @@ class Scheduler(object):
                     RECORD OBSERVATION of the tile
                 current_jd = now()
 
-
     Parameters
     ----------
     observing_plan : `.ObservingPlan`
@@ -60,6 +59,7 @@ class Scheduler(object):
         The plan is only used to initialize the shadow height calculator with location
         information of the observatory. The plan is not stored. The plan used for
         scheduling is passed in `prepare_for_night()`.
+
     """
 
     def __init__(self, observing_plan):
@@ -98,6 +98,7 @@ class Scheduler(object):
             Must be for the same observatory as the plan passed in ctor.
         tiledb : .TileDB
             The tile database for the night (or survey)
+
         """
 
         assert isinstance(tiledb, TileDB), 'tiledb must be a lvmsurveysim.schedule.tiledb.TileDB instances.'
@@ -179,6 +180,7 @@ class Scheduler(object):
             The altitude of the observation
         lunation : float
             The lunation at time of the observation
+
         """
 
         if jd >= self.morning_twi or jd < self.evening_twi:

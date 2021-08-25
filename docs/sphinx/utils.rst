@@ -34,9 +34,4 @@ lvmsurveysim.utils
     :show-inheritance:
     :undoc-members:
 
-.. automodule:: lvmsurveysim.utils.convert_sim_to_healpix
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
 
