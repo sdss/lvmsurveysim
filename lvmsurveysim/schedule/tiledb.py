@@ -430,14 +430,13 @@ class TileDB(object):
         return overlap
 
 
-    def plot(self, observatory=None, projection='mollweide', fast=False, annotate=False):
+    def plot(self, target=None, projection='mollweide', fast=False, annotate=False):
         """Plots the observed pointings.
 
         Parameters
         ----------
-        observatory : str
-            Plot only the points for that observatory. Otherwise, plots all
-            the pointings.
+        target : str
+            taget name to plot, None for all targets (default)
         projection : str
             The projection to use, either ``'mollweide'`` or ``'rectangular'``.
         fast : bool
@@ -459,52 +458,47 @@ class TileDB(object):
         if annotate is True:
             fast = True
 
+        if target==None:
+            data = self.tile_table[self.tile_table['TileID'] >= self.tileid_start] 
+        else:
+            data = self.tile_table[self.tile_table['Target'] == target]
+
         color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
 
         fig, ax = get_axes(projection=projection)
 
-        data = self.schedule[self.schedule['target'] != '-']
-
-        if observatory:
-            data = data[data['observatory'] == observatory]
-
         if fast is True:
             if projection == 'mollweide':
-                x,y = convert_to_mollweide(data['ra'], data['dec'])
+                x,y = convert_to_mollweide(data['RA'], data['DEC'])
             else:
-                x,y = data['ra'], data['dec']
+                x,y = data['RA'], data['DEC']
             tt = [target.name for target in self.targets]
-            g = numpy.array([tt.index(i) for i in data['target']], dtype=float)
+            g = numpy.array([tt.index(i) for i in data['Target']], dtype=float)
             ax.scatter(x, y, c=g % 19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
             if annotate is True:
                 _, text_indices = numpy.unique(g, return_index=True)
                 for i in range(len(tt)):
                     plt.text(x[text_indices[i]], y[text_indices[i]], tt[i], fontsize=9)
         else:
+            ifu = IFU.from_config()
             for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
 
                 target = self.targets[ii]
                 name = target.name
 
-                target_data = data[data['target'] == name]
+                target_data = data[data['Target'] == name]
 
-                patches = [self.ifu.get_patch(scale=target.telescope.plate_scale,
-                                              centre=[pointing['ra'], pointing['dec']],
-                                              edgecolor='None', linewidth=0.0,
-                                              facecolor=sty['bgcolor'])[0]
-                           for pointing in target_data]
+                patches = [ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['RA'], p['DEC']],
+                                         edgecolor='None', linewidth=0.0, facecolor=sty['bgcolor'])[0]
+                           for p in target_data]
 
                 if projection == 'mollweide':
-                    patches = [transform_patch_mollweide(ax, patch,
-                                                         origin=__MOLLWEIDE_ORIGIN__,
-                                                         patch_centre=target_data['ra'][ii])
+                    patches = [transform_patch_mollweide(ax, patch, origin=__MOLLWEIDE_ORIGIN__,
+                                                         patch_centre=target_data['RA'][ii])
                                for ii, patch in enumerate(patches)]
 
                 for patch in patches:
                     ax.add_patch(patch)
-
-        if observatory is not None:
-            ax.set_title(f'Observatory: {observatory}')
 
         return fig
 
