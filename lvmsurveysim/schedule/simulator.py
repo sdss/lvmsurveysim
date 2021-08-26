@@ -380,11 +380,9 @@ class Simulator(object):
 
                 target_data = data[data['target'] == name]
 
-                patches = [self.ifu.get_patch(scale=target.telescope.plate_scale,
-                                              centre=[pointing['ra'], pointing['dec']],
-                                              edgecolor='k', linewidth=0.5,
-                                              facecolor=sty['bgcolor'])[0]
-                           for pointing in target_data]
+                patches = [self.ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['RA'], p['DEC']], pa=p['PA'],
+                                              edgecolor='None', linewidth=0.0, facecolor=sty['bgcolor'])[0]
+                           for p in target_data]
 
                 if projection == 'mollweide':
                     patches = [transform_patch_mollweide(ax, patch,
