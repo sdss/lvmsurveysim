@@ -234,19 +234,21 @@ class Target(object):
             #               f'Using default IFU {ifu.name!r}.', LVMSurveyOpsWarning)
 
         print('Tiling target ' + self.name)
-        tiles = ifu.get_tile_grid(self.region, telescope.plate_scale, sparse=self.sparse, geodesic=self.geodesic)
-        tiles = astropy.coordinates.SkyCoord(tiles[:, 0], tiles[:, 1],
-                                             frame=self.frame, unit='deg')
+        coords = ifu.get_tile_grid(self.region, telescope.plate_scale, sparse=self.sparse, geodesic=self.geodesic)
+        tiles = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1], frame=self.frame, unit='deg')
+        # second set offset in dec to find position angle after transform
+        tiles2 = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1]+1./3600, frame=self.frame, unit='deg')
 
+        # transform not only centers, but also second set of coordinates slightly north, then compute the angle
         if to_frame:
             tiles = tiles.transform_to(to_frame)
+            tiles2 = tiles2.transform_to(to_frame)
+        self.pa = self.tiles.position_angle(tiles2)
 
         # cache the new tiles and the priorities
         self.tiles = tiles
         self.tile_priorities = self.get_tile_priorities()
-        # convert to tiles, set the PA to 0 for now
-        # TODO: figure out the position angle for the tiles!
-        return [Tile(self.tiles[i], 0.0, self.tile_priorities[i]) for i in range(len(self.tiles))]
+        return [Tile(self.tiles[i], self.pa[i], self.tile_priorities[i]) for i in range(len(self.tiles))]
 
 
     def get_tile_priorities(self):
