@@ -167,7 +167,7 @@ class SubIFU(object):
         self.polygon = shapely.affinity.translate(self.polygon, hor, ver)
         self.centre = numpy.array(self.polygon.centroid.coords)[0]
 
-    def get_patch(self, scale=None, centre=None, **kwargs):
+    def get_patch(self, scale=None, centre=None, pa=None, **kwargs):
         """Returns a matplotlib patch for the sub-IFU.
 
         Parameters
@@ -177,13 +177,15 @@ class SubIFU(object):
             Either a `~astropy.units.Quantity` or a value in degrees/mm.
         centre : list
             The coordinates of the centre of the IFU on the sky.
+        pa : float
+            The position angle of the IFU on the sky in degrees. Ignored if None.
         kwargs : dict
             Parameters to be passed to `~matplotlib.patches.Polygon` when
             creating the patch.
 
         Returns
         -------
-        path : `~matplotlib.patches.Polygon`
+        patch : `~matplotlib.patches.Polygon`
             A Matplotlib patch with the sub-ifu. If scale and centre are
             passed, the coordinates of the patch are on-sky.
 
@@ -193,6 +195,13 @@ class SubIFU(object):
             scale = scale.to('degree/mm').value
 
         vertices = numpy.array(self.polygon.exterior.coords)
+
+        # rotate to posotion angle!
+        if pa != None:
+            c, s = numpy.cos(numpy.deg2rad(pa)), numpy.sin(numpy.deg2rad(pa))
+            x = c*vertices[:, 0] + s*vertices[:, 1]
+            y = -s*vertices[:, 0] + c*vertices[:, 1]
+            vertices = numpy.array([x, y]).T
 
         if scale:
             # Calculates the radius in degrees on the sky
@@ -207,10 +216,10 @@ class SubIFU(object):
             # all the vertices.
             decs = vertices[:, 1] + centre[1]
             ras = vertices[:, 0] / numpy.cos(numpy.deg2rad(decs)) + centre[0]
-
             vertices = numpy.array([ras, decs]).T
 
         return matplotlib.patches.Polygon(vertices, **kwargs)
+
 
     def get_patch_collection(self, ax):
         """Returns a collection of fibre patches."""
