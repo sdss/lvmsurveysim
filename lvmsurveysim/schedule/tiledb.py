@@ -11,6 +11,21 @@
 # Interface to database holding a list of tiles to observe.
 #
 
+# TODO: intersect regions first, then tile 'super-regions' to ensure contiguous tiling
+# TODO: move tiling algorithm into 'tiledb', away from IFU, target ...
+#
+#  ifu.get_tile_grid() becomes get_ifu_gridsize(), returns delta_ra, delta_dec
+#  target.get_pixarea() belongs in IFU
+#  target.get_tiling() moves to tiledb
+#
+# tile survey:
+#   for all targets
+#       if target disjoint from all ohters
+#            tile like now
+#       if overlaps other 
+#           form union
+#       tile union
+#           assign tile priority offset according to target priority
 
 import astropy
 import numpy
