@@ -16,6 +16,7 @@ import astropy
 import numpy
 import seaborn
 import yaml
+import shapely.geometry
 
 from lvmsurveysim.ifu import IFU
 from lvmsurveysim.utils import plot as lvm_plot
@@ -182,6 +183,20 @@ class Target(object):
         target.update(region_params)
 
         return cls(region_type, coords, name=name, **target)
+
+
+    def get_shapely_region(self):
+        """
+        Return the `~shapely.geometry.region` representing the target.
+        """
+        if isinstance(self.region, lvmsurveysim.target.Region):
+            region_shapely = self.region.shapely
+        elif isinstance(self.region, shapely.geometry.Polygon):
+            region_shapely = self.region
+        else:
+            raise ValueError(f'invalid region type: {type(region)}.')
+        return region_shapely
+
 
     def get_pixarea(self, pixarea=None, ifu=None, telescope=None):
         """Gets the size of the tile in square degrees."""
