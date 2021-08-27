@@ -11,21 +11,19 @@
 # Interface to database holding a list of tiles to observe.
 #
 
-# TODO: intersect regions first, then tile 'super-regions' to ensure contiguous tiling
 # TODO: move tiling algorithm into 'tiledb', away from IFU, target ...
 #
 #  ifu.get_tile_grid() becomes get_ifu_gridsize(), returns delta_ra, delta_dec
 #  target.get_pixarea() belongs in IFU
 #  target.get_tiling() moves to tiledb
 #
-# tile survey:
-#   for all targets
-#       if target disjoint from all ohters
-#            tile like now
-#       if overlaps other 
-#           form union
-#       tile union
-#           assign tile priority offset according to target priority
+# add tile-union target-parameter to specify which targets are tiled together
+# for union of each tile-union
+# tile the union
+# for each tile in the union assign to target of highest priority containing the tile
+# tile all other targets
+# remove tiles that overlap with other regions
+
 
 import astropy
 import numpy
@@ -35,6 +33,8 @@ import matplotlib.pyplot as plt
 import time
 import itertools
 import cycler
+import shapely
+import shapely.ops
 
 import lvmsurveysim.target
 from lvmsurveysim import IFU, config
@@ -173,6 +173,20 @@ class TileDB(object):
 
         # create the tile table and calculate/record all the necessary data
         self.create_tile_table()
+
+    def tile_targets2(self, ifu=None):
+        '''
+        Tile a set of Targets with a given IFU. Overlapping targets are tiled such
+        that the tiles in the higher priority target are retained.
+
+        Parameters
+        ----------
+        ifu : ~lvmsurveysim.target.ifu.IFU
+            The `~lvmsurveysim.target.ifu.IFU` object representing the IFU geometry
+            to tile with. If None, it will be read from the config file.
+        '''
+        self.ifu = ifu or IFU.from_config()
+        self.tiling_type = 'hexagonal'
 
 
     def update_status(self, tileid, status):
