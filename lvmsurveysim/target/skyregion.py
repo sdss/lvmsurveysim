@@ -37,34 +37,40 @@ class SkyRegion(object):
         if typ == 'circle':
 
             self.region = sp.SphericalPolygon.from_cone(coords[0], coords[1], kwargs['r'])
+            self.center = coords
 
         elif typ == 'rectangle':
 
+            self.center = coords
             width_deg = kwargs['width']
             height_deg = kwargs['height']
-            x0 = coords[0] - width_deg / 2.
-            x1 = coords[0] + width_deg / 2.
-            y0 = coords[1] - height_deg / 2.
-            y1 = coords[1] + height_deg / 2.
+            x0 = - width_deg / 2.
+            x1 = + width_deg / 2.
+            y0 = - height_deg / 2.
+            y1 = + height_deg / 2.
             x, y = self._rotate_coords([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0], kwargs['pa'])
-            x = x/numpy.cos(numpy.deg2rad(y))
+            y += self.center[1]
+            x = (x + self.center[0])/numpy.cos(numpy.deg2rad(y))
             self.region =  sp.SphericalPolygon.from_radec(x, y, center=coords, degrees=True)
 
         elif typ == 'ellipse':
 
+            self.center = coords
             a, b = kwargs['a'], kwargs['b']
             k = int(numpy.max([numpy.floor(numpy.sqrt(((a + b) / 2) * 20)), 24]))
-            x = [coords[0] + a * numpy.cos(2.0*numpy.pi/k * i) for i in range(k+1)]
-            y = [coords[1] + b * numpy.sin(2.0*numpy.pi/k * i) for i in range(k+1)]
+            x = [a * numpy.cos(2.0*numpy.pi/k * i) for i in range(k+1)]
+            y = [b * numpy.sin(2.0*numpy.pi/k * i) for i in range(k+1)]
             x, y = self._rotate_coords(x, y, kwargs['pa'])
-            x = x/numpy.cos(numpy.deg2rad(y))
-            self.region =  sp.SphericalPolygon.from_radec(x, y, center=coords, degrees=True)
+            y += coords[1]
+            x = (x + self.center[0])/numpy.cos(numpy.deg2rad(y))
+            self.region = sp.SphericalPolygon.from_radec(x, y, center=coords, degrees=True)
 
         elif typ == 'polygon':
 
-            x, y = self._rotate_vertices(numpy.array(coords), kwargs['pa'])
+            x, y = self._rotate_vertices(numpy.array(coords), 0.0)
             x = x/numpy.cos(numpy.deg2rad(y))
-            self.region =  sp.SphericalPolygon.from_radec(x, y, degrees=True)
+            self.region = sp.SphericalPolygon.from_radec(x, y, degrees=True)
+            self.center = [numpy.average(x), numpy.average(y)]
 
         else:
             raise LVMSurveyOpsError('Unknown region type '+typ)
@@ -123,9 +129,7 @@ class SkyRegion(object):
 
         elif projection == 'mollweide':
 
-            centroid = self.region.inside()
-            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch,
-                                                            patch_centre=centroid)
+            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=self.center[0])
 
         if return_patch:
             return ax, poly_patch
