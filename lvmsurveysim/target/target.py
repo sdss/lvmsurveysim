@@ -25,6 +25,7 @@ import lvmsurveysim.utils.spherical
 from .. import config
 from ..telescope import Telescope
 from .region import Region
+from .skyregion import SkyRegion
 from .tile import Tile
 
 
@@ -73,11 +74,17 @@ class Target(object):
         The overhead factor per exposure quantum for this target's observing
         scheme.
     overlap:
-        calculate overlap between this target and others and discard, defaults to false
+        calculate overlap between this target and others and discard, defaults to true
+    tile_union:
+        tile_union that the target belongs to, if any; that is an area of sky that is tiled
+        from a single hexagon grid to ensure gapless tiling of overlapping regions.
     geodesic:
         geodesic tiling of the full sphere instead of region
     sparse:
         sparse tiling factor, or depth value (number of subdivisions) in case of geodesic tiling
+    group:
+        (list of) group names the target belongs to (e.g. MilkyWay). used for aggregating survey statistics
+        and plotting survey progress.
 
     Attributes
     ----------
@@ -102,6 +109,7 @@ class Target(object):
         self.overhead = kwargs.pop('overhead', 1.0)
         self.groups = kwargs.pop('group', [])
         self.tiling_strategy = kwargs.pop('tiling_strategy', 'lowest_airmass')
+        self.tile_union = kwargs.pop('tile_union', None)
         self.overlap = kwargs.pop('overlap', True)
         self.geodesic = kwargs.pop('geodesic', False) # full sky tiling, use sparse for depth
         self.sparse = kwargs.pop('sparse', None)
@@ -114,7 +122,7 @@ class Target(object):
         else:
             self.telescope = Telescope.from_config(telescope)
 
-        self.region = Region(*args, **kwargs)
+        self.region = SkyRegion(*args, **kwargs)
 
         self.frame = self.region.frame
 
@@ -416,7 +424,7 @@ class TargetList(list):
 
         return self[self._names.index(name)]
 
-    def get_group_targets(self, group, primary=True):
+    def get_group_targets(self, group, priQmary=True):
         """Returns the targets that are in a group.
 
         Parameters
@@ -451,6 +459,39 @@ class TargetList(list):
             groups.update(target.groups)
 
         return list(groups)
+
+    def get_tile_unions(self):
+        """Returns a list of all the tile unions in the target list."""
+
+        unions = set()
+        for target in self:
+            if target.tile_union:
+                unions.update([target.tile_union])
+
+        return list(unions)
+
+    def get_union_targets(self, tile_union):
+        """Returns the targets that are in a tile union.
+
+        Parameters
+        ----------
+        tile_union : str
+            The group name.
+
+        Returns
+        -------
+        targets : `list`
+            A list of target names that are included in ``tile_union``.
+
+        """
+
+        targets = []
+
+        for target in self:
+            if tile_union == target.tile_union:
+                targets.append(target.name)
+
+        return targets
 
     def get_tiling(self, **kwargs):
         """Gets the tile centres for all the targets in the set.
