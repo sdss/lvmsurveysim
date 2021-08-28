@@ -193,19 +193,6 @@ class Target(object):
         return cls(region_type, coords, name=name, **target)
 
 
-    def get_shapely_region(self):
-        """
-        Return the `~shapely.geometry.region` representing the target.
-        """
-        if isinstance(self.region, lvmsurveysim.target.Region):
-            region_shapely = self.region.shapely
-        elif isinstance(self.region, shapely.geometry.Polygon):
-            region_shapely = self.region
-        else:
-            raise ValueError(f'invalid region type: {type(region)}.')
-        return region_shapely
-
-
     def get_pixarea(self, pixarea=None, ifu=None, telescope=None):
         """Gets the size of the tile in square degrees."""
 
@@ -266,7 +253,7 @@ class Target(object):
         if to_frame:
             tiles = tiles.transform_to(to_frame)
             tiles2 = tiles2.transform_to(to_frame)
-        self.pa = self.tiles.position_angle(tiles2)
+        self.pa = tiles.position_angle(tiles2)
 
         # cache the new tiles and the priorities
         self.tiles = tiles
