@@ -249,55 +249,6 @@ class Region(object, metaclass=RegionABC):
 
         return numpy.array(cart).T
 
-    def split(self, wrap=360):
-        """Returns a list of `.PolygonalRegion` after wrapping."""
-
-        x, y = self.shapely.exterior.xy
-
-        vertices = [[], [], []]
-
-        for idx in range(len(x)):
-            #TODO: this should not be appending every idx. If append is required, then create an array idx long and append 1x
-
-            x0 = x[idx]
-            y0 = y[idx]
-
-            if x0 < 0:
-                vertices[0].append([x0, y0])
-            elif x0 > 0 and x0 < wrap:
-                vertices[1].append([x0, y0])
-            else:
-                vertices[2].append([x0, y0])
-
-            if idx == len(x) - 1:
-                break
-
-            x1 = x[idx + 1]
-            y1 = y[idx + 1]
-
-            if numpy.sign(x0) != numpy.sign(x1):
-                y_new = numpy.interpolate(0., [x0, x1], [y0, y1])
-                vertices[0].append([0., y_new])
-                vertices[1].append([0.001, y_new])
-            elif (x0 < wrap and y1 > wrap) or (x0 > wrap and y1 < wrap):
-                y_new = numpy.interpolate(wrap, [x0, x1], [y0, y1])
-                vertices[1].append([wrap, y_new])
-                vertices[2].append([wrap, y_new])
-
-        vertices = [numpy.array(verts) for verts in vertices]
-        regions = []
-
-        if vertices[0].size > 0:
-            vertices[0][:, 0] += (wrap - 0.001)
-
-        if vertices[2].size > 0:
-            vertices[2][:, 0] -= (wrap + 0.001)
-
-        regions = [Region('polygon', verts.tolist(), frame=self.frame)
-                   for verts in vertices if verts.size > 0]
-
-        return regions
-
 
 class EllipticalRegion(Region):
     """A class that represents an elliptical region on the sky.
