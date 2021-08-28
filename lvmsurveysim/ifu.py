@@ -13,8 +13,9 @@ import matplotlib.patches
 import matplotlib.pyplot
 import numpy
 import seaborn
-import shapely.geometry
 import astropy.units
+import shapely.geometry
+from spherical_geometry import polygon as sp
 
 import lvmsurveysim.utils.geodesic_sphere
 import lvmsurveysim
@@ -23,6 +24,7 @@ from lvmsurveysim import config
 seaborn.set()
 current_palette = seaborn.color_palette()
 
+# TODO: remove shapely stuff from IFU and simplify to single hexagonal IFU
 
 __all__ = ['IFU']
 
@@ -366,13 +368,6 @@ class IFU(object):
         if isinstance(scale, astropy.units.Quantity):
             scale = scale.to('degree/mm').value
 
-        if isinstance(region, lvmsurveysim.target.Region):
-            region_shapely = region.shapely
-        elif isinstance(region, shapely.geometry.Polygon):
-            region_shapely = region
-        else:
-            raise ValueError(f'invalid region type: {type(region)}.')
-
         points = []
         # Calculates the radius and apotheme of each subifu in degrees on the sky
         sparse = sparse if sparse!=None else 1.0
@@ -382,8 +377,8 @@ class IFU(object):
 
         if geodesic == False:
             # Determine the centroid and bounds of the region
-            centroid = numpy.array(region_shapely.centroid)
-            ra0, dec0, ra1, dec1 = region_shapely.bounds
+            centroid = numpy.array(region.centroid())
+            ra0, dec0, ra1, dec1 = region.bounds()
 
             # The size of the grid in RA and Dec, in degrees.
             size_ra  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
@@ -414,9 +409,6 @@ class IFU(object):
             # Reshape into a 2D list of points.
             points = points.reshape((-1, 2))
         else:
-            #s = lvmsurveysim.utils.geodesic_sphere.initialize_sphere(int(sparse))
-            #x, y, z = lvmsurveysim.utils.geodesic_sphere.vecs_to_lists(s)
-            #x, y, z = lvmsurveysim.utils.sphere.vecs_to_lists(s)
             x, y, z = lvmsurveysim.utils.geodesic_sphere.sphere(int(sparse))
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
             sk.representation_type='spherical'
@@ -425,13 +417,12 @@ class IFU(object):
             points[:,1] = sk.dec.deg
 
         # For each grid position create a Shapely circle with the radius of the IFU.
-        points_shapely = list(
-            map(lambda point: shapely.geometry.Point(point[0],
-                                                     point[1]).buffer(2. * rr_deg.value),
+        points_sp = list(
+            map(lambda point: sp.SphericalPolygon.from_cone(point[0], point[1], rr_deg.value), 
                 points))
 
         # Check what grid points would overlap with the region if occupied by an IFU.
-        inside = list(map(region_shapely.intersects, points_shapely))
+        inside = list(map(region.intersects_poly, points_sp))
         points_inside = points[inside]
 
         return points_inside
