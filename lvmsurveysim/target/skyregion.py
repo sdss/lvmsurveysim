@@ -33,7 +33,7 @@ class SkyRegion(object):
     frame = 'icrs'
     def __init__(self, typ, coords, **kwargs):
         print(typ, coords, kwargs)
-        self.typ = typ
+        self.region_type = typ
         if typ == 'circle':
 
             self.region = sp.SphericalPolygon.from_cone(coords[0], coords[1], kwargs['r'])
@@ -77,7 +77,20 @@ class SkyRegion(object):
 
     def vertices(self):
         i = self.region.to_lonlat()
-        return numpy.array(next(i)).T
+        return numpy.array(next(i)).T        
+
+    def bounds(self):
+        x, y = next(self.region.to_lonlat())
+        return numpy.min(x), numpy.min(y), numpy.max(x), numpy.max(y)
+
+    def centroid(self):
+        return self.center
+
+    def intersects_poly(self, other):
+        if isinstance(other, SkyRegion):
+            return self.region.intersects_poly(other.region)
+        else:
+            return self.region.intersects_poly(other)
 
 
     def plot(self, ax=None, projection='rectangular', return_patch=False, **kwargs):
