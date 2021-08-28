@@ -53,9 +53,9 @@ class SkyRegion(object):
         elif typ == 'ellipse':
 
             a, b = kwargs['a'], kwargs['b']
-            k = numpy.max(numpy.floor(numpy.sqrt(((a + b) / 2) * 20)), 24)
+            k = int(numpy.max([numpy.floor(numpy.sqrt(((a + b) / 2) * 20)), 24]))
             x = [coords[0] + a * numpy.cos(2.0*numpy.pi/k * i) for i in range(k+1)]
-            y = [coords[1] + b * numpy.cos(2.0*numpy.pi/k * i) for i in range(k+1)]
+            y = [coords[1] + b * numpy.sin(2.0*numpy.pi/k * i) for i in range(k+1)]
             x, y = self._rotate_coords(x, y, kwargs['pa'])
             x = x/numpy.cos(numpy.deg2rad(y))
             self.region =  sp.SphericalPolygon.from_radec(x, y, center=coords, degrees=True)
@@ -143,33 +143,3 @@ class SkyRegion(object):
         rot = cls._rotate_vertices(numpy.array([x, y]).T, pa)
         xyprime = rot.T
         return xyprime[0,:], xyprime[1,:]
-
-# def rotate_vertices(vertices, pa):
-#     sa, ca = numpy.sin(numpy.deg2rad(pa)), numpy.cos(numpy.deg2rad(pa))
-#     R = numpy.array([[ca, -sa], [sa, ca]])
-#     return numpy.dot(R, vertices.T).T 
-
-# def rotate_coords(x, y, pa):
-#     rot = rotate_vertices(numpy.array([x, y]).T, pa)
-#     xyprime = rot.T
-#     return xyprime[0,:], xyprime[1,:]
-
-# def plot(vertices, **kwargs):
-#     fig, ax = lvm_plot.get_axes(projection='rectangular', frame='icrs')
-
-#     min_x, min_y = vertices.min(0)
-#     max_x, max_y = vertices.max(0)
-
-#     padding_x = 0.1 * (max_x - min_x)
-#     padding_y = 0.1 * (max_y - min_y)
-
-#     ax.set_xlim(min_x - padding_x, max_x + padding_x)
-#     ax.set_ylim(min_y - padding_y, max_y + padding_y)
-
-#     poly = matplotlib.path.Path(vertices, closed=True)
-#     poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
-#     poly_patch = ax.add_patch(poly_patch)
-
-#     ax.set_aspect('equal', adjustable='box')
-
-#     return fig, ax
