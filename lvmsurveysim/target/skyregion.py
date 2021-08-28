@@ -69,8 +69,8 @@ class SkyRegion(object):
 
             x, y = self._rotate_vertices(numpy.array(coords), 0.0)
             x = x/numpy.cos(numpy.deg2rad(y))
-            self.region = sp.SphericalPolygon.from_radec(x, y, degrees=True)
             self.center = [numpy.average(x), numpy.average(y)]
+            self.region = sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
 
         else:
             raise LVMSurveyOpsError('Unknown region type '+typ)
