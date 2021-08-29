@@ -39,16 +39,18 @@ class SkyRegion(object):
         if typ == 'rectangle':
 
             self.center = coords
-            width = kwargs['width'] / numpy.cos(numpy.deg2rad(coords[1]))
+            width = kwargs['width']
             height = kwargs['height']
             x0 = - width / 2.
             x1 = + width / 2.
             y0 = - height / 2.
             y1 = + height / 2.
             x, y = self._rotate_coords([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0], kwargs['pa'])
+            x, y = self.polygon_perimeter(x, y)
+            x /= numpy.cos(numpy.deg2rad(y))
             y += self.center[1]
             x += self.center[0]
-            self.region =  sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
+            self.region = sp.SphericalPolygon.from_radec(x, y, degrees=True)
 
         elif typ == 'circle':
 
@@ -78,6 +80,7 @@ class SkyRegion(object):
         elif typ == 'polygon':
 
             x, y = self._rotate_vertices(numpy.array(coords), 0.0)
+            x, y = self.polygon_perimeter(x, y)
             self.center = [numpy.average(x), numpy.average(y)]
             x -= self.center[0]
             x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
@@ -110,20 +113,6 @@ class SkyRegion(object):
         else:
             r2.frame = 'icrs'
             x, y = next(self.region.to_lonlat())
-            c = SkyCoord(self.center[0]*u.deg, self.center[1]*u.deg).transform_to('icrs')
-            s = SkyCoord(x*u.deg, y*u.deg, frame=self.frame).transform_to('icrs')
-            r2.center = [c.ra.deg, c.dec.deg]
-            r2.region = sp.SphericalPolygon.from_radec(s.ra.deg, s.dec.deg, degrees=True)
-            return r2
-
-    def icrs_region_refine(self):
-        r2 = deepcopy(self)
-        if self.frame == 'icrs':
-            return r2
-        else:
-            r2.frame = 'icrs'
-            x, y = next(self.region.to_lonlat())
-            x, y = self.polygon_perimeter(x, y)
             c = SkyCoord(self.center[0]*u.deg, self.center[1]*u.deg).transform_to('icrs')
             s = SkyCoord(x*u.deg, y*u.deg, frame=self.frame).transform_to('icrs')
             r2.center = [c.ra.deg, c.dec.deg]
