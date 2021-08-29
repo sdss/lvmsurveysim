@@ -31,12 +31,10 @@
 import astropy
 import numpy
 import warnings
-from astropy import units as u
 import matplotlib.pyplot as plt
 import time
 import itertools
 import cycler
-from spherical_geometry import polygon as sp
 
 import lvmsurveysim.target
 from lvmsurveysim import IFU, config

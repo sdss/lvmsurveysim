@@ -16,7 +16,6 @@ import astropy
 import numpy
 import seaborn
 import yaml
-import shapely.geometry
 
 from lvmsurveysim.ifu import IFU
 from lvmsurveysim.utils import plot as lvm_plot
@@ -24,7 +23,6 @@ import lvmsurveysim.utils.spherical
 
 from .. import config
 from ..telescope import Telescope
-from .region import Region
 from .skyregion import SkyRegion
 from .tile import Tile
 
