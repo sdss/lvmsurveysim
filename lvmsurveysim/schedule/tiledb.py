@@ -24,6 +24,9 @@
 # tile all other targets
 # remove tiles that overlap with other regions
 
+# TODO: Need to work with sperical polygons from the get go. remove shapely
+# replace region.py with skyregion
+
 
 import astropy
 import numpy
@@ -33,8 +36,7 @@ import matplotlib.pyplot as plt
 import time
 import itertools
 import cycler
-import shapely
-import shapely.ops
+from spherical_geometry import polygon as sp
 
 import lvmsurveysim.target
 from lvmsurveysim import IFU, config
@@ -174,6 +176,7 @@ class TileDB(object):
         # create the tile table and calculate/record all the necessary data
         self.create_tile_table()
 
+
     def tile_targets2(self, ifu=None):
         '''
         Tile a set of Targets with a given IFU. Overlapping targets are tiled such
@@ -187,6 +190,19 @@ class TileDB(object):
         '''
         self.ifu = ifu or IFU.from_config()
         self.tiling_type = 'hexagonal'
+
+        for tu in self.targets.get_tile_unions():
+            ts = self.targets.get_union_targets(tu)
+            regions = [self.targets.get_target(tn).get_shapely_region() for tn in ts]
+            u = shapely.ops.unary_union(regions)
+
+        return u
+        # for union of each tile-union
+        # tile the union
+        # for each tile in the union assign to target of highest priority containing the tile
+        # tile all other targets
+    # remove tiles that overlap with other regions
+
 
 
     def update_status(self, tileid, status):
@@ -341,95 +357,23 @@ class TileDB(object):
                         overlap[self.targets[j].name][self.targets[idx].name] = numpy.full(len(self.tiles[j]), False)
                         overlap[self.targets[idx].name][self.targets[j].name] = numpy.full(len(self.tiles[idx]), False)
 
-        #import spherical geometry routine to use for calculating polygons in spherical coordinates
-        from spherical_geometry import polygon as spherical_geometry_polygon
-
         for index_of_i, target_index_i in enumerate(sorted_indices[:-1]):
-
             if self.targets[target_index_i].overlap:
                 # i has the highest priority because of the [::-1] reversal of the priority list
-
-                if self.targets[target_index_i].region.region_type == 'circle':
-                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[target_index_i].region.coords.transform_to('icrs').ra.deg,
-                    self.targets[target_index_i].region.coords.transform_to('icrs').dec.deg,\
-                    self.targets[target_index_i].region.r.deg,
-                    degrees=True)
-
-                elif self.targets[target_index_i].region.region_type == 'rectangle':
-                    # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                    shapely_i = self.targets[target_index_i].region.shapely
-
-                    # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                    # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                    # Get the x-y coordinates which define the polygon of the region.
-                    x_i, y_i = shapely_i.exterior.coords.xy
-
-                    per_x, per_y = polygon_perimeter(x_i, y_i)
-                    c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[target_index_i].frame)
-                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
-
-                else:
-                    # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                    shapely_i = self.targets[target_index_i].region.shapely
-
-                    # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                    # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                    # Get the x-y coordinates which define the polygon of the region.
-                    x_i, y_i = shapely_i.exterior.coords.xy
-
-                    # Convert the coordinates of the polygon into SkyCoordinates
-                    # This logical statemetns that check for the type of coordinate
-                    c_i = astropy.coordinates.SkyCoord(x_i*u.degree, y_i*u.degree, frame=self.targets[target_index_i].frame)
-
-                    # Convert the x-y coordinates, now in SkyCoordinates into polygons in icrs. 
-                    # This ensures that independent of what ever coordinate system i or j are in that the comparison is in the correct frame
-                    poly_i = spherical_geometry_polygon.SphericalPolygon.from_radec(c_i.transform_to('icrs').ra.deg, c_i.transform_to('icrs').dec.deg)
-
+                
+                # make sure we have everything in ICRS
+                poly_i = self.targets[target_index_i].region.icrs_region()
 
                 for j in sorted_indices[index_of_i + 1:]:
                     if self.targets[j].overlap:
                         # j has a lower priority. So we are masking j with i
-                        if self.targets[j].region.region_type == 'circle':
-                            poly_j = spherical_geometry_polygon.SphericalPolygon.from_cone(self.targets[j].region.coords.transform_to('icrs').ra.deg, self.targets[j].region.coords.transform_to('icrs').dec.deg, self.targets[j].region.r.deg, degrees=True)
 
-                        elif self.targets[j].region.region_type == 'rectangle':
-                            # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly
-                            shapely_j = self.targets[j].region.shapely
+                        # make sure we have everything in ICRS
+                        poly_j = self.targets[j].region.icrs_region()
 
-                            # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                            # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                            # Get the x-y coordinates which define the polygon of the region.
-                            x_j, y_j = shapely_j.exterior.coords.xy
-
-                            per_x, per_y = polygon_perimeter(x_j, y_j)
-                            c_poly_perimeter = astropy.coordinates.SkyCoord(per_x*u.degree, per_y*u.degree, frame=self.targets[target_index_i].frame)
-                            poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_poly_perimeter.transform_to('icrs').ra.deg, c_poly_perimeter.transform_to('icrs').dec.deg)
-
-                        else:
-                            # Create a reference to the target shapley object. This is probably uncessary, and can be sourced directly 
-                            shapely_j = self.targets[j].region.shapely
-                            
-                            # Create a set of polygons using the extertiors reported by shapely to create polygons using a convex hull.
-                            # This is probably stupid and I should use the actual polygon methods: rectangle circle, etc.
-                            # Get the x-y coordinates which define the polygon of the region.
-                            x_j, y_j = shapely_j.exterior.coords.xy
-
-                            # Convert the coordinates of the polygon into SkyCoordinates
-                            # This logical statemetns that check for the type of coordinate
-                            c_j = astropy.coordinates.SkyCoord(x_j*u.degree, y_j*u.degree, frame=self.targets[j].frame)
-
-                            # Convert the x-y coordinates, now in SkyCoordinates into polygons in icrs. 
-                            # This ensures that independent of what ever coordinate system i or j are in that the comparison is in the correct frame
-                            poly_j = spherical_geometry_polygon.SphericalPolygon.from_radec(c_j.transform_to('icrs').ra.deg, c_j.transform_to('icrs').dec.deg)
-
-                        # Use the spherical polygon intersection routine, replacing shapely which only works on cartesian grids.
                         # short circuit the calculation on the tiles if the shapes do not overlap
                         may_overlap = poly_i.intersects_poly(poly_j)
-
-                        # Note before proceeding to the next code block, if you are familiar with previous methods, we no longer have a miss match between
-                        # the region polygon coordinate frame and the coordinate frame of the tiles. Everything is converted to ICRS. This prevents us from having to convert everything
-                        # to galactic and store values, which took a lot of time for larger targets. This change seems to have off set the cost of looping over all tiles to calculate 
-                        # if it is contained by another target.
+                        #print(may_overlap, self.targets[target_index_i].name, self.targets[j].name)
 
                         if may_overlap is True:
                             # shapes overlap, so now find all tiles of j that are within i:
@@ -441,7 +385,7 @@ class TileDB(object):
                             t_start = time.time()
                             # Check array to see which is false.
                             for k in range(len(lon_j)):
-                                contains_True_False = poly_i.contains_radec(lon_j[k], lat_j[k], degrees=True)
+                                contains_True_False = poly_i.contains_point(lon_j[k], lat_j[k])
 
                                 overlap[names[j]][names[target_index_i]][k] = numpy.logical_not(contains_True_False)
 
