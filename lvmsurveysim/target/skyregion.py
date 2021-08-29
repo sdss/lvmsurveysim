@@ -9,12 +9,13 @@
 # @Last modified by: José Sánchez-Gallego (gallegoj@uw.edu)
 # @Last modified time: 2019-03-13 11:32:39
 
-import astropy.coordinates
-import astropy.units
+import astropy.units as u
+from astropy.coordinates import SkyCoord
 import matplotlib.patches
 import matplotlib.path
 import matplotlib.transforms
 import numpy
+from copy import deepcopy
 
 from spherical_geometry import polygon as sp
 from lvmsurveysim.utils import plot as lvm_plot
@@ -30,46 +31,56 @@ __all__ = ['SkyRegion']
 #super(SubClass, self).__init__('x')
 
 class SkyRegion(object):
-    frame = 'icrs'
     def __init__(self, typ, coords, **kwargs):
         print(typ, coords, kwargs)
         self.region_type = typ
-        if typ == 'circle':
+        self.frame = kwargs['frame']
 
-            self.region = sp.SphericalPolygon.from_cone(coords[0], coords[1], kwargs['r'])
-            self.center = coords
-
-        elif typ == 'rectangle':
+        if typ == 'rectangle':
 
             self.center = coords
-            width_deg = kwargs['width']
-            height_deg = kwargs['height']
-            x0 = - width_deg / 2.
-            x1 = + width_deg / 2.
-            y0 = - height_deg / 2.
-            y1 = + height_deg / 2.
+            width = kwargs['width'] / numpy.cos(numpy.deg2rad(coords[1]))
+            height = kwargs['height']
+            x0 = - width / 2.
+            x1 = + width / 2.
+            y0 = - height / 2.
+            y1 = + height / 2.
             x, y = self._rotate_coords([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0], kwargs['pa'])
             y += self.center[1]
-            x = (x + self.center[0])/numpy.cos(numpy.deg2rad(y))
-            self.region =  sp.SphericalPolygon.from_radec(x, y, center=coords, degrees=True)
+            x += self.center[0]
+            self.region =  sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
+
+        elif typ == 'circle':
+
+            self.center = coords
+            r = kwargs['r']
+            k = int(numpy.max([numpy.floor(numpy.sqrt(r * 20)), 24]))
+            x = numpy.array(list(reversed([r * numpy.cos(2.0*numpy.pi/k * i) for i in range(k+1)])))
+            y = numpy.array(list(reversed([r * numpy.sin(2.0*numpy.pi/k * i) for i in range(k+1)])))
+            y += self.center[1]
+            x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
+            self.region = sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
+            # self.region = sp.SphericalPolygon.from_cone(coords[0], coords[1], kwargs['r'])
+            # self.center = coords
 
         elif typ == 'ellipse':
 
             self.center = coords
             a, b = kwargs['a'], kwargs['b']
             k = int(numpy.max([numpy.floor(numpy.sqrt(((a + b) / 2) * 20)), 24]))
-            x = [a * numpy.cos(2.0*numpy.pi/k * i) for i in range(k+1)]
-            y = [b * numpy.sin(2.0*numpy.pi/k * i) for i in range(k+1)]
+            x = list(reversed([a * numpy.cos(2.0*numpy.pi/k * i) for i in range(k+1)]))
+            y = list(reversed([b * numpy.sin(2.0*numpy.pi/k * i) for i in range(k+1)]))
             x, y = self._rotate_coords(x, y, kwargs['pa'])
-            y += coords[1]
-            x = (x + self.center[0])/numpy.cos(numpy.deg2rad(y))
-            self.region = sp.SphericalPolygon.from_radec(x, y, center=coords, degrees=True)
+            y += self.center[1]
+            x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
+            self.region = sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
 
         elif typ == 'polygon':
 
             x, y = self._rotate_vertices(numpy.array(coords), 0.0)
-            x = x/numpy.cos(numpy.deg2rad(y))
             self.center = [numpy.average(x), numpy.average(y)]
+            x -= self.center[0]
+            x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
             self.region = sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
 
         else:
@@ -87,10 +98,23 @@ class SkyRegion(object):
         return self.center
 
     def intersects_poly(self, other):
-        if isinstance(other, SkyRegion):
-            return self.region.intersects_poly(other.region)
+        return self.region.intersects_poly(other.region)
+
+    def contains_point(self, x, y):
+        return self.region.contains_lonlat(x, y, degrees=True)
+
+    def icrs_region(self):
+        r2 = deepcopy(self)
+        if self.frame == 'icrs':
+            return r2
         else:
-            return self.region.intersects_poly(other)
+            r2.frame = 'icrs'
+            x, y = next(self.region.to_lonlat())
+            c = SkyCoord(self.center[0]*u.deg, self.center[1]*u.deg).transform_to('icrs')
+            s = SkyCoord(x*u.deg, y*u.deg, frame=self.frame).transform_to('icrs')
+            r2.center = [c.ra.deg, c.dec.deg]
+            r2.region = sp.SphericalPolygon.from_radec(s.ra.deg, s.dec.deg, degrees=True)
+            return r2
 
 
     def plot(self, ax=None, projection='rectangular', return_patch=False, **kwargs):
