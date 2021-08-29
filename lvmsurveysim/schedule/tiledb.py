@@ -51,32 +51,6 @@ numpy.seterr(invalid='raise')
 __all__ = ['TileDB']
 
 
-def polygon_perimeter(x, y, n=1.0, min_points=5):
-    """ x and y are numpy type arrays. Function returns perimiter values every n-degree in length"""
-    x_perimeter = numpy.array([])
-    y_perimeter = numpy.array([])
-    for x1,x2,y1,y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
-        # Calculate the length of a segment, hopefully in degrees
-        dl = ((x2-x1)**2 + (y2-y1)**2)**0.5
-
-        n_dl = numpy.max([int(dl/n), min_points])
-        
-        if x1 != x2:
-            m = (y2-y1)/(x2-x1)
-            b = y2 - m*x2
-
-            interp_x = numpy.linspace(x1, x2, num=n_dl, endpoint=False)
-            interp_y = interp_x * m + b
-        
-        else:
-            interp_x = numpy.full(n_dl, x1)
-            interp_y = numpy.linspace(y1,y2, n_dl, endpoint=False)
-
-        x_perimeter = numpy.append(x_perimeter, interp_x)
-        y_perimeter = numpy.append(y_perimeter, interp_y)
-    return(x_perimeter, y_perimeter)
-
-
 
 class TileDB(object):
     """Database holding a list of tiles to observe. Persistence is provided 
@@ -362,14 +336,15 @@ class TileDB(object):
                 # i has the highest priority because of the [::-1] reversal of the priority list
                 
                 # make sure we have everything in ICRS
-                poly_i = self.targets[target_index_i].region.icrs_region()
+                # TODO: use polygon_perimeter to refine?
+                poly_i = self.targets[target_index_i].region.icrs_region_refine()
 
                 for j in sorted_indices[index_of_i + 1:]:
                     if self.targets[j].overlap:
                         # j has a lower priority. So we are masking j with i
 
                         # make sure we have everything in ICRS
-                        poly_j = self.targets[j].region.icrs_region()
+                        poly_j = self.targets[j].region.icrs_region_refine()
 
                         # short circuit the calculation on the tiles if the shapes do not overlap
                         may_overlap = poly_i.intersects_poly(poly_j)
@@ -385,11 +360,11 @@ class TileDB(object):
                             t_start = time.time()
                             # Check array to see which is false.
                             for k in range(len(lon_j)):
-                                contains_True_False = poly_i.contains_point(lon_j[k], lat_j[k])
+                                contains_i_j = poly_i.contains_point(lon_j[k], lat_j[k])
 
-                                overlap[names[j]][names[target_index_i]][k] = numpy.logical_not(contains_True_False)
+                                overlap[names[j]][names[target_index_i]][k] = numpy.logical_not(contains_i_j)
 
-                                if contains_True_False and (verbose_level >= 2):
+                                if contains_i_j and (verbose_level >= 2):
                                     print("%s x %s overlap at %f, %f"%(self.targets[target_index_i].name, self.targets[j].name, lon_j[k], lat_j[k]))
                             
                             if verbose_level >=1:
@@ -403,7 +378,7 @@ class TileDB(object):
         return overlap
 
 
-    def plot(self, target=None, projection='mollweide', fast=False, annotate=False):
+    def plot(self, target=None, projection='mollweide', fast=False, annotate=False, alpha=0.75):
         """Plots the observed pointings.
 
         Parameters
@@ -420,6 +395,8 @@ class TileDB(object):
         annotate : bool
             Write the targets' names next to the target coordinates. Implies
             ``fast=True``.
+        alpha : float
+            Alpha channel value when drawing survey tiles
 
         Returns
         -------
@@ -462,7 +439,7 @@ class TileDB(object):
                 target_data = data[data['Target'] == name]
 
                 patches = [ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['RA'], p['DEC']], pa=p['PA'],
-                                         edgecolor='None', linewidth=0.0, facecolor=sty['bgcolor'])[0]
+                                         edgecolor='None', linewidth=0.0, alpha=alpha, facecolor=sty['bgcolor'])[0]
                            for p in target_data]
 
                 if projection == 'mollweide':

@@ -116,6 +116,46 @@ class SkyRegion(object):
             r2.region = sp.SphericalPolygon.from_radec(s.ra.deg, s.dec.deg, degrees=True)
             return r2
 
+    def icrs_region_refine(self):
+        r2 = deepcopy(self)
+        if self.frame == 'icrs':
+            return r2
+        else:
+            r2.frame = 'icrs'
+            x, y = next(self.region.to_lonlat())
+            x, y = self.polygon_perimeter(x, y)
+            c = SkyCoord(self.center[0]*u.deg, self.center[1]*u.deg).transform_to('icrs')
+            s = SkyCoord(x*u.deg, y*u.deg, frame=self.frame).transform_to('icrs')
+            r2.center = [c.ra.deg, c.dec.deg]
+            r2.region = sp.SphericalPolygon.from_radec(s.ra.deg, s.dec.deg, degrees=True)
+            return r2
+
+    @classmethod
+    def polygon_perimeter(cls, x, y, n=1.0, min_points=5):
+        """ x and y are numpy type arrays. Function returns perimiter values every n-degree in length"""
+        x_perimeter = numpy.array([])
+        y_perimeter = numpy.array([])
+        for x1,x2,y1,y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
+            # Calculate the length of a segment, hopefully in degrees
+            dl = ((x2-x1)**2 + (y2-y1)**2)**0.5
+
+            n_dl = numpy.max([int(dl/n), min_points])
+            
+            if x1 != x2:
+                m = (y2-y1)/(x2-x1)
+                b = y2 - m*x2
+
+                interp_x = numpy.linspace(x1, x2, num=n_dl, endpoint=False)
+                interp_y = interp_x * m + b
+            
+            else:
+                interp_x = numpy.full(n_dl, x1)
+                interp_y = numpy.linspace(y1,y2, n_dl, endpoint=False)
+
+            x_perimeter = numpy.append(x_perimeter, interp_x)
+            y_perimeter = numpy.append(y_perimeter, interp_y)
+        return x_perimeter, y_perimeter
+
 
     def plot(self, ax=None, projection='rectangular', return_patch=False, **kwargs):
         """Plots the region.
