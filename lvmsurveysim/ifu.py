@@ -416,13 +416,13 @@ class IFU(object):
             points[:,0] = sk.ra.deg
             points[:,1] = sk.dec.deg
 
-        # For each grid position create a Shapely circle with the radius of the IFU.
-        points_sp = list(
-            map(lambda point: sp.SphericalPolygon.from_cone(point[0], point[1], rr_deg.value), 
-                points))
+        # For each grid position create a circle SkyRegion with the radius of the IFU.
+        # points_sp = list(
+        #     map(lambda point: sp.SphericalPolygon.from_cone(point[0], point[1], rr_deg.value), 
+        #         points))
 
         # Check what grid points would overlap with the region if occupied by an IFU.
-        inside = list(map(region.intersects_poly, points_sp))
+        inside = [region.contains_point(x,y) for x,y in zip(points[:,0], points[:,1])]
         points_inside = points[inside]
 
         return points_inside
