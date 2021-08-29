@@ -336,15 +336,14 @@ class TileDB(object):
                 # i has the highest priority because of the [::-1] reversal of the priority list
                 
                 # make sure we have everything in ICRS
-                # TODO: use polygon_perimeter to refine?
-                poly_i = self.targets[target_index_i].region.icrs_region_refine()
+                poly_i = self.targets[target_index_i].region.icrs_region()
 
                 for j in sorted_indices[index_of_i + 1:]:
                     if self.targets[j].overlap:
                         # j has a lower priority. So we are masking j with i
 
                         # make sure we have everything in ICRS
-                        poly_j = self.targets[j].region.icrs_region_refine()
+                        poly_j = self.targets[j].region.icrs_region()
 
                         # short circuit the calculation on the tiles if the shapes do not overlap
                         may_overlap = poly_i.intersects_poly(poly_j)
