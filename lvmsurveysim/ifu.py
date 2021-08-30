@@ -17,6 +17,7 @@ import astropy.units
 
 import lvmsurveysim
 from lvmsurveysim import config
+import lvmsurveysim.utils.geodesic_sphere
 
 seaborn.set()
 current_palette = seaborn.color_palette()

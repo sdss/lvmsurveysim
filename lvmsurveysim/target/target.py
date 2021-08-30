@@ -16,10 +16,12 @@ import astropy
 import numpy
 import seaborn
 import yaml
+import warnings
 
 from lvmsurveysim.ifu import IFU
 from lvmsurveysim.utils import plot as lvm_plot
 import lvmsurveysim.utils.spherical
+from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 
 from .. import config
 from ..telescope import Telescope
@@ -256,7 +258,36 @@ class Target(object):
         # cache the new tiles and the priorities
         self.tiles = tiles
         self.tile_priorities = self.get_tile_priorities()
+        return self.make_tiles()
+
+
+    def make_tiles(self):
+        """ Return a list of `~lvmsurveysim.schedule.Tile` tile objects for this target.
+        Requires the self.tiles, self.pa and self.tile_priorites arrays to be set.
+        """
         return [Tile(self.tiles[i], self.pa[i], self.tile_priorities[i]) for i in range(len(self.tiles))]
+
+    def get_tiles_from_union(self, coords, pa):
+        """ Select tiles belonging to this target from a list of coordinates.
+
+        This method is used to select the tiles belonging to this target from a 
+        list of coordinates of a tile union.
+
+        Returns:
+        coords, pa : numpy.array
+            vectors of coordinates and PAs remaining after selection.
+        """
+        mask = numpy.full(len(coords), True)
+        icrs_r = self.region.icrs_region()
+        for i, c in enumerate(coords):
+            if icrs_r.contains_point(c.ra.deg, c.dec.deg):
+                mask[i] = False
+
+        self.tiles = coords[~mask]
+        self.pa = pa[~mask]
+        self.tile_priorities = self.get_tile_priorities()
+        return coords[mask], pa[mask]
+
 
 
     def get_tile_priorities(self):
@@ -268,6 +299,10 @@ class Target(object):
         priorities: ~numpy.array
             Array of length of number of tiles with the priority for each tile.
         """
+        if len(self.tiles) == 0:
+            warnings.warn(f'target {self.name}: no tiles when calling get_tile_priorities(). ', LVMSurveyOpsWarning)
+            return numpy.array([])
+
         if self.tiling_strategy == 'lowest_airmass':
             self.tile_priorities = numpy.ones(len(self.tiles), dtype=int)
         elif self.tiling_strategy == 'center_first':
@@ -302,6 +337,12 @@ class Target(object):
 
         p = numpy.floor(dist / field).astype(int)
         return numpy.max(p) - p + 1  # invert since priorities increase with value
+
+
+    def get_skyregion(self):
+        """ Return the `.SkyRegion` of the target
+        """
+        return self.region
 
     def plot(self, *args, **kwargs):
         """Plots the region. An alias for ``.Region.plot``."""
@@ -409,7 +450,7 @@ class TargetList(list):
 
         return self[self._names.index(name)]
 
-    def get_group_targets(self, group, priQmary=True):
+    def get_group_targets(self, group, primary=True):
         """Returns the targets that are in a group.
 
         Parameters
@@ -470,13 +511,13 @@ class TargetList(list):
 
         """
 
-        targets = []
+        ut = []
 
         for target in self:
             if tile_union == target.tile_union:
-                targets.append(target.name)
+                ut.append(target)
 
-        return targets
+        return TargetList(targets=ut)
 
     def get_tiling(self, **kwargs):
         """Gets the tile centres for all the targets in the set.
@@ -497,6 +538,15 @@ class TargetList(list):
 
         """
         return {ii: self[ii].get_tiling(**kwargs) for ii in range(len(self))}
+
+
+    def order_by_priority(self):
+        """ Return a copy of the target list ordered by priorities highest to lowest.
+        """
+        def prio(t):
+            return t.priority
+        
+        return sorted(self, key=prio, reverse=True)
 
 
     def plot_tiling(self, frame='icrs', **kwargs):

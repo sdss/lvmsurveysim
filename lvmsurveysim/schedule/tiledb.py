@@ -11,22 +11,6 @@
 # Interface to database holding a list of tiles to observe.
 #
 
-# TODO: move tiling algorithm into 'tiledb', away from IFU, target ...
-#
-#  ifu.get_tile_grid() becomes get_ifu_gridsize(), returns delta_ra, delta_dec
-#  target.get_pixarea() belongs in IFU
-#  target.get_tiling() moves to tiledb
-#
-# add tile-union target-parameter to specify which targets are tiled together
-# for union of each tile-union
-# tile the union
-# for each tile in the union assign to target of highest priority containing the tile
-# tile all other targets
-# remove tiles that overlap with other regions
-
-# TODO: Need to work with sperical polygons from the get go. remove shapely
-# replace region.py with skyregion
-
 
 import astropy
 import numpy
@@ -42,6 +26,7 @@ from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 import lvmsurveysim.utils.spherical
 import lvmsurveysim.schedule.opsdb as opsdb
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
+from lvmsurveysim.target.skyregion import SkyRegion
 
 numpy.seterr(invalid='raise')
 
@@ -162,19 +147,40 @@ class TileDB(object):
         '''
         self.ifu = ifu or IFU.from_config()
         self.tiling_type = 'hexagonal'
+        self.tiles = {}
+
+        # TODO: generalize the select from tile grid: use for all targets, so there's only
+        #one tiling code
 
         for tu in self.targets.get_tile_unions():
-            ts = self.targets.get_union_targets(tu)
-            regions = [self.targets.get_target(tn).get_shapely_region() for tn in ts]
-            u = shapely.ops.unary_union(regions)
+            ts = self.targets.get_union_targets(tu).order_by_priority()
+            regions = [t.get_skyregion() for t in ts]
+            uregion = SkyRegion.multi_union(regions)
 
-        return u
-        # for union of each tile-union
-        # tile the union
-        # for each tile in the union assign to target of highest priority containing the tile
-        # tile all other targets
-    # remove tiles that overlap with other regions
+            print('Tiling tile union ' + tu)
+            coords = self.ifu.get_tile_grid(uregion, ts[0].telescope.plate_scale, sparse=ts[0].sparse, geodesic=False)
+            tiles = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1], frame=ts[0].frame, unit='deg')
+            # second set offset in dec to find position angle after transform
+            tiles2 = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1]+1./3600, frame=ts[0].frame, unit='deg')
 
+            # transform not only centers, but also second set of coordinates slightly north, then compute the angle
+            tiles = tiles.transform_to('icrs')
+            tiles2 = tiles2.transform_to('icrs')
+            pa = tiles.position_angle(tiles2)
+
+            # distribute tiles back to targets:
+            for t in ts:
+                print('   selecting tiles for '+t.name)
+                tiles, pa = t.get_tiles_from_union(tiles, pa)
+
+        for i, t in enumerate(self.targets):
+            if t.tile_union == None:
+                self.tiles[i] = t.get_tiling(ifu=self.ifu, to_frame='icrs')
+            else:
+                self.tiles[i] = t.make_tiles()
+
+        # create the tile table and calculate/record all the necessary data
+        self.create_tile_table()
 
 
     def update_status(self, tileid, status):
