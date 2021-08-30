@@ -150,7 +150,8 @@ class TileDB(object):
         self.tiles = {}
 
         # TODO: generalize the select from tile grid: use for all targets, so there's only
-        #one tiling code
+        #one tiling code.
+        # TODO: how to handle overlap with sparse targets: non-sparse wins, otherwise by prio
 
         for tu in self.targets.get_tile_unions():
             ts = self.targets.get_union_targets(tu).order_by_priority()
@@ -178,6 +179,9 @@ class TileDB(object):
                 self.tiles[i] = t.get_tiling(ifu=self.ifu, to_frame='icrs')
             else:
                 self.tiles[i] = t.make_tiles()
+
+        # Remove pointings that overlap with other regions.
+        self.remove_overlap()
 
         # create the tile table and calculate/record all the necessary data
         self.create_tile_table()
