@@ -344,6 +344,13 @@ class Target(object):
         """
         return self.region
 
+    def is_sparse(self):
+        if self.sparse == None:
+            return True
+        else:
+            return False
+
+
     def plot(self, *args, **kwargs):
         """Plots the region. An alias for ``.Region.plot``."""
 

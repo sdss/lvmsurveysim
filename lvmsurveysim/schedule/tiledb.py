@@ -352,12 +352,18 @@ class TileDB(object):
 
                         # make sure we have everything in ICRS
                         poly_j = self.targets[j].region.icrs_region()
-
-                        # short circuit the calculation on the tiles if the shapes do not overlap
-                        may_overlap = poly_i.intersects_poly(poly_j)
+                        # TODO: replace this loop with simple double loop and check for each pair of targets, so that lower prio dense targets win
+                        # (prevent sparse target with higher priority to replace tiles in dense targets)
+                        may_overlap = (self.targets[j].is_sparse()==False or self.targets[target_index_i].is_sparse()==True)
+                            # and \
+                            # not((self.targets[j].tile_union != None) and (self.targets[j].tile_union == self.targets[target_index_i].tile_union)):
+                            # (prevent targets in the same tile union to overlap, their tiles are already uniquely assigned)
+                        if (may_overlap):
+                            # short circuit the calculation on the tiles if the shapes do not overlap
+                            may_overlap = poly_i.intersects_poly(poly_j)
                         #print(may_overlap, self.targets[target_index_i].name, self.targets[j].name)
 
-                        if may_overlap is True:
+                        if may_overlap == True:
                             # shapes overlap, so now find all tiles of j that are within i:
                             lon_j = [t.coords.ra.deg for t in self.tiles[j]] 
                             lat_j = [t.coords.dec.deg for t in self.tiles[j]]
