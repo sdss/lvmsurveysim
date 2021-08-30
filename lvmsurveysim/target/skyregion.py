@@ -31,36 +31,36 @@ __all__ = ['SkyRegion']
 #super(SubClass, self).__init__('x')
 
 class SkyRegion(object):
-        """ This class represents a region on the sky.
+    """ This class represents a region on the sky.
 
-        This class represents a region on the sky, parameterized either by 
-        one of a number of common shapes, or by a set of vertices of a polygon.
-        Internally all shapes are held as `~spherical_geometry.polygon` object
-        so that the edges of the polygons are great circle segments on a sphere.
+    This class represents a region on the sky, parameterized either by 
+    one of a number of common shapes, or by a set of vertices of a polygon.
+    Internally all shapes are held as `~spherical_geometry.polygon` object
+    so that the edges of the polygons are great circle segments on a sphere.
 
-        The class provides convenience methods to construct such polygons using
-        the Target parameterization from the target yaml file. It also provides
-        methods to compute intersections between the regions and whether a point 
-        is contained in the region (used later in tiling).
+    The class provides convenience methods to construct such polygons using
+    the Target parameterization from the target yaml file. It also provides
+    methods to compute intersections between the regions and whether a point 
+    is contained in the region (used later in tiling).
 
-        Parameters:
-        -----------
-        typ : str
-            String describing the shape, one of 'circle', 'ellipse', 'rectangle'
-            'polygon'. Depending on the value of this parameter, we expect to find
-            further parameters in **kwargs.
-        coords : tuple of float
-            Center coordinates for 'circle', 'ellipse', 'rectangle' regions,
-            or tuple of vertices for 'polygon' in degrees.
-        **kwargs : dict
-            Must contain keyword 'frame' set to 'icrs' or 'galactic'. 
-            For 'rectangle' must contain 'width' and 'height' in degrees and 'pa' 
-            a position angle (N through E) also in degrees.
-            For 'circle' must contain 'r' with radius in degrees.
-            For 'ellipse' must contain 'a', 'b', 'pa' with semi-axes and position angle
-            in degrees.
+    Parameters:
+    -----------
+    typ : str
+        String describing the shape, one of 'circle', 'ellipse', 'rectangle'
+        'polygon'. Depending on the value of this parameter, we expect to find
+        further parameters in **kwargs.
+    coords : tuple of float
+        Center coordinates for 'circle', 'ellipse', 'rectangle' regions,
+        or tuple of vertices for 'polygon' in degrees.
+    **kwargs : dict
+        Must contain keyword 'frame' set to 'icrs' or 'galactic'. 
+        For 'rectangle' must contain 'width' and 'height' in degrees and 'pa' 
+        a position angle (N through E) also in degrees.
+        For 'circle' must contain 'r' with radius in degrees.
+        For 'ellipse' must contain 'a', 'b', 'pa' with semi-axes and position angle
+        in degrees.
 
-        """
+    """
 
     def __init__(self, typ, coords, **kwargs):
         #print(typ, coords, kwargs)
