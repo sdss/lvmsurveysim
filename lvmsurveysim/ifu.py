@@ -14,17 +14,14 @@ import matplotlib.pyplot
 import numpy
 import seaborn
 import astropy.units
-import shapely.geometry
-from spherical_geometry import polygon as sp
 
-import lvmsurveysim.utils.geodesic_sphere
 import lvmsurveysim
 from lvmsurveysim import config
 
 seaborn.set()
 current_palette = seaborn.color_palette()
 
-# TODO: remove shapely stuff from IFU and simplify to single hexagonal IFU
+# TODO: move get_tile_grid() somewhere else, probably tiledb?
 
 __all__ = ['IFU']
 
@@ -116,7 +113,7 @@ class SubIFU(object):
         self.fibres = self._create_fibres()
 
     def _create_polygon(self):
-        """Creates a Shapely Polygon collection representing the sub-IFU."""
+        """Creates a list of polygon vertices representing the shape of this sub-IFU."""
 
         RR = 0.5                   # Assumes unitary diameter
         rr = numpy.sqrt(3) / 2. * RR  # Inner radius
@@ -129,9 +126,8 @@ class SubIFU(object):
                     (xx + RR, yy),
                     (xx + RR * cos60, yy - rr),
                     (xx - RR * cos60, yy - rr)]
-        polygon = shapely.geometry.Polygon(vertices)
-
-        return polygon
+        
+        return vertices
 
     def _create_fibres(self):
         """Creates Fibre objects for each of the fibres in the sub-IFU."""
@@ -157,17 +153,6 @@ class SubIFU(object):
 
         return fibres
 
-    def scale(self, hscale, vscale, origin='center'):
-        """Scales the sub-IFU."""
-
-        self.polygon = shapely.affinity.scale(self.polygon, hscale, vscale, origin=origin)
-        self.centre = numpy.array(self.polygon.centroid.coords)[0]
-
-    def translate(self, hor, ver):
-        """Translates the IFU."""
-
-        self.polygon = shapely.affinity.translate(self.polygon, hor, ver)
-        self.centre = numpy.array(self.polygon.centroid.coords)[0]
 
     def get_patch(self, scale=None, centre=None, pa=None, **kwargs):
         """Returns a matplotlib patch for the sub-IFU.
@@ -196,7 +181,7 @@ class SubIFU(object):
         if scale is not None and isinstance(scale, astropy.units.Quantity):
             scale = scale.to('degree/mm').value
 
-        vertices = numpy.array(self.polygon.exterior.coords)
+        vertices = numpy.array(self.polygon)
 
         # rotate to posotion angle!
         if pa != None:
@@ -296,7 +281,8 @@ class IFU(object):
         self.padding = padding
 
         self.subifus = self._create_subifus()
-        self.polygon = shapely.geometry.MultiPolygon([subifu.polygon for subifu in self.subifus])
+        # list of lists of vertices
+        self.polygon = [subifu.polygon for subifu in self.subifus]
 
         self.allow_rotation = allow_rotation
 
@@ -313,18 +299,6 @@ class IFU(object):
         name = ifu_conf.pop('type', None)
 
         return cls(name=name, **ifu_conf)
-
-    def scale(self, hscale, vscale, origin='center'):
-        """Scales the IFU."""
-
-        for subifu in self.subifus:
-            subifu.scale(hscale, vscale, origin=origin)
-
-    def translate(self, hor, ver):
-        """Translates the IFU."""
-
-        for subifu in self.subifus:
-            subifu.translate(hor, ver)
 
     def _create_subifus(self):
         """Creates each one of the individual sub-IFUs in this IFU."""
@@ -355,8 +329,8 @@ class IFU(object):
 
         Parameters
         ----------
-        region : ~shapely.geometry.polygon.Polygon
-            The Shapely region to tile. It is assumed that x coordinates are RA
+        region : ~lvmsurveysim.target.SkyRegion
+            The SkyRegion to tile. It is assumed that x coordinates are RA
             and y is Declination, both in degrees.
         scale : float
             The scale in degrees per mm.
@@ -416,11 +390,6 @@ class IFU(object):
             points[:,0] = sk.ra.deg
             points[:,1] = sk.dec.deg
 
-        # For each grid position create a circle SkyRegion with the radius of the IFU.
-        # points_sp = list(
-        #     map(lambda point: sp.SphericalPolygon.from_cone(point[0], point[1], rr_deg.value), 
-        #         points))
-
         # Check what grid points would overlap with the region if occupied by an IFU.
         inside = [region.contains_point(x,y) for x,y in zip(points[:,0], points[:,1])]
         points_inside = points[inside]
@@ -441,15 +410,5 @@ class IFU(object):
                     ax.add_collection(subifu.get_patch_collection(ax))
 
             ax.autoscale_view()
-
-            # Pads the xy limits
-            bounds = shapely.geometry.MultiPolygon([subifu.polygon
-                                                    for subifu in self.subifus]).bounds
-
-            xx_pad = 0.1 * (bounds[2] - bounds[0])
-            yy_pad = 0.1 * (bounds[3] - bounds[1])
-
-            ax.set_xlim(bounds[0] - xx_pad, bounds[2] + xx_pad)
-            ax.set_ylim(bounds[1] - yy_pad, bounds[3] + yy_pad)
 
         return fig

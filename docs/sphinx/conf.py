@@ -108,8 +108,8 @@ todo_include_todos = False
 intersphinx_mapping = {'python': ('https://docs.python.org/3.6', None),
                        'astropy': ('http://docs.astropy.org/en/latest', None),
                        'numpy': (' https://docs.scipy.org/doc/numpy/', None),
-                       'shapely': ('https://shapely.readthedocs.io/en/latest', None),
                        'matplotlib': ('https://matplotlib.org/', None),
+                       'spherical_geometry': ('https://spacetelescope.github.io/spherical_geometry/spherical_geometry/', None),
                        'healpy': ('https://healpy.readthedocs.io/en/latest/', None)}
 
 autodoc_mock_imports = ['_tkinter']
