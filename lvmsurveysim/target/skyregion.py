@@ -47,11 +47,12 @@ class SkyRegion(object):
     -----------
     typ : str
         String describing the shape, one of 'circle', 'ellipse', 'rectangle'
-        'polygon'. Depending on the value of this parameter, we expect to find
+        'polygon' or 'raw'. Depending on the value of this parameter, we expect to find
         further parameters in **kwargs.
     coords : tuple of float
         Center coordinates for 'circle', 'ellipse', 'rectangle' regions,
         or tuple of vertices for 'polygon' in degrees.
+        For 'raw', we expect the `~spherical_geometry.SphericalPolygon` object.
     **kwargs : dict
         Must contain keyword 'frame' set to 'icrs' or 'galactic'. 
         For 'rectangle' must contain 'width' and 'height' in degrees and 'pa' 
@@ -59,6 +60,7 @@ class SkyRegion(object):
         For 'circle' must contain 'r' with radius in degrees.
         For 'ellipse' must contain 'a', 'b', 'pa' with semi-axes and position angle
         in degrees.
+        For 'raw' we expect only the 'frame' to be passed as a keyword argument.
 
     """
 
@@ -110,12 +112,22 @@ class SkyRegion(object):
 
         elif typ == 'polygon':
 
+            self.region_type = 'polygon'
             x, y = self._rotate_vertices(numpy.array(coords), 0.0)
             x, y = self.polygon_perimeter(x, y)
             self.center = [numpy.average(x), numpy.average(y)]
             x -= self.center[0]
             x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
             self.region = sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
+
+        elif typ == 'raw':
+
+            assert isinstance(coords, sp.SphericalPolygon), 'Raw SkyRegion reqiores SphericalPolygon.'
+            self.region_type = 'polygon'
+            self.region = coords
+            self.frame = kwargs['frame']
+            x, y = next(self.region.to_lonlat())
+            self.center = [numpy.average(x), numpy.average(y)]
 
         else:
             raise LVMSurveyOpsError('Unknown region type '+typ)
@@ -176,6 +188,20 @@ class SkyRegion(object):
             r2.center = [c.ra.deg, c.dec.deg]
             r2.region = sp.SphericalPolygon.from_radec(s.ra.deg, s.dec.deg, degrees=True)
             return r2
+
+
+    @classmethod
+    def multi_union(cls, regions):
+        """ Return a new SkyRegion of the union of the SkyRegions in `regions`.
+        """
+        def fchecker(f1, f2):
+            assert f1==f2, "multi union must have uniform frame"
+            return True
+        
+        frame = regions[0].frame
+        [fchecker(frame, r.frame) for r in regions]
+        return cls('raw', sp.SphericalPolygon.multi_union([r.region for r in regions]), frame=frame)
+
 
     @classmethod
     def polygon_perimeter(cls, x, y, n=1.0, min_points=5):
@@ -256,7 +282,7 @@ class SkyRegion(object):
         poly_patch = ax.add_patch(poly_patch)
 
         if projection == 'rectangular':
-            ax.set_aspect('equal', adjustable='box')
+            #ax.set_aspect('equal', adjustable='box')
 
             min_x, min_y = coords.min(0)
             max_x, max_y = coords.max(0)
