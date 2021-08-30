@@ -79,7 +79,7 @@ class SkyRegion(object):
             y0 = - height / 2.
             y1 = + height / 2.
             x, y = self._rotate_coords([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0], kwargs['pa'])
-            x, y = self.polygon_perimeter(x, y)
+            x, y = self._polygon_perimeter(x, y)
             x /= numpy.cos(numpy.deg2rad(y))
             y += self.center[1]
             x += self.center[0]
@@ -114,7 +114,7 @@ class SkyRegion(object):
 
             self.region_type = 'polygon'
             x, y = self._rotate_vertices(numpy.array(coords), 0.0)
-            x, y = self.polygon_perimeter(x, y)
+            x, y = self._polygon_perimeter(x, y)
             self.center = [numpy.average(x), numpy.average(y)]
             x -= self.center[0]
             x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
@@ -204,7 +204,7 @@ class SkyRegion(object):
 
 
     @classmethod
-    def polygon_perimeter(cls, x, y, n=1.0, min_points=5):
+    def _polygon_perimeter(cls, x, y, n=1.0, min_points=5):
         """ Subsample a polygon perimeter.
         
         This function returns new vertices along the perimeter of a polygon
