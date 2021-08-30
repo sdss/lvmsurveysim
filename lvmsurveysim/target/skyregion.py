@@ -31,9 +31,6 @@ __all__ = ['SkyRegion']
 #super(SubClass, self).__init__('x')
 
 class SkyRegion(object):
-    """
-    """
-    def __init__(self, typ, coords, **kwargs):
         """ This class represents a region on the sky.
 
         This class represents a region on the sky, parameterized either by 
@@ -64,6 +61,8 @@ class SkyRegion(object):
             in degrees.
 
         """
+
+    def __init__(self, typ, coords, **kwargs):
         #print(typ, coords, kwargs)
         self.region_type = typ
         self.frame = kwargs['frame']
