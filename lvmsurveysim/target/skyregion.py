@@ -31,8 +31,40 @@ __all__ = ['SkyRegion']
 #super(SubClass, self).__init__('x')
 
 class SkyRegion(object):
+    """
+    """
     def __init__(self, typ, coords, **kwargs):
-        print(typ, coords, kwargs)
+        """ This class represents a region on the sky.
+
+        This class represents a region on the sky, parameterized either by 
+        one of a number of common shapes, or by a set of vertices of a polygon.
+        Internally all shapes are held as `~spherical_geometry.polygon` object
+        so that the edges of the polygons are great circle segments on a sphere.
+
+        The class provides convenience methods to construct such polygons using
+        the Target parameterization from the target yaml file. It also provides
+        methods to compute intersections between the regions and whether a point 
+        is contained in the region (used later in tiling).
+
+        Parameters:
+        -----------
+        typ : str
+            String describing the shape, one of 'circle', 'ellipse', 'rectangle'
+            'polygon'. Depending on the value of this parameter, we expect to find
+            further parameters in **kwargs.
+        coords : tuple of float
+            Center coordinates for 'circle', 'ellipse', 'rectangle' regions,
+            or tuple of vertices for 'polygon' in degrees.
+        **kwargs : dict
+            Must contain keyword 'frame' set to 'icrs' or 'galactic'. 
+            For 'rectangle' must contain 'width' and 'height' in degrees and 'pa' 
+            a position angle (N through E) also in degrees.
+            For 'circle' must contain 'r' with radius in degrees.
+            For 'ellipse' must contain 'a', 'b', 'pa' with semi-axes and position angle
+            in degrees.
+
+        """
+        #print(typ, coords, kwargs)
         self.region_type = typ
         self.frame = kwargs['frame']
 
@@ -89,24 +121,51 @@ class SkyRegion(object):
         else:
             raise LVMSurveyOpsError('Unknown region type '+typ)
 
+    def __repr__(self):
+        return f'<SkyRegion(type={self.region_type}, center={self.center}, frame={self.frame})>'
+
     def vertices(self):
+        """ Return a `~numpy.array` of dimension Nx2 with the N vertices of the 
+        SkyRegion.
+        """
         i = self.region.to_lonlat()
         return numpy.array(next(i)).T        
 
     def bounds(self):
+        """ Return a tuple of the bounds of the SkyRegion defined as the 
+        minimum and maximum value of the coordinates in each dimension.
+        """
         x, y = next(self.region.to_lonlat())
         return numpy.min(x), numpy.min(y), numpy.max(x), numpy.max(y)
 
     def centroid(self):
+        """ Return the center coordinates of the SkyRegion
+        """
         return self.center
 
     def intersects_poly(self, other):
+        """ Return True if the SkyRegion intersects another SkyRegion.
+        """
+        assert self.frame == other.frame, "SkyRegions must be in the same coordinate frame for intersection."
         return self.region.intersects_poly(other.region)
 
     def contains_point(self, x, y):
+        """ Return True if the point (x,y) is inside the region, 
+        false otherwise.
+        """
         return self.region.contains_lonlat(x, y, degrees=True)
 
     def icrs_region(self):
+        """ Return a copy of the region transformed into the ICRS system.
+
+        A deep-copy of the region with vertices transformed into the ICRS
+        system is returned if the region is in any other reference frame.
+
+        Returns
+        -------
+            `.SkyRegion` with vertices in the ICRS system.
+ 
+        """
         r2 = deepcopy(self)
         if self.frame == 'icrs':
             return r2
@@ -121,29 +180,45 @@ class SkyRegion(object):
 
     @classmethod
     def polygon_perimeter(cls, x, y, n=1.0, min_points=5):
-        """ x and y are numpy type arrays. Function returns perimiter values every n-degree in length"""
-        x_perimeter = numpy.array([])
-        y_perimeter = numpy.array([])
+        """ Subsample a polygon perimeter.
+        
+        This function returns new vertices along the perimeter of a polygon
+        spaced `.n` degrees apart.
+
+        Parameters
+        ----------
+        x, y : array-like
+            x and y coordinates of the vertices of the original polygon.
+        n : float
+            optional, spacing for new vertices. defaults to 1.0
+        min_points : int
+            optional, minimal number of new points, defaults to 5
+
+        Returns
+        -------
+        xp, yp : `~numpy.array`
+            coordinates of new vertices
+        """
+        xp = numpy.array([])
+        yp = numpy.array([])
         for x1,x2,y1,y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
             # Calculate the length of a segment, hopefully in degrees
             dl = ((x2-x1)**2 + (y2-y1)**2)**0.5
-
             n_dl = numpy.max([int(dl/n), min_points])
             
             if x1 != x2:
                 m = (y2-y1)/(x2-x1)
                 b = y2 - m*x2
-
                 interp_x = numpy.linspace(x1, x2, num=n_dl, endpoint=False)
                 interp_y = interp_x * m + b
-            
             else:
                 interp_x = numpy.full(n_dl, x1)
                 interp_y = numpy.linspace(y1,y2, n_dl, endpoint=False)
 
-            x_perimeter = numpy.append(x_perimeter, interp_x)
-            y_perimeter = numpy.append(y_perimeter, interp_y)
-        return x_perimeter, y_perimeter
+            xp = numpy.append(xp, interp_x)
+            yp = numpy.append(yp, interp_y)
+
+        return xp, yp
 
 
     def plot(self, ax=None, projection='rectangular', return_patch=False, **kwargs):
