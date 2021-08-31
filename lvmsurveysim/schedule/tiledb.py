@@ -121,37 +121,8 @@ class TileDB(object):
             to tile with. If None, it will be read from the config file.
         '''
         self.ifu = ifu or IFU.from_config()
-
-        # dict of target-number to list of lvmsurveysim.target.Tile
-        self.tiles = self.targets.get_tiling(ifu=self.ifu, to_frame='icrs')
-
-        self.tiling_type = 'hexagonal'
-
-        # Remove pointings that overlap with other regions.
-        self.remove_overlap()
-
-        # create the tile table and calculate/record all the necessary data
-        self.create_tile_table()
-
-
-    def tile_targets2(self, ifu=None):
-        '''
-        Tile a set of Targets with a given IFU. Overlapping targets are tiled such
-        that the tiles in the higher priority target are retained.
-
-        Parameters
-        ----------
-        ifu : ~lvmsurveysim.target.ifu.IFU
-            The `~lvmsurveysim.target.ifu.IFU` object representing the IFU geometry
-            to tile with. If None, it will be read from the config file.
-        '''
-        self.ifu = ifu or IFU.from_config()
         self.tiling_type = 'hexagonal'
         self.tiles = {}
-
-        # TODO: generalize the select from tile grid: use for all targets, so there's only
-        #one tiling code.
-        # TODO: how to handle overlap with sparse targets: non-sparse wins, otherwise by prio
 
         for tu in self.targets.get_tile_unions():
             ts = self.targets.get_union_targets(tu).order_by_priority()
@@ -283,8 +254,10 @@ class TileDB(object):
 
     def remove_overlap(self):
         '''
-        Calculate and remove tiles in overlapping target regions. The tile belonging to the 
-        higher priority target is retained.
+        Calculate and remove tiles in overlapping target regions. 
+
+        Tile retention rules for two overlapping targets are given by
+        ._overlap_matrix`.
 
         Modifies the self.tiles list to preserve a set of non-overlapping tiles.
         '''
@@ -302,21 +275,54 @@ class TileDB(object):
                 warnings.warn(f'target {tname} completely overlaps with other '
                                 'targets with higher priority.', LVMSurveyOpsWarning)
 
+
+    def _overlap_matrix(self, poly_i, poly_j, target_i, target_j):
+        """ Compute whether two targets overlap geometrically, and if so whether 
+        target_i's tiles should be picked over target_j's tiles.
+
+        The rules are that if the targets overlap geometrically, 
+            (a) the higher priority tiles will win if both targets are not sparse.
+            (b) if one of the targets is sparse and the other is not, the dense one wins
+            (c) if both are sparse, the higher density wins
+            (d) if both are sparse and have the same density, the higher priority wins
+
+        Returns
+        -------
+        overlap_ij : bool
+            Target_i's tiles should be picked over target_j's tiles in the overlap region
+        """
+        if target_i.in_tile_union_with(target_j):
+            return False # already dealt with when tiling the union
+
+        if not poly_i.intersects_poly(poly_j):
+            return False # no geometric intersection
+
+        # first density, then priority
+        i_sparse = target_i.is_sparse()
+        j_sparse = target_j.is_sparse()
+        i_dens = target_i.density()
+        j_dens = target_j.density()
+
+        if (not i_sparse) and (not j_sparse):
+            return (target_i.priority >= target_j.priority)
+        if (i_sparse and j_sparse):
+            if (i_dens > j_dens):
+                return True
+            else:
+                return (target_i.priority >= target_j.priority)
+        if (i_sparse != j_sparse):
+            return i_dens >= j_dens
+
+
     def get_overlap(self, verbose_level=1):
         """Returns a dictionary of masks with the overlap between regions."""
 
         overlap = {}
 
-        # Sort priorities.
         s = sorted(self.tiles)
-
-        # Create an array of pointing to priority, one per target
-        priorities = numpy.array([self.targets[idx].priority for idx in s])
 
         # Save the names ... why not
         names = numpy.array([self.targets[idx].name for idx in s])
-
-        sorted_indices = numpy.argsort(priorities)[::-1]
 
         # Initialise the overlap dictionaries. Set the global_no_overlap to
         # True for all the tiles in the target tiling
@@ -339,54 +345,41 @@ class TileDB(object):
                         overlap[self.targets[j].name][self.targets[idx].name] = numpy.full(len(self.tiles[j]), False)
                         overlap[self.targets[idx].name][self.targets[j].name] = numpy.full(len(self.tiles[idx]), False)
 
-        for index_of_i, target_index_i in enumerate(sorted_indices[:-1]):
-            if self.targets[target_index_i].overlap:
-                # i has the highest priority because of the [::-1] reversal of the priority list
-                
+        for i in s:
+            if self.targets[i].overlap:
                 # make sure we have everything in ICRS
-                poly_i = self.targets[target_index_i].region.icrs_region()
+                poly_i = self.targets[i].region.icrs_region()
 
-                for j in sorted_indices[index_of_i + 1:]:
-                    if self.targets[j].overlap:
-                        # j has a lower priority. So we are masking j with i
-
+                for j in s:
+                    if (j != i) and self.targets[j].overlap:
                         # make sure we have everything in ICRS
                         poly_j = self.targets[j].region.icrs_region()
-                        # TODO: replace this loop with simple double loop and check for each pair of targets, so that lower prio dense targets win
-                        # (prevent sparse target with higher priority to replace tiles in dense targets)
-                        may_overlap = (self.targets[j].is_sparse()==False or self.targets[target_index_i].is_sparse()==True)
-                            # and \
-                            # not((self.targets[j].tile_union != None) and (self.targets[j].tile_union == self.targets[target_index_i].tile_union)):
-                            # (prevent targets in the same tile union to overlap, their tiles are already uniquely assigned)
-                        if (may_overlap):
-                            # short circuit the calculation on the tiles if the shapes do not overlap
-                            may_overlap = poly_i.intersects_poly(poly_j)
-                        #print(may_overlap, self.targets[target_index_i].name, self.targets[j].name)
+                        if self._overlap_matrix(poly_i, poly_j, self.targets[i], self.targets[j]):
+                            #print(overl, self.targets[i].name, self.targets[j].name)
 
-                        if may_overlap == True:
                             # shapes overlap, so now find all tiles of j that are within i:
                             lon_j = [t.coords.ra.deg for t in self.tiles[j]] 
                             lat_j = [t.coords.dec.deg for t in self.tiles[j]]
 
                             #Initialize array to True. This doesn't matter. We loop over all values anyway, but it's nice.
-                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.tiles[j]), False)
+                            overlap[names[j]][names[i]] = numpy.full(len(self.tiles[j]), False)
                             t_start = time.time()
                             # Check array to see which is false.
                             for k in range(len(lon_j)):
                                 contains_i_j = poly_i.contains_point(lon_j[k], lat_j[k])
 
-                                overlap[names[j]][names[target_index_i]][k] = numpy.logical_not(contains_i_j)
+                                overlap[names[j]][names[i]][k] = numpy.logical_not(contains_i_j)
 
                                 if contains_i_j and (verbose_level >= 2):
-                                    print("%s x %s overlap at %f, %f"%(self.targets[target_index_i].name, self.targets[j].name, lon_j[k], lat_j[k]))
+                                    print("%s x %s overlap at %f, %f"%(self.targets[i].name, self.targets[j].name, lon_j[k], lat_j[k]))
                             
                             if verbose_level >=1:
-                                print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[target_index_i].name, self.targets[j].name, time.time()-t_start))
+                                print("%s x %s Overlap loop exec time(s)= %f"%(self.targets[i].name, self.targets[j].name, time.time()-t_start))
                         else:
-                            overlap[names[j]][names[target_index_i]] = numpy.full(len(self.tiles[j]), True)
+                            overlap[names[j]][names[i]] = numpy.full(len(self.tiles[j]), True)
 
                         # For functional use, create a global overlap mask, to be used when scheduling
-                        overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[target_index_i]]
+                        overlap[names[j]]['global_no_overlap'] &= overlap[names[j]][names[i]]
 
         return overlap
 
