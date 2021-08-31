@@ -272,7 +272,7 @@ class SkyRegion(object):
         """
 
         if ax is None:
-            __, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
+            fig, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
 
         coords = self.vertices()
 
@@ -298,9 +298,9 @@ class SkyRegion(object):
             poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=self.center[0])
 
         if return_patch:
-            return ax, poly_patch
+            return fig, ax, poly_patch
         else:
-            return ax
+            return fig, ax
 
     @classmethod
     def _rotate_vertices(cls, vertices, pa):
