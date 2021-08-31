@@ -346,9 +346,18 @@ class Target(object):
 
     def is_sparse(self):
         if self.sparse == None:
-            return True
-        else:
             return False
+        else:
+            return True
+
+    def density(self):
+        if self.is_sparse():
+            return 1.0/self.sparse
+        else:
+            return 1.0
+
+    def in_tile_union_with(self, other):
+        return (self.tile_union != None) and (self.tile_union==other.tile_union)
 
 
     def plot(self, *args, **kwargs):
