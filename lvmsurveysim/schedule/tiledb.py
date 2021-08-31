@@ -346,15 +346,20 @@ class TileDB(object):
                         overlap[self.targets[idx].name][self.targets[j].name] = numpy.full(len(self.tiles[idx]), False)
 
         for i in s:
-            if self.targets[i].overlap:
+            if self.targets[i].overlap and (self.targets[i].geodesic == False):
                 # make sure we have everything in ICRS
                 poly_i = self.targets[i].region.icrs_region()
 
                 for j in s:
                     if (j != i) and self.targets[j].overlap:
-                        # make sure we have everything in ICRS
-                        poly_j = self.targets[j].region.icrs_region()
-                        if self._overlap_matrix(poly_i, poly_j, self.targets[i], self.targets[j]):
+                        if (self.targets[j].geodesic == False):  # non-geodesic: check for rules
+                            # make sure we have everything in ICRS
+                            poly_j = self.targets[j].region.icrs_region()
+                            may_overlap = self._overlap_matrix(poly_i, poly_j, self.targets[i], self.targets[j])
+                        else:
+                            may_overlap = True   #geodesic targets always lose their tiles
+
+                        if may_overlap:
                             #print(overl, self.targets[i].name, self.targets[j].name)
 
                             # shapes overlap, so now find all tiles of j that are within i:
