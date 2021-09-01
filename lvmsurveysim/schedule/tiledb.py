@@ -453,13 +453,11 @@ class TileDB(object):
                                          edgecolor='None', linewidth=0.0, alpha=alpha, facecolor=sty['bgcolor'])[0]
                            for p in target_data]
 
+                if projection == 'mollweide':
+                    patches = [transform_patch_mollweide(patch) for patch in patches]
+
                 for patch in patches:
                     ax.add_patch(patch)
-
-                if projection == 'mollweide':
-                    patches = [transform_patch_mollweide(ax, patch, origin=__MOLLWEIDE_ORIGIN__,
-                                                         patch_centre=target_data['RA'][ii])
-                               for ii, patch in enumerate(patches)]
 
         return fig
 

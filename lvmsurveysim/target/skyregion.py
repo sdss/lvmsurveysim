@@ -278,11 +278,14 @@ class SkyRegion(object):
 
         poly = matplotlib.path.Path(coords, closed=True)
         poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
-
         poly_patch = ax.add_patch(poly_patch)
 
         if projection == 'rectangular':
             #ax.set_aspect('equal', adjustable='box')
+
+            poly = matplotlib.path.Path(coords, closed=True)
+            poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
+            poly_patch = ax.add_patch(poly_patch)
 
             min_x, min_y = coords.min(0)
             max_x, max_y = coords.max(0)
@@ -295,7 +298,10 @@ class SkyRegion(object):
 
         elif projection == 'mollweide':
 
-            poly_patch = lvm_plot.transform_patch_mollweide(ax, poly_patch, patch_centre=self.center[0])
+            coords = lvm_plot.transform_vertices_mollweide(coords)
+            poly = matplotlib.path.Path(coords, closed=True)
+            poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
+            poly_patch = ax.add_patch(poly_patch)
 
         if return_patch:
             return fig, ax, poly_patch

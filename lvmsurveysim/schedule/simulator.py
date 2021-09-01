@@ -385,10 +385,7 @@ class Simulator(object):
                            for p in target_data]
 
                 if projection == 'mollweide':
-                    patches = [transform_patch_mollweide(ax, patch,
-                                                         origin=__MOLLWEIDE_ORIGIN__,
-                                                         patch_centre=target_data['ra'][ii])
-                               for ii, patch in enumerate(patches)]
+                    patches = [transform_patch_mollweide(patch) for patch in patches]
 
                 for patch in patches:
                     ax.add_patch(patch)
