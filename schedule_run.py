@@ -11,7 +11,6 @@ from lvmsurveysim.target import TargetList
 import matplotlib.pyplot as plt
 
 #np.seterr(invalid='raise')
-
 # Creates a list of targets/
 print('Creating target list ...')
 targets = TargetList(target_file='./targets.yaml')
@@ -39,23 +38,22 @@ sim.run(progress_bar=True)
 # sim = Simulator.load('lvmsurveysim_hz_1000', 'lco_tiledb')
 # sim.save('lvmsurveysim_hz_1000', overwrite=True) # Save as FITS table
 
-save=False
-
-# Plot and print:
-sim.print_statistics()
-sim.plot_survey('LCO', use_groups=True)
-if save: plt.savefig('LCO_jd_1000.pdf')
-sim.plot_survey('LCO', use_groups=True, cumulative=True)
-if save: plt.savefig('LCO_cumulative_1000.pdf')
-sim.plot_survey('LCO', lst=True, use_groups=True)
-if save: plt.savefig('LCO_lst_1000.pdf')
-sim.plot(fast=True) # footprint
-if save: plt.savefig('LCO_survey_1000.pdf')
-sim.plot_airmass(tname='ALL', group=True, norm=True)
-if save: plt.savefig('LCO_airmass_1000.pdf')
-sim.plot_shadow_height(tname='ALL', group=True, norm=True, cumulative=True, linear_log=True)
-if save: plt.savefig('LCO_hz_1000.pdf')
-if save: sim.animate_survey(filename='lvm_survey_1000.mp4')
+def plot(sim, save=False):
+   # Plot and print:
+   sim.print_statistics()
+   sim.plot_survey('LCO', use_groups=True)
+   if save: plt.savefig('LCO_jd_1000.pdf')
+   sim.plot_survey('LCO', use_groups=True, cumulative=True)
+   if save: plt.savefig('LCO_cumulative_1000.pdf')
+   sim.plot_survey('LCO', lst=True, use_groups=True)
+   if save: plt.savefig('LCO_lst_1000.pdf')
+   sim.plot(fast=True) # footprint
+   if save: plt.savefig('LCO_survey_1000.pdf')
+   sim.plot_airmass(tname='ALL', group=True, norm=True)
+   if save: plt.savefig('LCO_airmass_1000.pdf')
+   sim.plot_shadow_height(tname='ALL', group=True, norm=True, cumulative=True, linear_log=True)
+   if save: plt.savefig('LCO_hz_1000.pdf')
+   if save: sim.animate_survey(filename='lvm_survey_hz_1000.mp4')
 
 
 
