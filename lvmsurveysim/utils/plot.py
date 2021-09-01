@@ -104,7 +104,7 @@ def convert_to_mollweide(ra, dec):
     """Converts ``[0, 360)`` coordinates to Mollweide-valid values.
 
     Converts values to radians and offsets the Longitude to match the custom
-    Mollweide projection used here.
+    Mollweide projection used here. Flips RA so that E is left.
 
     Parameters
     ----------
@@ -118,82 +118,66 @@ def convert_to_mollweide(ra, dec):
     ra0,dec0 in radians suitable to plot in mollwede projection
     """
 
-    ra0 = numpy.remainder(ra + 360 - __MOLLWEIDE_ORIGIN__, 360)
-    ind = ra0 > 180.
-    ra0[ind] -= 360
-    ra0 = -ra0
-
-    ra0 *= numpy.pi / 180.
-    dec0 = dec * numpy.pi / 180.
-    return ra0,dec0
+    ra = numpy.asarray([ra]) if numpy.isscalar(ra) else numpy.asarray(ra)
+    dec = numpy.asarray([dec]) if numpy.isscalar(dec) else numpy.asarray(dec)
+    ra0 = numpy.remainder(ra + 360 - __MOLLWEIDE_ORIGIN__, 360) # shift RA values
+    ra0[ra0 > 180.] -= 360                                      # convert range to [-180,180]
+    return -numpy.deg2rad(ra0),numpy.deg2rad(dec)               # reverse RA so that East is left
 
 
-def transform_patch_mollweide(ax, patch, patch_centre=None, origin=None):
-    """Applies a transformation to the patch for the Mollweide projection.
+def transform_vertices_mollweide(vertices):
+    """Applies a transformation to a set of vertices for the Mollweide projection.
 
     The Mollweide projection assumes the plotted values are in radians. In
     addition, the axes returned by `.get_axes` for a Mollweide projection have
     the tick labels modified to place the centre at a different position from
-    the default 0 rad. This function applies a series of affine transformations
-    to the input `~matplotlib.patches.Patch` to make the plot match the axes
-    labels.
+    the default 0 rad. RA is flipped, so that East is left.
+
+    See also `.transform_to_mollweide`.
 
     Note that the Mollweide projection doesn't provide wrapping. Large regions
     that cross the edge of the projection will not be displayed completely.
 
     Parameters:
-        ax (~matplotlib.axes.Axes):
-            The axes on which the ``patch`` has been plotted.
-        patch (~matplotlib.patches.Patch):
-            The patch to be transformed.
-        patch_centre (float):
-            The RA value that will be used to determine the direction of the
-            translation applied. If not defined, the best possible translation
-            will be automatically determined.
-        origin (float):
-            The central value of the x-axis in the Mollweide projection.
+        vertices : `~numpy.array`
+            The Nx2 array of vertices to be transformed.
 
     Returns:
-        patch (`~matplotlib.patches.Patch`):
-            The transformed patch.
-
-    Example:
-
-        Before calling `transform_patch_mollweide` the patch must have been
-        added to the axes to ensure that the conversion between data and pixels
-        is known ::
-
-        >>> fig, ax = get_axes(projection='mollweide')
-        >>> poly = Polygon([(0,0), (15,0), (15,15), (0,0)])
-        >>> poly = ax.add_patch(poly)
-        >>> poly_transformed = transform_patch_mollweide(ax, poly)
+        vertices : `~numpy.array`
+            The Nx2 array of vertices in Mollweide coordinates.
 
     """
+    v = vertices.T
+    r, d = convert_to_mollweide(v[0,:], v[1,:])
+    return numpy.array([r,d]).T
 
-    origin = origin or __MOLLWEIDE_ORIGIN__
 
-    trans_to_rads = matplotlib.transforms.Affine2D().scale(numpy.pi / 180, numpy.pi / 180)
-    trans_reflect = matplotlib.transforms.Affine2D(numpy.array([[-1, 0, 0],
-                                                                [0, 1, 0],
-                                                                [0, 0, 1]]))
 
-    # If patch_centre is not defined, tries to figure out the centre from
-    # the patch itself
-    if patch_centre is None and hasattr(patch, 'center'):
-        patch_centre = patch.center[0]
+def transform_patch_mollweide(patch):
+    """Applies a transformation to a `~matplotlib.patch` for the Mollweide projection.
 
-    # Calculates the best possible translation to match the tick labels.
-    if patch_centre is None:
-        translation = origin
-    elif patch_centre < (-180 + origin) % 360:
-        translation = origin
-    else:
-        translation = origin + 360
+    The Mollweide projection assumes the plotted values are in radians. In
+    addition, the axes returned by `.get_axes` for a Mollweide projection have
+    the tick labels modified to place the centre at a different position from
+    the default 0 rad. RA is flipped, so that East is left.
 
-    trans_origin = matplotlib.transforms.Affine2D().translate(numpy.radians(translation), 0)
+    See also `.transform_to_mollweide`.
 
-    patch.set_transform(trans_to_rads + trans_reflect + trans_origin + ax.transData)
+    Note that the Mollweide projection doesn't provide wrapping. Large regions
+    that cross the edge of the projection will not be displayed completely.
 
+    Parameters:
+        patch : `~matplotlib.patch`
+            The patch to be transformed.
+
+    Returns:
+        patch : `~matplotlib.patch`
+            The transformed patch.
+    
+    """
+    v = patch.get_xy().T
+    r, d = convert_to_mollweide(v[0,:], v[1,:])
+    patch.set_xy(numpy.array([r,d]).T)
     return patch
 
 
