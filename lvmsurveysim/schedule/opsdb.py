@@ -105,12 +105,15 @@ class OpsDB(object):
       return __lvm_ops_database__.init(dbpath, pragmas=config['opsdb']['pragmas'])
 
    @classmethod
-   def create_tables(cls):
+   def create_tables(cls, drop=False):
       '''
       Create the database tables needed for the LVM Ops DB. Should be called only 
-      once for the lifetime of the database.
+      once for the lifetime of the database. Optionally, drop existing tables before
+      creation.
       '''
       with OpsDB.get_db().atomic():
+         if drop:
+            __lvm_ops_database__.drop_tables([Tile, Observation, Metadata])
          __lvm_ops_database__.create_tables([Tile, Observation, Metadata])
          # Create special, non-science tiles to allow TileIDs to be universal
          Tile.insert(TileID=0, Target='NONE', Telescope='LVM-160', Status=0).execute()
