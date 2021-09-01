@@ -39,9 +39,19 @@ class Target(object):
     """A `.Region` with additional observing information.
 
     A `.Target` object is similar to a `.SkyRegion` but it is named and contains
-    information about what telescope will observe it and its observing
-    priority. It is instantiated as a `.SkyRegion` but accepts the following extra
-    parameters.
+    information about what telescope will observe it, its observing
+    priority relative to all other targets, and a set of observing constraints
+    ans strategies to be implemented during scheduling of the target (airmass,
+    lunation, shadow height, tile order, ...).
+    
+    There is a special kind of target not represented internally as 
+    a `.SkyRegion`, the fullsky target, which represents a (sparse) grid of tiles
+    on the whole sky. 
+    
+    The Target constructor accepts the following keyword parameters, which are
+    also available as keywords from a list read by `.from_list`. Typically a Target 
+    will not be instatiated indivisually. The typical use case will involve the `.TargetList` 
+    class which is initialize via a yaml configuration file, the survey 'target list'.
 
     Parameters
     ----------

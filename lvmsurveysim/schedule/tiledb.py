@@ -57,7 +57,10 @@ class TileDB(object):
     in a separate table in SQL, or as FITS header keywords in the FITS files.
 
     This class also offers methods for tiling a survey and visualizing the 
-    results.
+    results. When tiling a set of targets, tiles in overlapping targets are
+    assigned to a target according to target priority, and if (one of) the 
+    overlapping targets is sparse, by density such that targets of higher priority
+    and higher density retain ownership of overlapping tiles.
 
     example usage:
         # tile a survey and save:
