@@ -56,6 +56,9 @@ class TileDB(object):
     ensure compatibility) and the tileid_start value. These metadata are stored
     in a separate table in SQL, or as FITS header keywords in the FITS files.
 
+    This class also offers methods for tiling a survey and visualizing the 
+    results.
+
     example usage:
         # tile a survey and save:
         targets = TargetList(target_file='./targets.yaml')
@@ -97,6 +100,7 @@ class TileDB(object):
             occurred yet
         tileid_start : Integer
             optional, ID of first science tile.
+
         """
         assert isinstance(targets, lvmsurveysim.target.TargetList), "TargetList object expected in ctor of TileDB"
         self.targets = targets    # instance of lvmsurveysim.target.TargetList
@@ -112,13 +116,15 @@ class TileDB(object):
     def tile_targets(self, ifu=None):
         '''
         Tile a set of Targets with a given IFU. Overlapping targets are tiled such
-        that the tiles in the higher priority target are retained.
+        that the tiles in the higher priority target (or higher density with sparse targets)
+        are retained.
 
         Parameters
         ----------
-        ifu : ~lvmsurveysim.target.ifu.IFU
+        ifu : `~lvmsurveysim.target.ifu.IFU`
             The `~lvmsurveysim.target.ifu.IFU` object representing the IFU geometry
             to tile with. If None, it will be read from the config file.
+
         '''
         self.ifu = ifu or IFU.from_config()
         self.tiling_type = 'hexagonal'
@@ -152,10 +158,10 @@ class TileDB(object):
                 self.tiles[i] = t.make_tiles()
 
         # Remove pointings that overlap with other regions.
-        self.remove_overlap()
+        self._remove_overlap()
 
         # create the tile table and calculate/record all the necessary data
-        self.create_tile_table()
+        self._create_tile_table()
 
 
     def update_status(self, tileid, status):
@@ -168,6 +174,7 @@ class TileDB(object):
             the tile id of the tile to update.
         status : Integer
             the new status word.
+
         """
         idx = numpy.where(self.tile_table['TileID'] == tileid)[0]
         if len(idx) != 1:
@@ -179,9 +186,83 @@ class TileDB(object):
         self.tile_table['Status'][idx] = status
 
 
-    def create_tile_table(self):
+    def plot(self, target=None, projection='mollweide', fast=False, annotate=False, alpha=0.75):
+        """Plots the tiled survey pointings.
+
+        Parameters
+        ----------
+        target : str
+            taget name to plot, None for all targets (default)
+        projection : str
+            The projection to use, either ``'mollweide'`` or ``'rectangular'``.
+        fast : bool
+            Plot IFU sized and shaped patches if `False`. This is the default.
+            Allows accurate zooming and viewing. If `True`, plot scatter-plot
+            dots instead of IFUs, for speed sacrificing accuracy.
+            This is MUCH faster.
+        annotate : bool
+            Write the targets' names next to the target coordinates. Implies
+            ``fast=True``.
+        alpha : float
+            Alpha channel value when drawing survey tiles
+
+        Returns
+        -------
+        figure : `matplotlib.figure.Figure`
+            The figure with the plot.
+
+        """
+
+        if annotate is True:
+            fast = True
+
+        if target==None:
+            data = self.tile_table[self.tile_table['TileID'] >= self.tileid_start] 
+        else:
+            data = self.tile_table[self.tile_table['Target'] == target]
+
+        color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
+
+        fig, ax = get_axes(projection=projection)
+
+        if fast is True:
+            if projection == 'mollweide':
+                x,y = convert_to_mollweide(data['RA'], data['DEC'])
+            else:
+                x,y = data['RA'], data['DEC']
+            tt = [target.name for target in self.targets]
+            g = numpy.array([tt.index(i) for i in data['Target']], dtype=float)
+            ax.scatter(x, y, c=g % 19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
+            if annotate is True:
+                _, text_indices = numpy.unique(g, return_index=True)
+                for i in range(len(tt)):
+                    plt.text(x[text_indices[i]], y[text_indices[i]], tt[i], fontsize=9)
+        else:
+            ifu = IFU.from_config()
+            for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
+
+                target = self.targets[ii]
+                name = target.name
+
+                target_data = data[data['Target'] == name]
+
+                patches = [ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['RA'], p['DEC']], pa=p['PA'],
+                                         edgecolor='None', linewidth=0.0, alpha=alpha, facecolor=sty['bgcolor'])[0]
+                           for p in target_data]
+
+                if projection == 'mollweide':
+                    patches = [transform_patch_mollweide(patch) for patch in patches]
+
+                for patch in patches:
+                    ax.add_patch(patch)
+
+        return fig
+
+
+    def _create_tile_table(self):
         '''
-        Collect tile data and convert reformat into an astropy.Table instance.
+        Collect tile data and reformat into an `~astropy.Table~ instance.
+
         '''        
         # Sorted list of target numbers which we will use to create master arrays of data we need
         # for scheduling
@@ -252,7 +333,7 @@ class TileDB(object):
                    'TotalExptime', 'VisitExptime', 'Status'])
 
 
-    def remove_overlap(self):
+    def _remove_overlap(self):
         '''
         Calculate and remove tiles in overlapping target regions. 
 
@@ -260,9 +341,10 @@ class TileDB(object):
         ._overlap_matrix`.
 
         Modifies the self.tiles list to preserve a set of non-overlapping tiles.
+
         '''
         # Calculate overlap but don't apply the masks
-        overlap = self.get_overlap()
+        overlap = self._get_overlap()
 
         for ii in self.tiles:
             tname = self.targets[ii].name
@@ -314,7 +396,7 @@ class TileDB(object):
             return i_dens >= j_dens
 
 
-    def get_overlap(self, verbose_level=1):
+    def _get_overlap(self, verbose_level=1):
         """Returns a dictionary of masks with the overlap between regions."""
 
         overlap = {}
@@ -389,76 +471,5 @@ class TileDB(object):
         return overlap
 
 
-    def plot(self, target=None, projection='mollweide', fast=False, annotate=False, alpha=0.75):
-        """Plots the observed pointings.
-
-        Parameters
-        ----------
-        target : str
-            taget name to plot, None for all targets (default)
-        projection : str
-            The projection to use, either ``'mollweide'`` or ``'rectangular'``.
-        fast : bool
-            Plot IFU sized and shaped patches if `False`. This is the default.
-            Allows accurate zooming and viewing. If `True`, plot scatter-plot
-            dots instead of IFUs, for speed sacrificing accuracy.
-            This is MUCH faster.
-        annotate : bool
-            Write the targets' names next to the target coordinates. Implies
-            ``fast=True``.
-        alpha : float
-            Alpha channel value when drawing survey tiles
-
-        Returns
-        -------
-        figure : `matplotlib.figure.Figure`
-            The figure with the plot.
-
-        """
-
-        if annotate is True:
-            fast = True
-
-        if target==None:
-            data = self.tile_table[self.tile_table['TileID'] >= self.tileid_start] 
-        else:
-            data = self.tile_table[self.tile_table['Target'] == target]
-
-        color_cycler = cycler.cycler(bgcolor=['b', 'r', 'g', 'y', 'm', 'c', 'k'])
-
-        fig, ax = get_axes(projection=projection)
-
-        if fast is True:
-            if projection == 'mollweide':
-                x,y = convert_to_mollweide(data['RA'], data['DEC'])
-            else:
-                x,y = data['RA'], data['DEC']
-            tt = [target.name for target in self.targets]
-            g = numpy.array([tt.index(i) for i in data['Target']], dtype=float)
-            ax.scatter(x, y, c=g % 19, s=0.05, edgecolor=None, edgecolors=None, cmap='tab20')
-            if annotate is True:
-                _, text_indices = numpy.unique(g, return_index=True)
-                for i in range(len(tt)):
-                    plt.text(x[text_indices[i]], y[text_indices[i]], tt[i], fontsize=9)
-        else:
-            ifu = IFU.from_config()
-            for ii, sty in zip(range(len(self.targets)), itertools.cycle(color_cycler)):
-
-                target = self.targets[ii]
-                name = target.name
-
-                target_data = data[data['Target'] == name]
-
-                patches = [ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['RA'], p['DEC']], pa=p['PA'],
-                                         edgecolor='None', linewidth=0.0, alpha=alpha, facecolor=sty['bgcolor'])[0]
-                           for p in target_data]
-
-                if projection == 'mollweide':
-                    patches = [transform_patch_mollweide(patch) for patch in patches]
-
-                for patch in patches:
-                    ax.add_patch(patch)
-
-        return fig
 
 

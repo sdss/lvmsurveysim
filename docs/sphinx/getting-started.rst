@@ -14,24 +14,23 @@ This will install ``lvmsurveysim`` and all its dependencies. To check that every
 
     >>> import lvmsurveysim
     >>> lvmsurveysim.__version__
-    0.1.0
+    0.9.0
 
 If you don't get an error then you are probably ready to start using the code.
 
 Additionally you may want to check out `lvmcore <https://github.com/sdss/lvmcore>`__, which contains the target file (although this is not necessary to run a simulation). Simply download the code and make the environment variable ``$LVMCORE_DIR`` point to the directory.
 
-Note that the code requires Python 3.6+ to run.
+Note that the code requires Python 3.6+ to run. See requirements.txt for further details.
 
 
-Running a simulation
---------------------
+Defining a survey, tiling it, and running a simulation
+------------------------------------------------------
 
 To run a simulation you will need a target file. If you don't provide one, ``lvmsurveysim`` will try to load ``$LVMCORE_DIR/surveydesign/targets.yaml``. You can check the :ref:`target-defining` section.
 
-The following code runs a simple simulation
+The following code loads a target file, tiles the survey and finally runs a survey simulation
 
 .. code-block:: python
-    :linenos:
 
     from lvmsurveysim.schedule import ObservingPlan, Simulator, TileDB
     from lvmsurveysim.target import TargetList
@@ -73,4 +72,4 @@ The following code runs a simple simulation
 
 Note that in line 6 we provide the name of a file with the targets we want to observe. If that parameter is not provided the ``lvmcore`` target file will be used.
 
-`sim.run <lvmsurveysim.schedule.scheduler.Simulator.run>` uses the default parameters for the simulation defined in the ``scheduler`` of the `configuration file <https://github.com/sdss/lvmsurveysim/blob/master/lvmsurveysim/etc/lvmsurveysim_defaults.yaml>`__.
+`sim.run <lvmsurveysim.schedule.simulator.Simulator.run>` uses the default parameters for the simulation defined in the ``scheduler`` of the `configuration file <https://github.com/sdss/lvmsurveysim/blob/master/lvmsurveysim/etc/lvmsurveysim_defaults.yaml>`__.

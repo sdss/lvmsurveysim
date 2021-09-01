@@ -43,8 +43,8 @@ class SkyRegion(object):
     methods to compute intersections between the regions and whether a point 
     is contained in the region (used later in tiling).
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     typ : str
         String describing the shape, one of 'circle', 'ellipse', 'rectangle'
         'polygon' or 'raw'. Depending on the value of this parameter, we expect to find

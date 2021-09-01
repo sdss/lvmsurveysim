@@ -38,9 +38,9 @@ seaborn.set()
 class Target(object):
     """A `.Region` with additional observing information.
 
-    A `.Target` object is similar to a `.Region` but it is named and contains
+    A `.Target` object is similar to a `.SkyRegion` but it is named and contains
     information about what telescope will observe it and its observing
-    priority. It is instantiated as a `.Region` but accepts the following extra
+    priority. It is instantiated as a `.SkyRegion` but accepts the following extra
     parameters.
 
     Parameters
@@ -88,8 +88,8 @@ class Target(object):
 
     Attributes
     ----------
-    region : `.Region`
-        The `.Region` object associated with this target.
+    region : `.SkyRegion`
+        The `.SkyRegion` object associated with this target.
 
     """
 
@@ -161,7 +161,7 @@ class Target(object):
                 exptime: 900
                 n_exposures: 1
                 min_exposures: 1
-
+                ...
 
         Parameters
         ----------
@@ -234,6 +234,7 @@ class Target(object):
         tiles : list of `~lvmsurveysi.target.tile`
             A list of `~lvmsurveysi.target.tile` with the list of
             tile coordinates, priorities, and other data
+
         """
 
         telescope = telescope or self.telescope
@@ -263,7 +264,9 @@ class Target(object):
 
     def make_tiles(self):
         """ Return a list of `~lvmsurveysim.schedule.Tile` tile objects for this target.
-        Requires the self.tiles, self.pa and self.tile_priorites arrays to be set.
+        Requires the self.tiles, self.pa and self.tile_priorites arrays to have been 
+        calculated using the `.get_tiling` method.
+
         """
         return [Tile(self.tiles[i], self.pa[i], self.tile_priorities[i]) for i in range(len(self.tiles))]
 
@@ -273,9 +276,16 @@ class Target(object):
         This method is used to select the tiles belonging to this target from a 
         list of coordinates of a tile union.
 
-        Returns:
-        coords, pa : numpy.array
-            vectors of coordinates and PAs remaining after selection.
+        Parameters
+        ----------
+        coords, pa : ~numpy.array
+            vectors of coordinates and PAs of the tile union before selection.
+
+        Returns
+        -------
+        coords, pa : ~numpy.array
+            vectors of coordinates and PAs remaining in tile union after selection.
+
         """
         mask = numpy.full(len(coords), True)
         icrs_r = self.region.icrs_region()
@@ -298,6 +308,7 @@ class Target(object):
         -------
         priorities: ~numpy.array
             Array of length of number of tiles with the priority for each tile.
+
         """
         if len(self.tiles) == 0:
             warnings.warn(f'target {self.name}: no tiles when calling get_tile_priorities(). ', LVMSurveyOpsWarning)
@@ -361,7 +372,9 @@ class Target(object):
 
 
     def plot(self, *args, **kwargs):
-        """Plots the region. An alias for ``.Region.plot``."""
+        """Plots the region. An alias for ``.SkyRegion.plot``.
+        
+        """
 
         return self.region.plot(*args, **kwargs)
 
@@ -558,6 +571,7 @@ class TargetList(list):
 
     def order_by_priority(self):
         """ Return a copy of the target list ordered by priorities highest to lowest.
+
         """
         def prio(t):
             return t.priority

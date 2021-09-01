@@ -30,26 +30,26 @@ class Scheduler(object):
 
     A typical usage scenario might look like:
 
-        plan = ObservingPlan(...)
-        tiledb = TileDB.load('lco_tiledb')
-        scheduler = Scheduler(plan)
+    >>> plan = ObservingPlan(...)
+    >>>    tiledb = TileDB.load('lco_tiledb')
+    >>>    scheduler = Scheduler(plan)
 
-        # observed exposure time for each pointing
-        observed = numpy.zeros(len(tiledb), dtype=numpy.float)
+    >>>    # observed exposure time for each pointing
+    >>>    observed = numpy.zeros(len(tiledb), dtype=numpy.float)
 
-        # range of dates for the survey
-        dates = range(numpy.min(plan['JD']), numpy.max(plan['JD']) + 1)
+    >>>    # range of dates for the survey
+    >>>    dates = range(numpy.min(plan['JD']), numpy.max(plan['JD']) + 1)
 
-        for jd in dates:
-            scheduler.prepare_for_night(jd, plan, tiledb)
-            current_jd = now()
-            while current_jd < scheduler.morning_twi:
-                observed_idx, current_lst, hz, alt, lunation = scheduler.get_optimal_tile(current_jd, observed)
-                if observed_idx == -1
-                    NOTHING TO DO
-                else
-                    RECORD OBSERVATION of the tile
-                current_jd = now()
+    >>>    for jd in dates:
+    >>>        scheduler.prepare_for_night(jd, plan, tiledb)
+    >>>        current_jd = now()
+    >>>        while current_jd < scheduler.morning_twi:
+    >>>            observed_idx, current_lst, hz, alt, lunation = scheduler.get_optimal_tile(current_jd, observed)
+    >>>            if observed_idx == -1:
+    >>>                NOTHING TO DO
+    >>>            else:
+    >>>                RECORD OBSERVATION of the tile
+    >>>            current_jd = now()
 
     Parameters
     ----------

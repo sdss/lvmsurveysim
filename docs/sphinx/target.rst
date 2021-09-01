@@ -10,7 +10,7 @@ lvmsurveysim.target
 Defining a target
 -----------------
 
-A `.Target` is defined as a `.Region` on the sky with a name and additional methods for tiling and plotting. Regions on the sky can be of `circular <.CircularRegion>`, `elliptical <.EllipticalRegion>`, `polygonal <.PolygonalRegion>`, or `rectangular <.RectangularRegion>` shape.
+A `.Target` is defined as a `.SkyRegion` on the sky with a name and additional methods for tiling and plotting. Regions on the sky can be of circular, elliptical, rectangular, or polygonal shape. Internally they are always represented as polygons on the sphere (the edges of the polygon are great circles segments).
 
 While targets and regions can be initialised programatically, it is usually more convenient to define them in a YAML file. For example, the following text defines an elliptical and polygonal region
 
@@ -77,11 +77,12 @@ While targets and regions can be initialised programatically, it is usually more
     max_lunation: 1.0
     overhead: 1.1
     tiling_strategy: lowest_airmass
+    tiling_union: MW
     group: ["MW"]
 
 In all cases we need to define the ``region_type`` and the coordinate ``frame`` (either ``icrs`` or ``galactic``) in which the coordinates are written. For ``M33`` we specify the ``coords`` of the centre of the ellipse and define the ``region_params`` with the major and minor axis lengths and the parallactic angle. All values must be in degrees. For ``MW2`` we provide a list of coordinates with all the vertices of the polygon. We also define the ``priority`` of the target for scheduling (higher priority means it is more likely to be observed) and the telescope we want to use to observe it.
 
-More examples of regions can be seen `here <https://github.com/sdss/lvmcore/blob/master/surveydesign/targets.yaml>`__.
+More examples of regions can be seen `here <https://github.com/sdss/lvmcore/blob/master/surveydesign/baseline.yaml>`__.
 
 Targets can then be loaded by calling `.Target.from_list` ::
 
@@ -112,7 +113,7 @@ target
 regions
 -------
 
-.. automodule:: lvmsurveysim.target.region
-    :members: Region, EllipticalRegion, CircularRegion, PolygonalRegion, RectangularRegion, OverlapRegion, region_factory
+.. automodule:: lvmsurveysim.target.skyregion
+    :members: SkyRegion
     :show-inheritance:
     :undoc-members:
