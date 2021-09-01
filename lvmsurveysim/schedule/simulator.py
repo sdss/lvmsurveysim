@@ -798,7 +798,7 @@ class Simulator(object):
         plt.xlabel('shadow height / km')
         plt.ylabel('# of exposures')
         plt.legend()
-        plt.show()
+        #plt.show()
         return fig
 
     def plot_airmass(self, tname=None, group=False, observatory=None, norm=False, cumulative=0):
@@ -829,7 +829,7 @@ class Simulator(object):
         plt.xlabel('airmass')
         plt.ylabel('# of exposures' if norm==False else 'frequency')
         plt.legend()
-        plt.show()
+        #plt.show()
         return fig
 
     def _plot_histograms(self, ax, keyword, bins, tname=None, group=False, observatory=None, 
