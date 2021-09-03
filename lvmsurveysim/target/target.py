@@ -22,6 +22,7 @@ from lvmsurveysim.ifu import IFU
 from lvmsurveysim.utils import plot as lvm_plot
 import lvmsurveysim.utils.spherical
 from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
+from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
 
 from .. import config
 from ..telescope import Telescope
@@ -389,14 +390,11 @@ class Target(object):
         return self.region.plot(*args, **kwargs)
 
 
-    def plot_tiling(self, coords=None, ifu=None, frame=None, fig=None, **kwargs):
+    def plot_tiling(self, projection='rectangular', ifu=None, frame=None, fig=None, **kwargs):
         """Plots the tiles within the region.
 
         Parameters
         ----------
-        coords : astropy.coordinates.SkyCoord
-            A list of `~astropy.coordinates.SkyCoord` to plot. If not provided,
-            `~.Target.get_tiling` will be called with the options below.
         ifu : ~lvmsurveysim.tiling.IFU
             The IFU used for tiling the region. If not provided, the default
             one is used.
@@ -418,24 +416,39 @@ class Target(object):
 
         frame = frame or self.frame
 
-        if coords is None:
-            coords = self.get_tiling(ifu=ifu, to_frame=frame)
+        ifu = ifu or IFU.from_config()
+
+        if self.tiles is None:
+            T = self.get_tiling(ifu=ifu, to_frame=frame)
 
         if frame == 'icrs':
-            lon, lat = coords.ra.deg, coords.dec.deg
+            lon, lat = self.tiles.ra.deg, self.tiles.dec.deg
         elif frame == 'galactic':
-            lon, lat = coords.l.deg, coords.b.deg
+            lon, lat = self.tiles.l.deg, self.tiles.b.deg
 
         if fig is None:
-            fig, ax = lvm_plot.get_axes(projection='mollweide', frame=frame)
+            fig, ax = lvm_plot.get_axes(projection=projection, frame=frame)
         else:
             ax = fig.axes[0]
 
-        c1,c2 = lvm_plot.convert_to_mollweide(lon, lat)
+        if projection=='mollweide':
+            c1,c2 = lvm_plot.convert_to_mollweide(lon, lat)
+        else:
+            c1, c2 = lon, lat
 
-        ax.scatter(c1, c2, **kwargs)
+        patches = [ifu.get_patch(scale=self.telescope.plate_scale, centre=[c1[p], c2[p]], pa=self.pa[p],
+                                      edgecolor='r', linewidth=1, alpha=0.5)[0]
+                    for p in range(len(c1))]
 
-        return fig
+        if projection == 'mollweide':
+            patches = [transform_patch_mollweide(patch) for patch in patches]
+
+        for patch in patches:
+            ax.add_patch(patch)
+
+        ax.scatter(c1, c2, s=1, **kwargs)
+
+        return fig, ax
 
 
 class TargetList(list):
