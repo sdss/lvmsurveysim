@@ -347,37 +347,38 @@ class IFU(object):
         # Calculates the radius and apotheme of each subifu in degrees on the sky
         sparse = sparse if sparse!=None else 1.0
         n_rows = self.subifus[0].n_rows
-        rr_deg = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
-        aa_deg = numpy.sqrt(3) / 2. * rr_deg
+        ifu_phi_size = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
+        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size
 
+        # we are using an angular system theta, phi, with theta counted from the equator
         if geodesic == False:
             # Determine the centroid and bounds of the region
             centroid = numpy.array(region.centroid())
             ra0, dec0, ra1, dec1 = region.bounds()
 
             # The size of the grid in RA and Dec, in degrees.
-            size_ra  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
-            size_dec = numpy.abs(dec1 - dec0)
+            size_phi  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
+            size_theta = numpy.abs(dec1 - dec0)
 
             # The separation between grid points in RA and Dec
-            delta_ra = 3 * rr_deg
-            delta_dec = aa_deg
+            delta_phi = 3 * ifu_phi_size
+            delta_theta = ifu_theta_size
 
             # Calculates the initial positions of the grid points in RA and Dec.
-            ra_pos = numpy.arange(-size_ra / 2., size_ra / 2. + delta_ra.value, delta_ra.value)
-            dec_pos = numpy.arange(-size_dec / 2., size_dec / 2. + delta_dec.value, delta_dec.value)
-            points = numpy.zeros((len(dec_pos), len(ra_pos), 2))
+            phi_pos = numpy.arange(-size_phi / 2., size_phi / 2. + delta_phi.value, delta_phi.value)
+            theta_pos = numpy.arange(-size_theta / 2., size_theta / 2. + delta_theta.value, delta_theta.value)
+            points = numpy.zeros((len(theta_pos), len(phi_pos), 2))
 
-            # Offset each other row in RA by 1.5R
-            points[:, :, 0] = ra_pos
-            points[:, :, 0][1::2] += (1.5 * rr_deg.value)
+            # Offset each other row in phi by 1.5R
+            points[:, :, 0] = phi_pos
+            points[:, :, 0][1::2] += (1.5 * ifu_phi_size.value)
 
             # Set declination values
-            points[:, :, 1] = dec_pos[numpy.newaxis].T
+            points[:, :, 1] = theta_pos[numpy.newaxis].T
             points[:, :, 1] += centroid[1]
 
-            # The separations in the RA axis must be converted to RA using the
-            # local declination
+            # The separations in the phi axis must be converted to RA/l using the
+            # local DEC or b
             points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
             points[:, :, 0] += centroid[0]
 
