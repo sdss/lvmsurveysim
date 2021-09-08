@@ -345,13 +345,15 @@ class IFU(object):
 
         points = []
         # Calculates the radius and apotheme of each subifu in degrees on the sky
+        overlap = 1.0 # -1./24. if sparse!=None else 1.0 # 1 ring
         sparse = sparse if sparse!=None else 1.0
         n_rows = self.subifus[0].n_rows
-        ifu_phi_size = n_rows * self.fibre_size / 1000 * scale / 2. * sparse
-        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size
+        ifu_phi_size = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * overlap
+        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size * overlap
 
         # we are using an angular system theta, phi, with theta counted from the equator
         if geodesic == False:
+            # TODO: calculate hexagonal tiling grid with some overlap
             # Determine the centroid and bounds of the region
             centroid = numpy.array(region.centroid())
             ra0, dec0, ra1, dec1 = region.bounds()
@@ -398,7 +400,7 @@ class IFU(object):
 
         return points_inside
 
-    def plot(self, show_fibres=False, filled=True):
+    def plot(self, show_fibres=False, fill=True):
         """Plots the IFU."""
 
         with seaborn.axes_style('white'):
@@ -406,7 +408,7 @@ class IFU(object):
             fig, ax = matplotlib.pyplot.subplots()
 
             for subifu in self.subifus:
-                ax.add_patch(subifu.get_patch(filled=filled))
+                ax.add_patch(subifu.get_patch(fill=fill))
 
                 if show_fibres:
                     ax.add_collection(subifu.get_patch_collection(ax))
