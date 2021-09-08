@@ -18,12 +18,13 @@ targets = TargetList(target_file='./targets.yaml')
 print('Loading tile database ...')
 #tiledb = OpsDB.load_tiledb(path='lco_tiledb', fits=True)
 OpsDB.init()
-tiledb = OpsDB.load_tiledb()
+#tiledb = OpsDB.load_tiledb()
 
 print('Tiling Survey ...')
-# tiledb = TileDB(targets)
-# tiledb.tile_targets()
-# OpsDB.save_tiledb(tiledb, fits=True, path='lco_tiledb', overwrite=True)
+tiledb = TileDB(targets)
+tiledb.tile_targets()
+# OpsDB.create_tables(drop=True)
+#  OpsDB.save_tiledb(tiledb, fits=True, path='lco_tiledb', overwrite=True)
 
 # Creates observing plans for LCO for the range sep 2021 - jun 2025.
 print('Creating observing plan ...')
