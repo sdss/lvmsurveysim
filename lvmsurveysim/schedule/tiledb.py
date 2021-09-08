@@ -129,6 +129,7 @@ class TileDB(object):
             to tile with. If None, it will be read from the config file.
 
         '''
+        # TODO: unify this code with target.get_tiling() !
         self.ifu = ifu or IFU.from_config()
         self.tiling_type = 'hexagonal'
         self.tiles = {}
