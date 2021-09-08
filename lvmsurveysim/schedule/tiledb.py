@@ -139,7 +139,8 @@ class TileDB(object):
             uregion = SkyRegion.multi_union(regions)
 
             print('Tiling tile union ' + tu)
-            coords = self.ifu.get_tile_grid(uregion, ts[0].telescope.plate_scale, sparse=ts[0].sparse, geodesic=False)
+            coords = self.ifu.get_tile_grid(uregion, ts[0].telescope.plate_scale, 
+                                            tile_overlap=ts[0].tile_overlap, sparse=ts[0].sparse, geodesic=False)
             tiles = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1], frame=ts[0].frame, unit='deg')
             # second set offset in dec to find position angle after transform
             tiles2 = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1]+1./3600, frame=ts[0].frame, unit='deg')
