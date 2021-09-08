@@ -325,7 +325,7 @@ class IFU(object):
 
         return [subifu.get_patch(**kwargs) for subifu in self.subifus]
 
-    def get_tile_grid(self, region, scale, sparse=None, geodesic=None):
+    def get_tile_grid(self, region, scale, tile_overlap=None, sparse=None, geodesic=None):
         """Returns a grid of positions that tile a region with this IFU.
 
         Parameters
@@ -335,6 +335,9 @@ class IFU(object):
             and y is Declination, both in degrees.
         scale : float
             The scale in degrees per mm.
+        tile_overlap : float
+            The fraction of tile separation to overlap between neighboring tiles
+            (ignored for sparse targets)
         sparse : float
             Factor for sparse sampling. Stretches IFU length scale by the number.
         geodesic : use geodesic sphere tiling, sparse gives depth in this case.
@@ -345,15 +348,18 @@ class IFU(object):
 
         points = []
         # Calculates the radius and apotheme of each subifu in degrees on the sky
-        overlap = 1.0 # -1./24. if sparse!=None else 1.0 # 1 ring
+        if sparse==None: 
+            tile_overlap = tile_overlap or 0.0
+        else:
+            tile_overlap = 0.0
+
         sparse = sparse if sparse!=None else 1.0
         n_rows = self.subifus[0].n_rows
-        ifu_phi_size = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * overlap
-        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size * overlap
+        ifu_phi_size = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * (1.0-tile_overlap)
+        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size * (1.0-tile_overlap)
 
         # we are using an angular system theta, phi, with theta counted from the equator
         if geodesic == False:
-            # TODO: calculate hexagonal tiling grid with some overlap
             # Determine the centroid and bounds of the region
             centroid = numpy.array(region.centroid())
             ra0, dec0, ra1, dec1 = region.bounds()
@@ -379,9 +385,9 @@ class IFU(object):
             points[:, :, 1] = theta_pos[numpy.newaxis].T
             points[:, :, 1] += centroid[1]
 
-            # The separations in the phi axis must be converted to RA/l using the
-            # local DEC or b
-            points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
+            # The separations in the phi axis must be converted to RA/l using the local DEC or b
+            # points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
+            # this factor exactly cancels out with the shortening of the circle at constant DEC or b
             points[:, :, 0] += centroid[0]
 
             # Reshape into a 2D list of points.

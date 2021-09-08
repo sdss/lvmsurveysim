@@ -89,6 +89,7 @@ class Target(object):
     tile_union:
         tile_union that the target belongs to, if any; that is an area of sky that is tiled
         from a single hexagon grid to ensure gapless tiling of overlapping regions.
+    tile_overlap: fraction of tile separation to overlap with neighboring tiles (ignored for sparse targets)
     geodesic:
         geodesic tiling of the full sphere instead of region
     sparse:
@@ -121,6 +122,7 @@ class Target(object):
         self.groups = kwargs.pop('group', [])
         self.tiling_strategy = kwargs.pop('tiling_strategy', 'lowest_airmass')
         self.tile_union = kwargs.pop('tile_union', None)
+        self.tile_overlap = kwargs.pop('tile_overlap', None)
         self.overlap = kwargs.pop('overlap', True)
         self.geodesic = kwargs.pop('geodesic', False) # full sky tiling, use sparse for depth
         self.sparse = kwargs.pop('sparse', None)
@@ -256,7 +258,8 @@ class Target(object):
             #               f'Using default IFU {ifu.name!r}.', LVMSurveyOpsWarning)
 
         print('Tiling target ' + self.name)
-        coords = ifu.get_tile_grid(self.region, telescope.plate_scale, sparse=self.sparse, geodesic=self.geodesic)
+        coords = ifu.get_tile_grid(self.region, telescope.plate_scale, 
+                                   tile_overlap=self.tile_overlap, sparse=self.sparse, geodesic=self.geodesic)
         tiles = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1], frame=self.frame, unit='deg')
         # second set offset in dec to find position angle after transform
         tiles2 = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1]+1./3600, frame=self.frame, unit='deg')
