@@ -175,10 +175,10 @@ class Simulator(object):
         # Convert schedule to Astropy Table.
         self.schedule = astropy.table.Table(
             rows=self.schedule,
-            names=['JD', 'observatory', 'target', 'group', 'tileid', 'index', 'ra', 'dec',
+            names=['JD', 'observatory', 'target', 'group', 'tileid', 'index', 'ra', 'dec', 'pa', 
                 'airmass', 'lunation', 'shadow_height', "moon_dist", 'lst', 'exptime', 'totaltime'],
-            dtype=[float, 'S10', 'S20', 'S20', int, int, float, float, float,
-                float, float, float, float, float, float])
+            dtype=[float, 'S10', 'S20', 'S20', int, int, float, float, float, 
+                   float, float, float, float, float, float, float])
 
 
     def schedule_one_night(self, jd, scheduler, observed):
@@ -258,6 +258,7 @@ class Simulator(object):
                                         pointing_index=pointing_index,
                                         ra=tdb['RA'].data[observed_idx], 
                                         dec=tdb['DEC'].data[observed_idx],
+                                        pa=tdb['PA'].data[observed_idx],
                                         airmass=airmass,
                                         lunation=lunation,
                                         shadow_height= hz, #hz[valid_priority_idx[obs_tile_idx]],
@@ -317,7 +318,7 @@ class Simulator(object):
         anim.save(filename, fps=24, extra_args=['-vcodec', 'libx264'])
 
 
-    def plot(self, observatory=None, projection='mollweide', tname=None, fast=False, annotate=False):
+    def plot(self, observatory=None, projection='mollweide', tname=None, fast=False, annotate=False, edge=False):
         """Plots the observed pointings.
 
         Parameters
@@ -337,6 +338,9 @@ class Simulator(object):
         annotate : bool
             Write the targets' names next to the target coordinates. Implies
             ``fast=True``.
+        edge : bool
+            Draw tile edges and make tiles partly transparent to better judge overlap.
+            Makes zoomed-out view look odd, so use default False.
 
         Returns
         -------
@@ -380,9 +384,15 @@ class Simulator(object):
 
                 target_data = data[data['target'] == name]
 
-                patches = [self.ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['RA'], p['DEC']], pa=p['PA'],
-                                              edgecolor='None', linewidth=0.0, facecolor=sty['bgcolor'])[0]
-                           for p in target_data]
+                if edge:
+                    patches = [self.ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['ra'], p['dec']], pa=p['pa'],
+                                                  edgecolor='k', linewidth=1, alpha=0.5, facecolor=sty['bgcolor'])[0]
+                            for p in target_data]
+                else:
+                    patches = [self.ifu.get_patch(scale=target.telescope.plate_scale, centre=[p['ra'], p['dec']], pa=p['pa'],
+                                                  edgecolor='None', linewidth=0.0, facecolor=sty['bgcolor'])[0]
+                            for p in target_data]
+
 
                 if projection == 'mollweide':
                     patches = [transform_patch_mollweide(patch) for patch in patches]
@@ -406,14 +416,14 @@ class Simulator(object):
 
 
     def _record_observation(self, jd, observatory, target_name='-', target_group='-',
-                            tileid=-1, pointing_index=-1, ra=-999., dec=-999.,
+                            tileid=-1, pointing_index=-1, ra=-999., dec=-999., pa=-999., 
                             airmass=-999., lunation=-999., shadow_height=-999., dist_to_moon=-999.,
                             lst=-999.,
                             exptime=0., totaltime=0.):
         """Adds a row to the schedule."""
 
         self.schedule.append((jd, observatory, target_name, target_group, tileid, pointing_index,
-                              ra, dec, airmass, lunation, shadow_height, dist_to_moon, lst, exptime,
+                              ra, dec, pa, airmass, lunation, shadow_height, dist_to_moon, lst, exptime,
                               totaltime))
 
 
