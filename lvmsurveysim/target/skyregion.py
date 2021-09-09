@@ -122,7 +122,7 @@ class SkyRegion(object):
 
         elif typ == 'raw':
 
-            assert isinstance(coords, sp.SphericalPolygon), 'Raw SkyRegion reqiores SphericalPolygon.'
+            assert isinstance(coords, sp.SphericalPolygon), 'Raw SkyRegion requires SphericalPolygon.'
             self.region_type = 'polygon'
             self.region = coords
             self.frame = kwargs['frame']
