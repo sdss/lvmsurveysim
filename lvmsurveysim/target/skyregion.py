@@ -80,9 +80,8 @@ class SkyRegion(object):
             y1 = + height / 2.
             x, y = self._rotate_coords([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0], kwargs['pa'])
             x, y = self._polygon_perimeter(x, y)
-            x /= numpy.cos(numpy.deg2rad(y))
             y += self.center[1]
-            x += self.center[0]
+            x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
             self.region = sp.SphericalPolygon.from_radec(x, y, degrees=True)
 
         elif typ == 'circle':
@@ -116,8 +115,6 @@ class SkyRegion(object):
             x, y = self._rotate_vertices(numpy.array(coords), 0.0)
             x, y = self._polygon_perimeter(x, y)
             self.center = [numpy.average(x), numpy.average(y)]
-            x -= self.center[0]
-            x = x / numpy.cos(numpy.deg2rad(y)) + self.center[0]
             self.region = sp.SphericalPolygon.from_radec(x, y, center=self.center, degrees=True)
 
         elif typ == 'raw':
@@ -265,27 +262,22 @@ class SkyRegion(object):
 
         Returns
         -------
-        Returns the matplotlib ~matplotlib.axes.Axes` object for this plot.
+        Returns the matplotlib fig, ax objects for this plot.
         If not specified, the default plotting styles will be used.
-        If ``return_patch=True``, returns the patch as well.
+        If ``return_patch=True``, returns the patch instead.
 
         """
 
-        if ax is None:
+        if ax==None and not return_patch:
             fig, ax = lvm_plot.get_axes(projection=projection, frame=self.frame)
 
         coords = self.vertices()
-
-        poly = matplotlib.path.Path(coords, closed=True)
-        poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
-        poly_patch = ax.add_patch(poly_patch)
 
         if projection == 'rectangular':
             #ax.set_aspect('equal', adjustable='box')
 
             poly = matplotlib.path.Path(coords, closed=True)
             poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
-            poly_patch = ax.add_patch(poly_patch)
 
             min_x, min_y = coords.min(0)
             max_x, max_y = coords.max(0)
@@ -293,18 +285,21 @@ class SkyRegion(object):
             padding_x = 0.1 * (max_x - min_x)
             padding_y = 0.1 * (max_y - min_y)
 
-            ax.set_xlim(min_x - padding_x, max_x + padding_x)
-            ax.set_ylim(min_y - padding_y, max_y + padding_y)
+            if not return_patch:
+                poly_patch = ax.add_patch(poly_patch)
+                ax.set_xlim(min_x - padding_x, max_x + padding_x)
+                ax.set_ylim(min_y - padding_y, max_y + padding_y)
 
         elif projection == 'mollweide':
 
             coords = lvm_plot.transform_vertices_mollweide(coords)
             poly = matplotlib.path.Path(coords, closed=True)
             poly_patch = matplotlib.patches.PathPatch(poly, **kwargs)
-            poly_patch = ax.add_patch(poly_patch)
+            if not return_patch:
+                poly_patch = ax.add_patch(poly_patch)
 
         if return_patch:
-            return fig, ax, poly_patch
+            return poly_patch
         else:
             return fig, ax
 
