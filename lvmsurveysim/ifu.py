@@ -386,9 +386,8 @@ class IFU(object):
             points[:, :, 1] += centroid[1]
 
             # The separations in the phi axis must be converted to RA/l using the local DEC or b
-            if region.frame == 'icrs':
-                points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
-            # TODO: this factor exactly cancels out with the shortening of the circle at constant b Need to move code
+            points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
+            # TODO: correction for relative size along RA with DEC, i.e. tangential projection?
             points[:, :, 0] += centroid[0]
 
             # Reshape into a 2D list of points.
