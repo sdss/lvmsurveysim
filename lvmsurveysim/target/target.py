@@ -352,7 +352,11 @@ class Target(object):
             Array of length of number of tiles with the priority for each tile.
 
         """
-        r, d = self.tiles.ra.deg, self.tiles.dec.deg
+        if self.tiles.frame.name=='icrs':
+            r, d = self.tiles.ra.deg, self.tiles.dec.deg
+        else:
+            r, d = self.tiles.l.deg, self.tiles.b.deg
+
 
         # TODO: proper calculation of barycenter on the sphere!
         rc = numpy.average(r)
