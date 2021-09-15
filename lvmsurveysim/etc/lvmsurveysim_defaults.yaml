@@ -13,7 +13,7 @@ ifu:
     fibre_size: 107  # spaxel size in microns, must correspond to f-number in telescope
     centres: [[0, 0]]
     n_fibres: 1801  # 24 rings, as of PDR
-    allow_rotation: false
+    allow_rotation: true
 
 telescopes:
     LVM-1m:

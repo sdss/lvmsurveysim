@@ -14,6 +14,7 @@ import matplotlib.pyplot
 import numpy
 import seaborn
 import astropy.units
+from astropy.coordinates.angle_utilities import position_angle
 
 import lvmsurveysim
 from lvmsurveysim import config
@@ -49,6 +50,71 @@ def fibres_to_rows(fibres):
 
         if tmp_fibres == fibres:
             return n_rows
+
+
+class EqTransform(object):
+    '''
+    The transformation between the two equatorial coordinate systems (for example to galactic):
+        1. a rotation around the celestial polar axis by, so that the reference zero longitude matches the node
+        2. a rotation around the node by the inclination of the new equator
+        3. a rotation around the new polar axis so that the zero new longitude meridian matches the input.
+
+        Parameters:
+        RA_NGP : float
+            RA coordinate of new north pole in old system
+        DEC_NGP : float
+            DEC coordinate of new north pole in old system
+        L_CP : float
+            longitude of the old pole in the new system
+
+        For example: 
+            EqTransform(192.8594, 27.1282, 122.9319) 
+            transforms from icrs to Galactic coordinates and back.
+    '''
+    def __init__(self, RA_NGP, DEC_NGP, L_CP):
+        self.RA_NGP = numpy.deg2rad(RA_NGP)   # Galactic: numpy.deg2rad(192.8594812065348)
+        self.DEC_NGP = numpy.deg2rad(DEC_NGP) # Galactic: numpy.deg2rad(27.12825118085622)
+        self.L_CP = numpy.deg2rad(L_CP)       # Galactic: numpy.deg2rad(122.9319185680026)
+
+        self.L_0 = self.L_CP - numpy.pi / 2.
+        self.RA_0 = self.RA_NGP + numpy.pi / 2.
+        self.DEC_0 = numpy.pi / 2. - self.DEC_NGP
+
+    def eq2gal(self, ra, dec):
+        '''
+        Forward transform from old to new system
+        '''
+        ra, dec = numpy.deg2rad(numpy.array(ra, ndmin=1)), numpy.deg2rad(numpy.array(dec, ndmin=1))
+        numpy.sinb = numpy.sin(dec) * numpy.cos(self.DEC_0) - numpy.cos(dec) * numpy.sin(ra - self.RA_0) * numpy.sin(self.DEC_0)
+        b = numpy.arcsin(numpy.sinb)
+        cosl = numpy.cos(dec) * numpy.cos(ra - self.RA_0) / numpy.cos(b)
+        sinl = (numpy.sin(dec) * numpy.sin(self.DEC_0) + numpy.cos(dec) * numpy.sin(ra - self.RA_0) * numpy.cos(self.DEC_0)) / numpy.cos(b)
+        return self._normalize_angles(cosl, sinl, self.L_0, b)
+
+    def gal2eq(self, l, b):
+        '''
+        Backwards transform from new to old system
+        '''
+        l, b = numpy.deg2rad(numpy.array(l, ndmin=1)), numpy.deg2rad(numpy.array(b, ndmin=1))
+        sind = numpy.sin(b) * numpy.sin(self.DEC_NGP) + numpy.cos(b) * numpy.cos(self.DEC_NGP) * numpy.sin(l - self.L_0)
+        dec = numpy.arcsin(sind)
+        cosa = numpy.cos(l - self.L_0) * numpy.cos(b) / numpy.cos(dec)
+        sina = (numpy.cos(b) * numpy.sin(self.DEC_NGP) * numpy.sin(l - self.L_0) - numpy.sin(b) * numpy.cos(self.DEC_NGP)) / numpy.cos(dec)
+        return self._normalize_angles(cosa, sina, self.RA_0, dec)
+
+    def _normalize_angles(self, cosa, sina, ra0, dec):
+        '''
+        Make sure everything ends up in the right quadrant
+        '''
+        dec = numpy.rad2deg(dec)
+        cosa[cosa < -1.0] = -1.0
+        cosa[cosa > 1.0] = 1.0
+        ra = numpy.arccos(cosa)
+        ra[numpy.where(sina < 0.)] *= -1.0
+        ra = numpy.rad2deg(ra + ra0)
+        ra = numpy.mod(ra, 360.)
+        dec = numpy.mod(dec + 90., 180.) - 90.
+        return ra, dec
 
 
 class Fibre(object):
@@ -341,6 +407,7 @@ class IFU(object):
         sparse : float
             Factor for sparse sampling. Stretches IFU length scale by the number.
         geodesic : use geodesic sphere tiling, sparse gives depth in this case.
+
         """
 
         if isinstance(scale, astropy.units.Quantity):
@@ -356,17 +423,28 @@ class IFU(object):
         sparse = sparse if sparse!=None else 1.0
         n_rows = self.subifus[0].n_rows
         ifu_phi_size = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * (1.0-tile_overlap)
-        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size * (1.0-tile_overlap)
+        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size  # * (1.0-tile_overlap)
 
         # we are using an angular system theta, phi, with theta counted from the equator
         if geodesic == False:
             # Determine the centroid and bounds of the region
             centroid = numpy.array(region.centroid())
-            ra0, dec0, ra1, dec1 = region.bounds()
+            minphi, mintheta, maxphi, maxtheta = region.bounds()
 
-            # The size of the grid in RA and Dec, in degrees.
-            size_phi  = numpy.abs(ra1 - ra0) * numpy.cos(numpy.radians(centroid[1]))
-            size_theta = numpy.abs(dec1 - dec0)
+            # TODO: transform the Region object rather than the bounds!
+            # Transform to a coordinate system where the region is on the equator. There we're natrually tiling
+            # along great circles and the hexagon pattern is easiest to describe.
+            Eq = EqTransform(centroid[0], 90.+centroid[1], 0.0)
+            centroid = Eq.eq2gal(centroid[0], centroid[1])
+            minphi, mintheta = Eq.eq2gal(minphi, mintheta)
+            maxphi, maxtheta = Eq.eq2gal(maxphi, maxtheta)
+            # transform might have caused issues with mod(360), so correct:
+            if minphi >= maxphi:
+                maxphi += 360.
+
+            # The size of the grid in phi and theta, in degrees.
+            size_phi  = numpy.abs(maxphi - minphi) * numpy.cos(numpy.radians(centroid[1]))
+            size_theta = numpy.abs(maxtheta - mintheta)
 
             # The separation between grid points in RA and Dec
             delta_phi = 3 * ifu_phi_size
@@ -380,18 +458,23 @@ class IFU(object):
             # Offset each other row in phi by 1.5R
             points[:, :, 0] = phi_pos
             points[:, :, 0][1::2] += (1.5 * ifu_phi_size.value)
-
             # Set declination values
             points[:, :, 1] = theta_pos[numpy.newaxis].T
-            points[:, :, 1] += centroid[1]
 
-            # The separations in the phi axis must be converted to RA/l using the local DEC or b
-            points[:, :, 0] /= numpy.cos(numpy.radians(points[:, :, 1]))
-            # TODO: correction for relative size along RA with DEC, i.e. tangential projection?
+            # The separations in the phi axis must be converted to coordinate distances, but the cos(theta)
+            # term cancels with the shortening of the length of the circle at theta
+            points[:, :, 1] += centroid[1]
             points[:, :, 0] += centroid[0]
 
             # Reshape into a 2D list of points.
             points = points.reshape((-1, 2))
+
+            # transform back to original coordinates and determine position angle
+            points2 = numpy.array(Eq.gal2eq(points[:,0], points[:,1] + 1./3600.)).T
+            points = numpy.array(Eq.gal2eq(points[:,0], points[:,1])).T
+            pa = position_angle(numpy.deg2rad(points[:,0]), numpy.deg2rad(points[:,1]), 
+                                numpy.deg2rad(points2[:,0]), numpy.deg2rad(points2[:,1]))
+            pa = numpy.rad2deg(pa)
         else:
             x, y, z = lvmsurveysim.utils.geodesic_sphere.sphere(int(sparse))
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
@@ -399,14 +482,15 @@ class IFU(object):
             points = numpy.zeros((len(sk),2))
             points[:,0] = sk.ra.deg
             points[:,1] = sk.dec.deg
+            pa = numpy.zeros(len(sk))
 
         # Check what grid points would overlap with the region if occupied by an IFU.
         inside = [region.contains_point(x,y) for x,y in zip(points[:,0], points[:,1])]
         points_inside = points[inside]
+        pa = pa[inside]
+        return points_inside, pa
 
-        return points_inside
-
-    def plot(self, show_fibres=False, fill=True):
+    def plot(self, show_fibres=False, fill=False):
         """Plots the IFU."""
 
         with seaborn.axes_style('white'):
@@ -414,7 +498,7 @@ class IFU(object):
             fig, ax = matplotlib.pyplot.subplots()
 
             for subifu in self.subifus:
-                ax.add_patch(subifu.get_patch(fill=fill))
+                ax.add_patch(subifu.get_patch(fill=fill, edgecolor='r', linewidth=1, alpha=0.5))
 
                 if show_fibres:
                     ax.add_collection(subifu.get_patch_collection(ax))

@@ -258,8 +258,8 @@ class Target(object):
             #               f'Using default IFU {ifu.name!r}.', LVMSurveyOpsWarning)
 
         print('Tiling target ' + self.name)
-        coords = ifu.get_tile_grid(self.region, telescope.plate_scale, 
-                                   tile_overlap=self.tile_overlap, sparse=self.sparse, geodesic=self.geodesic)
+        coords, pa = ifu.get_tile_grid(self.region, telescope.plate_scale, 
+                                       tile_overlap=self.tile_overlap, sparse=self.sparse, geodesic=self.geodesic)
         tiles = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1], frame=self.frame, unit='deg')
         # second set offset in dec to find position angle after transform
         tiles2 = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1]+1./3600, frame=self.frame, unit='deg')
@@ -268,7 +268,7 @@ class Target(object):
         if to_frame:
             tiles = tiles.transform_to(to_frame)
             tiles2 = tiles2.transform_to(to_frame)
-        self.pa = tiles.position_angle(tiles2)
+        self.pa = pa + tiles.position_angle(tiles2)
 
         # cache the new tiles and the priorities
         self.tiles = tiles
