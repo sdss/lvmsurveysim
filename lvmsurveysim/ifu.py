@@ -12,7 +12,6 @@ import matplotlib.collections
 import matplotlib.patches
 import matplotlib.pyplot
 import numpy
-import seaborn
 import astropy.units
 from astropy.coordinates.angle_utilities import position_angle
 
@@ -20,8 +19,6 @@ import lvmsurveysim
 from lvmsurveysim import config
 import lvmsurveysim.utils.geodesic_sphere
 
-seaborn.set()
-current_palette = seaborn.color_palette()
 
 # TODO: move get_tile_grid() somewhere else, probably tiledb?
 
@@ -493,16 +490,14 @@ class IFU(object):
     def plot(self, show_fibres=False, fill=False):
         """Plots the IFU."""
 
-        with seaborn.axes_style('white'):
+        fig, ax = matplotlib.pyplot.subplots()
 
-            fig, ax = matplotlib.pyplot.subplots()
+        for subifu in self.subifus:
+            ax.add_patch(subifu.get_patch(fill=fill, edgecolor='r', linewidth=1, alpha=0.5))
 
-            for subifu in self.subifus:
-                ax.add_patch(subifu.get_patch(fill=fill, edgecolor='r', linewidth=1, alpha=0.5))
+            if show_fibres:
+                ax.add_collection(subifu.get_patch_collection(ax))
 
-                if show_fibres:
-                    ax.add_collection(subifu.get_patch_collection(ax))
-
-            ax.autoscale_view()
+        ax.autoscale_view()
 
         return fig

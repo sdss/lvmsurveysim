@@ -13,7 +13,6 @@ import matplotlib.patches
 import matplotlib.pyplot as plt
 import matplotlib.transforms
 import numpy
-import seaborn
 
 from lvmsurveysim.target import _VALID_FRAMES
 
@@ -51,51 +50,50 @@ def get_axes(projection='rectangular', frame='icrs', ylim=None):
 
     assert frame in _VALID_FRAMES, 'invalid frame'
 
-    with seaborn.axes_style('whitegrid'):
+    if projection == 'rectangular':
+        fig = plt.figure(figsize=(10, 6))
+        ax = fig.add_subplot(111)
 
-        if projection == 'rectangular':
-            fig = plt.figure(figsize=(10, 6))
-            ax = fig.add_subplot(111)
+        ax.set_xlim(360, 0)
 
-            ax.set_xlim(360, 0)
-
-            if ylim:
-                ax.set_ylim(**ylim)
-            else:
-                ax.set_ylim(-90, 90)
-
-        elif projection == 'mollweide':
-            fig = plt.figure(figsize=(10, 5))
-            ax = fig.add_subplot(111, projection='mollweide')
-            org = __MOLLWEIDE_ORIGIN__
-
-            tick_labels = numpy.array([150., 120, 90, 60, 30, 0,
-                                       330, 300, 270, 240, 210])
-            tick_labels = numpy.remainder(tick_labels + 360 + org, 360)
-            tick_labels = numpy.array(tick_labels / 15., int)
-
-            tickStr = []
-            for tick_label in tick_labels:
-                #tickStr.append('')
-                tickStr.append('${0:d}^h$'.format(tick_label))
-
-            # Bug fix: if we have an even number of ticklabels, starting at 1 and skipping ever other will produce a mismatch in the number of tics and lables. 
-            # Temporary fix, try to set them, but don't break if the mismatch exists.
-            try:
-                ax.set_xticklabels(tickStr)  # we add the scale on the x axis
-            except:
-                pass
-            ax.grid(True)
-
+        if ylim:
+            ax.set_ylim(**ylim)
         else:
-            raise ValueError('invalid projection')
+            ax.set_ylim(-90, 90)
+        ax.grid(True)
 
-        if frame == 'icrs':
-            ax.set_xlabel(r'$\alpha_{2000}\,{\rm [deg]}$')
-            ax.set_ylabel(r'$\delta_{2000}\,{\rm [deg]}$')
-        elif frame == 'galactic':
-            ax.set_xlabel(r'$\rm l\,[deg]$')
-            ax.set_ylabel(r'$\rm b\,[deg]$')
+    elif projection == 'mollweide':
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(111, projection='mollweide')
+        org = __MOLLWEIDE_ORIGIN__
+
+        tick_labels = numpy.array([150., 120, 90, 60, 30, 0,
+                                    330, 300, 270, 240, 210])
+        tick_labels = numpy.remainder(tick_labels + 360 + org, 360)
+        tick_labels = numpy.array(tick_labels / 15., int)
+
+        tickStr = []
+        for tick_label in tick_labels:
+            #tickStr.append('')
+            tickStr.append('${0:d}^h$'.format(tick_label))
+
+        # Bug fix: if we have an even number of ticklabels, starting at 1 and skipping ever other will produce a mismatch in the number of tics and lables. 
+        # Temporary fix, try to set them, but don't break if the mismatch exists.
+        try:
+            ax.set_xticklabels(tickStr)  # we add the scale on the x axis
+        except:
+            pass
+        ax.grid(True)
+
+    else:
+        raise ValueError('invalid projection')
+
+    if frame == 'icrs':
+        ax.set_xlabel(r'$\alpha_{2000}\,{\rm [deg]}$')
+        ax.set_ylabel(r'$\delta_{2000}\,{\rm [deg]}$')
+    elif frame == 'galactic':
+        ax.set_xlabel(r'$\rm l\,[deg]$')
+        ax.set_ylabel(r'$\rm b\,[deg]$')
 
     return fig, ax
 

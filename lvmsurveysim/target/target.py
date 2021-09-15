@@ -14,7 +14,6 @@ import pathlib
 
 import astropy
 import numpy
-import seaborn
 import yaml
 import warnings
 
@@ -32,8 +31,6 @@ from .tile import Tile
 
 __all__ = ['Target', 'TargetList']
 
-
-seaborn.set()
 
 
 class Target(object):
