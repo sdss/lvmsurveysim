@@ -223,6 +223,7 @@ class Target(object):
 
         return pixarea
 
+    # TODO: move to SkyRegion to combine with identical code in tiledb
     def get_tiling(self, ifu=None, telescope=None, to_frame=None):
         """Tessellates the target region and returns a list of tile centres.
 
@@ -284,18 +285,19 @@ class Target(object):
     def get_tiles_from_union(self, coords, pa):
         """ Select tiles belonging to this target from a list of coordinates.
 
-        This method is used to select the tiles belonging to this target from a 
-        list of coordinates of a tile union.
+        This method is used to select and assign the tiles belonging to this target 
+        from a list of coordinates of a tile union.
 
         Parameters
         ----------
         coords, pa : ~numpy.array
-            vectors of coordinates and PAs of the tile union before selection.
+            Vectors of coordinates and PAs of the tile union before selection. Assumed
+            to be in the ICRS frame.
 
         Returns
         -------
         coords, pa : ~numpy.array
-            vectors of coordinates and PAs remaining in tile union after selection.
+            Vectors of coordinates and PAs remaining in tile union after selection.
 
         """
         mask = numpy.full(len(coords), True)
@@ -367,22 +369,35 @@ class Target(object):
 
     def get_skyregion(self):
         """ Return the `.SkyRegion` of the target
+
         """
         return self.region
 
     def is_sparse(self):
+        '''Return True if the Target is sparse.
+        
+        '''
         if self.sparse == None:
             return False
         else:
             return True
 
     def density(self):
+        '''Return the tile density of the target.
+        
+        The tile density is 1 if the target is not sparse, and 
+        1/sparse otherwise.
+        
+        '''
         if self.is_sparse():
             return 1.0/self.sparse
         else:
             return 1.0
 
     def in_tile_union_with(self, other):
+        '''Return True if `self` is a member of the same tile union as `other`.
+
+        '''
         return (self.tile_union != None) and (self.tile_union==other.tile_union)
 
 
@@ -390,7 +405,6 @@ class Target(object):
         """Plots the region. An alias for ``.SkyRegion.plot``.
         
         """
-
         return self.region.plot(*args, **kwargs)
 
 
