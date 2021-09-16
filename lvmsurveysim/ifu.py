@@ -20,8 +20,6 @@ from lvmsurveysim import config
 import lvmsurveysim.utils.geodesic_sphere
 
 
-# TODO: move get_tile_grid() somewhere else, probably tiledb?
-
 __all__ = ['IFU']
 
 
@@ -388,6 +386,35 @@ class IFU(object):
 
         return [subifu.get_patch(**kwargs) for subifu in self.subifus]
 
+    def get_ifu_size(self, scale, tile_overlap, sparse):
+        '''Returns the size of the IFU in degrees
+
+        Calculate and return the size of the IFU in degrees in two dimensions, the
+        first from corner to corner of the hexagon, the second from straight edge to edge.
+        Take into account the amount of overlap we want and the sparse tiling.
+
+        Parameters:
+        -----------
+        scale : float
+            The scale in degrees per mm.
+        tile_overlap : float
+            The fraction of tile separation to overlap between neighboring tiles
+            (ignored for sparse targets)
+        sparse : float
+            Factor for sparse sampling. Stretches IFU length scale by the number.
+
+        Returns:
+        --------
+        dx, dy : tuple of float
+            The extent of the hexagonal IFU in degrees from corner to corner and edge to edge.
+        '''
+        assert len(self.subifus)==1, "Size of ifus with subunits not implemented."
+        n_rows = self.subifus[0].n_rows
+        dx = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * (1.0-tile_overlap)
+        dy = numpy.sqrt(3) / 2. * dx
+        return dx, dy
+
+
     def get_tile_grid(self, region, scale, tile_overlap=None, sparse=None, geodesic=None):
         """Returns a grid of positions that tile a region with this IFU.
 
@@ -406,6 +433,7 @@ class IFU(object):
         geodesic : use geodesic sphere tiling, sparse gives depth in this case.
 
         """
+        # TODO: move get_tile_grid() somewhere else, probably SkyRegion?
 
         if isinstance(scale, astropy.units.Quantity):
             scale = scale.to('degree/mm').value
@@ -416,11 +444,9 @@ class IFU(object):
             tile_overlap = tile_overlap or 0.0
         else:
             tile_overlap = 0.0
-
         sparse = sparse if sparse!=None else 1.0
-        n_rows = self.subifus[0].n_rows
-        ifu_phi_size = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * (1.0-tile_overlap)
-        ifu_theta_size = numpy.sqrt(3) / 2. * ifu_phi_size  # * (1.0-tile_overlap)
+
+        ifu_phi_size, ifu_theta_size = self.get_ifu_size(scale, tile_overlap, sparse)
 
         # we are using an angular system theta, phi, with theta counted from the equator
         if geodesic == False:
@@ -428,7 +454,7 @@ class IFU(object):
             centroid = numpy.array(region.centroid())
             minphi, mintheta, maxphi, maxtheta = region.bounds()
 
-            # TODO: transform the Region object rather than the bounds!
+            # TODO: transform the Region object rather than the bounds! Add method to SkyRegion?
             # Transform to a coordinate system where the region is on the equator. There we're natrually tiling
             # along great circles and the hexagon pattern is easiest to describe.
             Eq = EqTransform(centroid[0], 90.+centroid[1], 0.0)
