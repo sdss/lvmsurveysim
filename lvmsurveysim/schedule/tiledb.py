@@ -22,6 +22,7 @@ import cycler
 
 import lvmsurveysim.target
 from lvmsurveysim import IFU, config
+from lvmsurveysim.target import Target
 from lvmsurveysim.exceptions import LVMSurveyOpsError, LVMSurveyOpsWarning
 import lvmsurveysim.utils.spherical
 import lvmsurveysim.schedule.opsdb as opsdb
@@ -129,38 +130,30 @@ class TileDB(object):
             to tile with. If None, it will be read from the config file.
 
         '''
-        # TODO: unify this code with target.get_tiling() !
+
         self.ifu = ifu or IFU.from_config()
         self.tiling_type = 'hexagonal'
         self.tiles = {}
 
+        # tile tile unions first:
         for tu in self.targets.get_tile_unions():
             ts = self.targets.get_union_targets(tu).order_by_priority()
-            regions = [t.get_skyregion() for t in ts]
-            uregion = SkyRegion.multi_union(regions)
 
-            print('Tiling tile union ' + tu)
-            coords, pa = self.ifu.get_tile_grid(uregion, ts[0].telescope.plate_scale, 
-                                                tile_overlap=ts[0].tile_overlap, sparse=ts[0].sparse, geodesic=False)
-            tiles = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1], frame=ts[0].frame, unit='deg')
-            # second set offset in dec to find position angle after transform
-            tiles2 = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1]+1./3600, frame=ts[0].frame, unit='deg')
-
-            # transform not only centers, but also second set of coordinates slightly north, then compute the angle
-            tiles = tiles.transform_to('icrs')
-            tiles2 = tiles2.transform_to('icrs')
-            pa += tiles.position_angle(tiles2)
+            supertarget = Target.supertarget(ts)
+            supertarget.get_tiling(ifu=self.ifu, to_frame='icrs')
 
             # distribute tiles back to targets:
+            tiles, pa = supertarget.tiles, supertarget.pa
             for t in ts:
                 print('   selecting tiles for '+t.name)
                 tiles, pa = t.get_tiles_from_union(tiles, pa)
 
+        # deal with all other targets
         for i, t in enumerate(self.targets):
             if t.tile_union == None:
-                self.tiles[i] = t.get_tiling(ifu=self.ifu, to_frame='icrs')
-            else:
-                self.tiles[i] = t.make_tiles()
+                # if we have not tiled the target yet as part of a tile union, tile now
+                t.get_tiling(ifu=self.ifu, to_frame='icrs')
+            self.tiles[i] = t.make_tiles() # populate the tile database with Tile rows
 
         # Remove pointings that overlap with other regions.
         self._remove_overlap()

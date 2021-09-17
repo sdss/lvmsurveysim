@@ -433,7 +433,6 @@ class IFU(object):
         geodesic : use geodesic sphere tiling, sparse gives depth in this case.
 
         """
-        # TODO: move get_tile_grid() somewhere else, probably SkyRegion?
 
         if isinstance(scale, astropy.units.Quantity):
             scale = scale.to('degree/mm').value

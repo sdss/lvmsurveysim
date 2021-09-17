@@ -11,6 +11,7 @@
 
 import os
 import pathlib
+from copy import copy
 
 import astropy
 import numpy
@@ -203,6 +204,37 @@ class Target(object):
         return cls(region_type, coords, name=name, **target)
 
 
+    @classmethod
+    def supertarget(cls, targets):
+        '''Create a new target from a list of targets forming a tile union.
+
+        This method takes a list of targets and returns a new target object
+        whose region is the union of the regions of the targets in the list.
+
+        This is used in tiling tile unions, which are multiple distinct targets 
+        that overlap or at least share an edge and need to be tiled uniformly across
+        these interfaces. This is achieved by tiling them as if they were a single
+        target and then redistributing the tiles back to the original targets according
+        to their boundaries.
+
+        Parameters:
+        -----------
+        targets : list of `~lvmsurveysim.target.Target` 
+            list of targets forming a tile union.
+
+        Returns:
+        --------
+        target : `~lvmsurveysim.target.Target` 
+            'supertarget' consisiting of the union of the input targets
+        '''
+
+        uregion = SkyRegion.multi_union([t.get_skyregion() for t in targets])
+        supertarget = copy(targets[0])
+        supertarget.region = uregion
+        supertarget.name = 'TileUnion ' + targets[0].tile_union
+        return supertarget
+
+
     def get_pixarea(self, pixarea=None, ifu=None, telescope=None):
         """Gets the size of the tile in square degrees."""
 
@@ -223,9 +255,9 @@ class Target(object):
 
         return pixarea
 
-    # TODO: move to SkyRegion to combine with identical code in tiledb
     def get_tiling(self, ifu=None, telescope=None, to_frame=None):
-        """Tessellates the target region and returns a list of tile centres.
+        """Tessellates the target region and populates the tiles and tile_priorities
+        fields.
 
         Parameters
         ----------
@@ -236,15 +268,8 @@ class Target(object):
             The telescope on which the IFU is mounted. Defaults to the object
             ``telescope`` attribute.
         to_frame : str
-            If ``return_coords``, the reference frame in which the coordinates
-            should be returned. If `None`, defaults to the region internal
-            reference frame.
-
-        Returns
-        -------
-        tiles : list of `~lvmsurveysi.target.tile`
-            A list of `~lvmsurveysi.target.tile` with the list of
-            tile coordinates, priorities, and other data
+            The reference frame in which the coordinates should be returned.
+            If `None`, defaults to the region internal reference frame.
 
         """
 
@@ -271,7 +296,6 @@ class Target(object):
         # cache the new tiles and the priorities
         self.tiles = tiles
         self.tile_priorities = self.get_tile_priorities()
-        return self.make_tiles()
 
 
     def make_tiles(self):
@@ -437,7 +461,7 @@ class Target(object):
         ifu = ifu or IFU.from_config()
 
         if self.tiles is None:
-            T = self.get_tiling(ifu=ifu, to_frame=frame)
+            self.get_tiling(ifu=ifu, to_frame=frame)
 
         if frame == 'icrs':
             lon, lat = self.tiles.ra.deg, self.tiles.dec.deg
@@ -588,26 +612,6 @@ class TargetList(list):
                 ut.append(target)
 
         return TargetList(targets=ut)
-
-    def get_tiling(self, **kwargs):
-        """Gets the tile centres for all the targets in the set.
-
-        Parameters
-        ----------
-        kwargs : dict
-            Parameters to be passed to `.Target.get_tiling`.
-
-        Returns
-        -------
-        tiling : dict
-            A dictionary in which the key is the index of the target in the
-            `.TargetList` and its value the output of
-            `.Target.get_tiling` called with ``kwarg`` parameters
-            (i.e., a `~lvmsurveysim.target.Tile` list with the
-            coordinates, priorities and other data of the tiles).
-
-        """
-        return {ii: self[ii].get_tiling(**kwargs) for ii in range(len(self))}
 
 
     def order_by_priority(self):
