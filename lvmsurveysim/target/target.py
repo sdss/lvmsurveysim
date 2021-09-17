@@ -256,7 +256,7 @@ class Target(object):
         return pixarea
 
     def get_tiling(self, ifu=None, telescope=None, to_frame=None):
-        """Tessellates the target region and populates the tiles and tile_priorities
+        """Tessellates the target region and populates the tiles, pa and tile_priorities
         fields.
 
         Parameters
