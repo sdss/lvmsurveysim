@@ -14,7 +14,6 @@
 import warnings
 
 from .utils.config import get_config
-from .utils.logger import log
 
 
 config = get_config('~/.lvm/lvmsurveysim.yaml')

@@ -12,13 +12,12 @@ import cycler
 import matplotlib.pyplot as plt
 import numpy
 from matplotlib import animation
-from astropy import units as u
 
 import lvmsurveysim.target
 from lvmsurveysim.schedule.tiledb import TileDB
 from lvmsurveysim.schedule.scheduler import Scheduler
 from lvmsurveysim.schedule.plan import ObservingPlan
-from lvmsurveysim import IFU, config, log
+from lvmsurveysim import IFU, config
 from lvmsurveysim.schedule.plan import ObservingPlan
 from lvmsurveysim.utils.plot import __MOLLWEIDE_ORIGIN__, get_axes, transform_patch_mollweide, convert_to_mollweide
 
@@ -164,7 +163,7 @@ class Simulator(object):
         for jd in generator:
 
             if progress_bar is False:
-                log.info(f'scheduling JD={jd}.')
+                print(f'scheduling JD={jd}.')
 
             # Skips JDs not found in the plan or those that don't have good weather.
             if jd not in plan['JD'] or plan[plan['JD'] == jd]['is_clear'][0] == 0:
