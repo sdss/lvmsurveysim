@@ -10,3 +10,4 @@ astral>=1.10.1
 spherical_geometry>=1.2.18
 skyfield>=1.31
 peewee>=3.14
+click==7.1.2
