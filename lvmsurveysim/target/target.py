@@ -255,7 +255,7 @@ class Target(object):
 
         return pixarea
 
-    def get_tiling(self, ifu=None, telescope=None, to_frame=None):
+    def tile(self, ifu=None, telescope=None, to_frame=None):
         """Tessellates the target region and populates the tiles, pa and tile_priorities
         fields.
 
@@ -301,7 +301,7 @@ class Target(object):
     def make_tiles(self):
         """ Return a list of `~lvmsurveysim.schedule.Tile` tile objects for this target.
         Requires the self.tiles, self.pa and self.tile_priorites arrays to have been 
-        calculated using the `.get_tiling` method.
+        calculated using the `.tile` method.
 
         """
         return [Tile(self.tiles[i], self.pa[i], self.tile_priorities[i]) for i in range(len(self.tiles))]
@@ -461,7 +461,7 @@ class Target(object):
         ifu = ifu or IFU.from_config()
 
         if self.tiles is None:
-            self.get_tiling(ifu=ifu, to_frame=frame)
+            self.tile(ifu=ifu, to_frame=frame)
 
         if frame == 'icrs':
             lon, lat = self.tiles.ra.deg, self.tiles.dec.deg

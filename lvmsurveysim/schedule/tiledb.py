@@ -140,7 +140,7 @@ class TileDB(object):
             ts = self.targets.get_union_targets(tu).order_by_priority()
 
             supertarget = Target.supertarget(ts)
-            supertarget.get_tiling(ifu=self.ifu, to_frame='icrs')
+            supertarget.tile(ifu=self.ifu, to_frame='icrs')
 
             # distribute tiles back to targets:
             tiles, pa = supertarget.tiles, supertarget.pa
@@ -152,7 +152,7 @@ class TileDB(object):
         for i, t in enumerate(self.targets):
             if t.tile_union == None:
                 # if we have not tiled the target yet as part of a tile union, tile now
-                t.get_tiling(ifu=self.ifu, to_frame='icrs')
+                t.tile(ifu=self.ifu, to_frame='icrs')
             self.tiles[i] = t.make_tiles() # populate the tile database with Tile rows
 
         # Remove pointings that overlap with other regions.
