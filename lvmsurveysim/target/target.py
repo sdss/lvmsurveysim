@@ -283,15 +283,9 @@ class Target(object):
         print('Tiling target ' + self.name)
         coords, pa = ifu.get_tile_grid(self.region, telescope.plate_scale, 
                                        tile_overlap=self.tile_overlap, sparse=self.sparse, geodesic=self.geodesic)
-        tiles = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1], frame=self.frame, unit='deg')
-        # second set offset in dec to find position angle after transform
-        tiles2 = astropy.coordinates.SkyCoord(coords[:, 0], coords[:, 1]+1./3600, frame=self.frame, unit='deg')
-
-        # transform not only centers, but also second set of coordinates slightly north, then compute the angle
-        if to_frame:
-            tiles = tiles.transform_to(to_frame)
-            tiles2 = tiles2.transform_to(to_frame)
-        self.pa = pa + tiles.position_angle(tiles2)
+        # convert to skycoords and optionally transform in to the requested frame, most likely 'icrs'
+        tiles, pa2 = self.transform_skycoords(coords[:, 0], coords[:, 1], unit='deg', to_frame=to_frame)
+        self.pa = pa + pa2
 
         # cache the new tiles and the priorities
         self.tiles = tiles
@@ -389,6 +383,43 @@ class Target(object):
 
         p = numpy.floor(dist / field).astype(int)
         return numpy.max(p) - p + 1  # invert since priorities increase with value
+
+
+    def transform_skycoords(self, lat, lon, unit, to_frame):
+        '''
+        Construct `~astropy.coodinates.SkyCoords` from a set of longitude and lattitude
+        spherical coordinates. Optionally transform to a different frame and calculate the 
+        change of position angle resulting from that transform
+
+        The output is a set of SkyCoords and the position angle N through E
+
+        Parameters:
+        -----------
+        lat, lon : array-like
+            lattitude and longitude input coordinates
+        unit : str
+            the unit of lat and lon
+        to_frame : str
+            optional, the name of a new frame of reference for the output values
+
+        Return:
+        -------
+        sk : `~astropy.coodinates.SkyCoords`
+            output coordinates
+        pa : `~numpy.array`
+            position angle at new coordinates relative to the old coordinates
+
+        '''
+        tiles = astropy.coordinates.SkyCoord(lat, lon, frame=self.frame, unit=unit)
+        pa = numpy.zeros(len(lat))
+        # transform not only centers, but also second set of coordinates slightly north, then compute the angle
+        if to_frame:
+            tiles = tiles.transform_to(to_frame)
+            # second set offset in dec to find position angle after transform
+            tiles2 = astropy.coordinates.SkyCoord(lat, lon+1./3600, frame=self.frame, unit=unit)
+            tiles2 = tiles2.transform_to(to_frame)
+            pa = tiles.position_angle(tiles2)
+        return tiles, pa
 
 
     def get_skyregion(self):

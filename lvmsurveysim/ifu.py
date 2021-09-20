@@ -112,6 +112,33 @@ class EqTransform(object):
         return ra, dec
 
 
+def transform_coords(lat, lon, transform):
+    '''
+    Transform a set of spherical coordinates and caluculate the change of position angle
+
+    The output is transform(lat, lon) and the position angle N through E
+
+    Parameters:
+    -----------
+    lat, lon : array-like
+        lattitude and longitude input coordinates
+    transform : function
+        function taking lat, lon inputs and yielding new lat, lon outputs
+
+    Return:
+    -------
+    lat2, lon2 : `~numpy.array`
+        output lattitude and longitude coordinates
+    pa : `~numpy.array`
+        position angle at new coordinates relative to the old coordinates
+
+    '''
+    lat2, lon2 = transform(lat, lon + 1./3600.)
+    lat1, lon1 = transform(lat, lon)
+    pa = position_angle(numpy.deg2rad(lat1), numpy.deg2rad(lon1), numpy.deg2rad(lat2), numpy.deg2rad(lon2))
+    return numpy.array([lat1, lon1]).T, numpy.rad2deg(pa)
+
+
 class Fibre(object):
 
     def __init__(self, xx, yy, radius):
@@ -492,11 +519,7 @@ class IFU(object):
             points = points.reshape((-1, 2))
 
             # transform back to original coordinates and determine position angle
-            points2 = numpy.array(Eq.gal2eq(points[:,0], points[:,1] + 1./3600.)).T
-            points = numpy.array(Eq.gal2eq(points[:,0], points[:,1])).T
-            pa = position_angle(numpy.deg2rad(points[:,0]), numpy.deg2rad(points[:,1]), 
-                                numpy.deg2rad(points2[:,0]), numpy.deg2rad(points2[:,1]))
-            pa = numpy.rad2deg(pa)
+            points, pa = transform_coords(points[:,0], points[:,1], Eq.gal2eq)
         else:
             x, y, z = lvmsurveysim.utils.geodesic_sphere.sphere(int(sparse))
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
