@@ -83,14 +83,123 @@ def convert(coversion_params):
     return(healpix_dictionary)
 
 
+def healpix_shader(data,
+                    masks, 
+                    outfile="tmp.png",
+                    nest=True,
+                    save=True,
+                    gui=False,
+                    graticule=True,
+                    healpixMask=False, 
+                    vmin=False, vmax=False, 
+                    norm=1.0, pad=0.1,
+                    scale=False, 
+                    cmaps=["Blues", "Greens", "Reds"],
+                    background='w',
+                    title="",
+                    show_colorbar=True,
+                    plt=False):
+    """Healpix shader.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        data array of representing a full healpix
+    masks : numpy.ma
+        Masks of teh data array, which define which pixel gets which color
+    nest : bol
+        Is the numpy array nested, or ringed
+    cmaps : matplotlib.cmaps
+        Any maptplotlib cmap, called by name. The order must be the same order as the masks.
+    Returns
+    -------
+    matplotlib.plt plot : 
+        It returns a plot....
+    """
+
+    import healpy
+    import numpy as np
+    if plt == False:
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+    import matplotlib.colors as mcolors
+    import gc
+
+    if gui == False:
+        mpl.use('Agg')
+
+    color_list = []
+    for mask_i in range(len(masks)):
+        if mask_i <= len(cmaps) -1:
+            cmap = cmaps[mask_i]
+        else:
+            #Use the last cmap
+            cmap = cmaps[-1]
+        if type(cmap) == str:
+            color_list.append(plt.get_cmap(cmap)(np.linspace(0.,1,128)))
+        else:
+            color_list.append(cmap(np.linspace(0.,1,128)))
+
+    colors = np.vstack(color_list)
+    cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
+    cmap.set_under(background)
+
+    # Copy the data to a new array to be cropped and scaled
+    I = data.copy()
+
+    # Crop data at max an min values if provided.
+    # Otherwise set to range of data
+    if vmax==False:
+        vmax = np.max(I)
+    if vmin==False:
+        vmin = np.min(I)
+
+    # Crop data
+    I[I > vmax] = vmax
+    I[I < vmin] = vmin
+
+    # Rescale all data from 0+pad to (normalization-pad)
+    I = (I - vmin) * ( (norm - pad) - pad) / (vmax - vmin) + pad
+
+    normalized_I = np.full(len(I), -1.6375e+30)
+
+
+    # add the offset to the data to push it into to each color range
+    if scale is not False:
+        for i in range(len(masks)):
+            normalized_I[masks[i]] = I[masks[i]].copy()*scale[i] + min(i, len(cmaps)-1) * norm
+
+    else:
+        for i in range(len(masks)):
+            normalized_I[masks[i]] = I[masks[i]].copy() + min(i, len(cmaps)-1) * norm
+
+    # I could add all the masks here and plot the un-masked values in grey scale.
+
+    # If there is a healpix mask apply it.
+    normalized_I_masked = healpy.ma(normalized_I)
+
+    if healpixMask != False:
+        normalized_I_masked.mask = np.logical_not(healpixMask)
+
+    healpy.mollview(normalized_I_masked, nest=nest, cbar=show_colorbar, cmap=cmap, rot=(0,0,0), min=0, max=norm*len(masks), xsize=4000, title=title)
+
+    if graticule == True:
+        healpy.graticule()
+    if save == True:
+        plt.savefig(outfile)
+    if gui==True:
+        plt.show()
+    plt.clf()
+    plt.close()
+    gc.collect()
+
+
 def run(params):
     healpix_dictionary = convert(params)
 
     image_hdu_list = fits.open("Halpha_fwhm06_1024.fits")
     image_nside = image_hdu_list[0].header['NSIDE']
     image_order = image_hdu_list[0].header['ORDERING']
-
-    from lvmsurveysim.utils.healpix_plot_lib import healpix_shader
 
     colors =[]
     masks = []
