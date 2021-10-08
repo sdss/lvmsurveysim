@@ -3,11 +3,9 @@ ipython>=6.2.0
 numpy>=1.11.2
 astropy>=1.2.1
 matplotlib>=1.5.3
-Shapely>=1.6.1
 PyYAML>=5.1
 healpy>=1.12.8
 astral>=1.10.1
 spherical_geometry>=1.2.18
 skyfield>=1.31
 peewee>=3.14
-click==7.1.2

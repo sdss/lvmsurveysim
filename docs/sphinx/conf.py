@@ -129,7 +129,6 @@ rst_epilog = """
 .. |numpy_array| replace:: Numpy array
 .. _numpy_array: http://example.com/
 .. |HDUList| replace:: :class:`~astropy.io.fits.HDUList`
-.. _Shapely: https://shapely.readthedocs.io/en/latest
 """
 
 
