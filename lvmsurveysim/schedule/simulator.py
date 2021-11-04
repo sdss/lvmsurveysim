@@ -169,7 +169,8 @@ class Simulator(object):
             if jd not in plan['JD'] or plan[plan['JD'] == jd]['is_clear'][0] == 0:
                 continue
 
-            observed += self.schedule_one_night(jd, scheduler, observed)
+            # 'observed' is updated to reflect exposures taken that night
+            self.schedule_one_night(jd, scheduler, observed)
 
         # Convert schedule to Astropy Table.
         self.schedule = astropy.table.Table(
@@ -193,13 +194,8 @@ class Simulator(object):
             The Scheduler instance that will determine the observing sequence.
         observed : ~numpy.array
             An array of the length of the tiledb that records the observing time
-            accumulated on each tile thus far
-
-        Returns
-        -------
-        exposure_times : `~numpy.ndarray`
-            Array with the exposure times in seconds added to each tile during
-            this night.
+            accumulated on each tile thus far. This array is updated by this function
+            as exposures are scheduled.
 
         """
 
@@ -217,7 +213,6 @@ class Simulator(object):
 
             # obtain the next tile to observe
             observed_idx, current_lst, hz, alt, lunation = scheduler.get_optimal_tile(current_jd, observed)
-
             if observed_idx == -1:
                 # nothing available
                 self._record_observation(current_jd, self.observing_plan.observatory,
@@ -267,8 +262,6 @@ class Simulator(object):
                                         totaltime=exptime * target_overhead)
 
             current_jd += exptime * target_overhead / 86400.0
-
-        return observed
 
 
     def animate_survey(self, filename='lvm_survey.mp4', step=100,
