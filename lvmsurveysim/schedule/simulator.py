@@ -302,7 +302,7 @@ class Simulator(object):
                 print('%.1f %% done\r' % (ii / ll * 100))
             scat.set_offsets(numpy.stack((x[:ii * step], y[:ii * step]), axis=0).T)
             scat.set_array(g[:ii * step])
-            ax.set_title(str(t[ii]))
+            ax.set_title(str(numpy.around(t[ii * step], decimals=1)))
             return scat,
 
         anim = animation.FuncAnimation(fig, animate, frames=range(1, ll), interval=1,
