@@ -1,5 +1,4 @@
-#!/usr/bin/python3
-"""Convert Survey Simulation to healpix Array of total coverage. Include secondary fit's file identifying the target with the highest priority in each spaxel"""
+# """Convert Survey Simulation to healpix Array of total coverage. Include secondary fit's file identifying the target with the highest priority in each spaxel"""
 import astropy.io.fits as fits
 from astropy_healpix import HEALPix
 import healpy
@@ -237,11 +236,10 @@ if __name__ == "__main__":
             key, value = argument.split(":")
             params[key] = value
 
-    if params["target_file"] is "None":
-        params["target_file"] = "%s/surveydesign/%s"%(os.environ['LVMCORE_DIR'], params["file"].replace(".fits",".yaml"))
+    if params["target_file"] == "None":
+        params["target_file"] = './targets.yaml'
         print("converting fits file name %s to target file %s"%(params["file"], params["target_file"]))
 
-    assert(params['image_file'] != None), "No image file specified..."
     run(params)
 
     
