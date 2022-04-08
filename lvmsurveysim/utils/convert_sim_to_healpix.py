@@ -227,8 +227,8 @@ def run(params):
     healpix_shader(log_I, masks, cmaps=colors, scale=scale, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="%s_shaded_MW.png"%(params['file'].replace(".fits","")), gui=True)
 
 if __name__ == "__main__":
-    "provide the fits file, and target file"
-    params = {"file":None, "target_file":"None","nside":1024, "image_file":None}
+    "provide the schedule fits file, and target list"
+    params = {"file":None, "target_file":"None","nside":1024}
 
 
     if len(sys.argv) > 1:
