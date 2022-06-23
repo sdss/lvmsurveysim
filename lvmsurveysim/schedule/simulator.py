@@ -80,7 +80,7 @@ class Simulator(object):
         self.schedule = None
 
     def __repr__(self):
-        return (f'<Simulator (observing_plan={self.observing_plan.observatory.name}, '
+        return (f'<Simulator (observing_plan={self.observing_plan.observatory}, '
                 f'tiles={len(self.tiledb.tile_table)})>')
 
 
