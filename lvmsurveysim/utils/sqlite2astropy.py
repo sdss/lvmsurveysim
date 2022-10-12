@@ -70,9 +70,13 @@ def astropy2peewee(table, model, replace=False):
    dbc = [c.name for c in cols]
    tbc = table.colnames
    assert (len(dbc) == len(tbc)) & (set(dbc) == set(tbc)), "sets of columns do not match."
-   if(replace==True):
-      s = model.replace_many(table).execute()
-   else:
-      s = model.insert_many(table).execute()
+   db = model._meta.database
+   with db.atomic():
+      if(replace==True):
+         for batch in chunked(table, 100):
+            s = model.replace_many(batch).execute()
+      else:
+         for batch in chunked(table, 100):
+            s = model.insert_many(batch).execute()
    return s
 
