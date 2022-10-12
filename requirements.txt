@@ -6,7 +6,7 @@ matplotlib>=1.5.3
 PyYAML>=5.1
 healpy>=1.12.8
 astropy_healpix>=0.6
-astral>=1.10.1
+astral==2.2
 spherical_geometry>=1.2.18
 skyfield>=1.31
 peewee>=3.14
