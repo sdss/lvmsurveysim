@@ -49,7 +49,7 @@ class AltitudeCalculator(object):
 
         """
 
-        if jd != None:
+        if numpy.any(jd) == True:
             dd = jd - 2451545.0
             lmst_rad = numpy.deg2rad(
                 (280.46061837 + 360.98564736629 * dd +
