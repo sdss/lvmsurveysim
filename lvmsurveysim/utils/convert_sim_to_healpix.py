@@ -192,7 +192,9 @@ def healpix_shader(data,
     plt.close()
     gc.collect()
 
-
+# can be run as 
+# import lvmsurveysim.utils.convert_sim_to_healpix as h
+# run({"file": "LCO_2023_5.fits", "target_file": "targets.yaml", "nside": 1024})
 def run(params):
     healpix_dictionary = convert(params)
 
@@ -226,9 +228,10 @@ def run(params):
 
     healpix_shader(log_I, masks, cmaps=colors, scale=scale, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="%s_shaded_MW.png"%(params['file'].replace(".fits","")), gui=True)
 
+# convert_sim_to_healpix file:LCO_2023_5.fits target_file:targets.yaml nside:1024
 if __name__ == "__main__":
     "provide the schedule fits file, and target list"
-    params = {"file":None, "target_file":"None","nside":1024}
+    params = {"file":None, "target_file":"None", "nside":1024}
 
 
     if len(sys.argv) > 1:
