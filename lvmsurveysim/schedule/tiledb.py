@@ -409,7 +409,7 @@ class TileDB(object):
         for idx in s:
             overlap[self.targets[idx].name] = {}
             overlap[self.targets[idx].name]['global_no_overlap'] = numpy.ones(len(self.tiles[idx]),
-                                                            dtype=numpy.bool)
+                                                            dtype=bool)
 
         # With all the dictionaries created overlap[target_name] we can now store overlap information between targets
         for idx in s:
