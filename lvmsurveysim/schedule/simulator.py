@@ -148,7 +148,7 @@ class Simulator(object):
         scheduler = Scheduler(plan)
 
         # observed exposure time for each pointing
-        observed = numpy.zeros(len(self.tiledb.tile_table), dtype=numpy.float)
+        observed = numpy.zeros(len(self.tiledb.tile_table), dtype=float)
 
         # range of dates for the survey
         min_date = numpy.min(plan['JD'])
@@ -523,7 +523,7 @@ class Simulator(object):
 
         rows = [
             (t if t != '-' else 'unused',
-             numpy.float(target_ntiles[t]),
+             float(target_ntiles[t]),
              numpy.around(target_ntiles_observed[t], decimals=2),
              numpy.around(time_on_target[t] / 3600.0, decimals=2),
              numpy.around(exptime_on_target[t] / 3600.0, decimals=2),
@@ -644,7 +644,7 @@ class Simulator(object):
         for group in groups:
 
             # Cumulated group heights
-            group_heights = numpy.zeros(len(b) - 1, dtype=numpy.float)
+            group_heights = numpy.zeros(len(b) - 1, dtype=float)
             group_target_tot_time = 0.0
 
             # If we are not using groups or the "group"
