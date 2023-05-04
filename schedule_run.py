@@ -29,10 +29,12 @@ def run(targets='./targets.yaml', tile=False, sim=False, plot=False, save=False)
       tiledb = OpsDB.load_tiledb()
  
    # Creates observing plans for LCO for the range sep 2021 - jun 2025.
+   # http://www.csgnetwork.com/julianmodifdateconv.html
    print('Creating observing plan ...')
    #lco_plan = ObservingPlan(2459458, 2460856, observatory='LCO') # baseline 2021
    #lco_plan = ObservingPlan(2459945, 2459945+365*3+182, observatory='LCO') # baseline 2023, 3.5yr
-   lco_plan = ObservingPlan(2459945, 2461555, observatory='LCO') # baseline 2023, until 30-May-2027
+   #lco_plan = ObservingPlan(2459945, 2461555, observatory='LCO') # baseline Jan 2023, until 30-May-2027
+   lco_plan = ObservingPlan(2460096, 2461555, observatory='LCO') # baseline Jun 2023, until 30-May-2027
 
    if sim:
       # Creates an Simulator instance and runs the simulation
@@ -42,14 +44,14 @@ def run(targets='./targets.yaml', tile=False, sim=False, plot=False, save=False)
 
       # Load/Save from as FITS table in a later session, no need to rerun:
       # sim = Simulator.load('LCO_2023_4', 'lco_tiledb')
-      sim.save('LCO_2023_4', overwrite=True) # Save as FITS table
+      sim.save('LCO_2023_5', overwrite=True) # Save as FITS table
 
    if plot:
-      plot_survey(sim, basename='LCO_2023_4', save=save)
+      plot_survey(sim, basename='LCO_2023_5', save=save)
 
    return sim
 
-def plot_survey(sim, basename='LCO_2023_4', save=False):
+def plot_survey(sim, basename='LCO_2023_5', save=False):
    # Plot and print:
    sim.print_statistics()
    sim.plot_survey('LCO', use_groups=True)

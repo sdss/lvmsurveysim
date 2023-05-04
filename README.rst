@@ -1,6 +1,8 @@
 lvmsurveysim
 ============
 
+Now deprecated in favor of https://github.com/sdss/lvmscheduler
+
 Survey tiling, operations, and simulations for LVM.
 
 |travis| |coveralls| |docs| |py36|
