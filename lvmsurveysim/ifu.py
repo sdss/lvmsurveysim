@@ -201,21 +201,15 @@ class SubIFU(object):
         self.polygon = self._create_polygon()
         self.fibres = self._create_fibres()
 
-    def _create_polygon(self):
+    def _create_polygon(self, pointy_top=True):
         """Creates a list of polygon vertices representing the shape of this sub-IFU."""
 
-        RR = 0.5                   # Assumes unitary diameter
-        rr = numpy.sqrt(3) / 2. * RR  # Inner radius
-        cos60 = 0.5
-
-        xx, yy = self.centre
-        vertices = [(xx - RR, yy),
-                    (xx - RR * cos60, yy + rr),
-                    (xx + RR * cos60, yy + rr),
-                    (xx + RR, yy),
-                    (xx + RR * cos60, yy - rr),
-                    (xx - RR * cos60, yy - rr)]
-        
+        RR = 0.5                   # Assumes unitary diameter, outer radius
+        vertices = []
+        cx, cy = self.centre
+        for i in range(6):
+            angle_rad = numpy.radians(60 * i - 30)
+            vertices.append((cx+RR*numpy.cos(angle_rad), cy+RR*numpy.sin(angle_rad)))
         return vertices
 
     def _create_fibres(self):
@@ -228,6 +222,7 @@ class SubIFU(object):
         fibres = []
         fibre_width = 1 / n_centre
 
+        # creates flat top hex pattern
         for row in range(int(-self.n_rows / 2), int(self.n_rows / 2) + 1):
             n_fibres_row = n_centre - numpy.abs(row)
             y_row = row * numpy.sqrt(3) / 2 / self.n_rows
@@ -239,6 +234,14 @@ class SubIFU(object):
             fibres += [Fibre(self.centre[0] + fibre_x,
                              self.centre[1] + y_row,
                              fibre_width / 2.) for fibre_x in fibres_x]
+        # rotate to pointy top
+        s30 = numpy.sin(numpy.radians(30))
+        c30 = numpy.cos(numpy.radians(30))
+        for f in fibres:
+            x = c30*(f.x - self.centre[0]) + s30*(f.y - self.centre[1])
+            y = -s30*(f.x - self.centre[0]) + c30*(f.y - self.centre[1])
+            f.x = x + self.centre[0]
+            f.y = y + self.centre[1]
 
         return fibres
 
@@ -417,13 +420,14 @@ class IFU(object):
         '''Returns the size of the IFU in degrees
 
         Calculate and return the size of the IFU in degrees in two dimensions, the
-        first from corner to corner of the hexagon, the second from straight edge to edge.
+        first from center to corner of the hexagon (outer radius), the second from 
+        center to edge (inner radius).
         Take into account the amount of overlap we want and the sparse tiling.
 
         Parameters:
         -----------
         scale : float
-            The scale in degrees per mm.
+            The plate scale in degrees per mm.
         tile_overlap : float
             The fraction of tile separation to overlap between neighboring tiles
             (ignored for sparse targets)
@@ -433,12 +437,13 @@ class IFU(object):
         Returns:
         --------
         dx, dy : tuple of float
-            The extent of the hexagonal IFU in degrees from corner to corner and edge to edge.
+            The extent of the hexagonal IFU in degrees from center to corner and center to edge
+            scaled by the desired overlap.
         '''
         assert len(self.subifus)==1, "Size of ifus with subunits not implemented."
         n_rows = self.subifus[0].n_rows
-        dx = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * (1.0-tile_overlap)
-        dy = numpy.sqrt(3) / 2. * dx
+        dy = n_rows * self.fibre_size / 1000 * scale / 2. * sparse * (1.0-tile_overlap)
+        dx = numpy.sqrt(3) / 2. * dy
         return dx, dy
 
 
@@ -481,6 +486,7 @@ class IFU(object):
             minphi, mintheta, maxphi, maxtheta = region.bounds()
 
             # TODO: transform the Region object rather than the bounds! Add method to SkyRegion?
+
             # Transform to a coordinate system where the region is on the equator. There we're natrually tiling
             # along great circles and the hexagon pattern is easiest to describe.
             Eq = EqTransform(centroid[0], 90.+centroid[1], 0.0)
@@ -495,9 +501,9 @@ class IFU(object):
             size_phi  = numpy.abs(maxphi - minphi) * numpy.cos(numpy.radians(centroid[1]))
             size_theta = numpy.abs(maxtheta - mintheta)
 
-            # The separation between grid points in RA and Dec
-            delta_phi = 3 * ifu_phi_size
-            delta_theta = ifu_theta_size
+            # The separation between grid points in angles (phi ~ RA/lon, theta ~ DEC/lat)
+            delta_phi = ifu_phi_size*2.0
+            delta_theta = 3.0/2.0 * ifu_theta_size
 
             # Calculates the initial positions of the grid points in RA and Dec.
             phi_pos = numpy.arange(-size_phi / 2., size_phi / 2. + delta_phi.value, delta_phi.value)
@@ -506,7 +512,7 @@ class IFU(object):
 
             # Offset each other row in phi by 1.5R
             points[:, :, 0] = phi_pos
-            points[:, :, 0][1::2] += (1.5 * ifu_phi_size.value)
+            points[:, :, 0][1::2] += (ifu_phi_size.value)
             # Set declination values
             points[:, :, 1] = theta_pos[numpy.newaxis].T
 
