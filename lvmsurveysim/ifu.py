@@ -526,6 +526,8 @@ class IFU(object):
 
             # transform back to original coordinates and determine position angle
             points, pa = transform_coords(points[:,0], points[:,1], Eq.gal2eq)
+            # Check what grid points would overlap with the region
+            inside = [region.contains_point(x,y) for x,y in zip(points[:,0], points[:,1])]
         else:
             x, y, z = lvmsurveysim.utils.geodesic_sphere.sphere(int(sparse))
             sk = astropy.coordinates.SkyCoord(x=x,y=y,z=z, representation_type='cartesian')
@@ -534,9 +536,10 @@ class IFU(object):
             points[:,0] = sk.ra.deg
             points[:,1] = sk.dec.deg
             pa = numpy.zeros(len(sk))
-
-        # Check what grid points would overlap with the region if occupied by an IFU.
-        inside = [region.contains_point(x,y) for x,y in zip(points[:,0], points[:,1])]
+            bounds = region.bounds() #[0 -90 360 90]
+            # Check what grid points would overlap with the region
+            inside = [(bounds[0]<=x<=bounds[2]) and (bounds[1]<=y<=bounds[3]) for x,y in zip(points[:,0], points[:,1])]
+        
         points_inside = points[inside]
         pa = pa[inside]
         return points_inside, pa
