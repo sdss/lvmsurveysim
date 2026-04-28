@@ -70,6 +70,8 @@ def convert(coversion_params):
         tmp = tmp0
         print("processing priority level: %i"%(priority_level))
         for ra, dec in zip(schedule['ra'][priority_mask], schedule['dec'][priority_mask]):
+            if (dec>=30):
+                continue
             heal_indices = hp.cone_search_skycoord(SkyCoord(ra, dec, unit=u.deg), radius=(0.25)*u.deg)
             healpix_dictionary['priorities'][heal_indices] = priority_level
             complete = 1.- float(tmp)/float(tmp0)
@@ -228,7 +230,7 @@ def run(params):
 
     healpix_shader(log_I, masks, cmaps=colors, scale=scale, title=r"MW H$\alpha$", nest=True, vmin=log_I_min, vmax=log_I_max, outfile="%s_shaded_MW.png"%(params['file'].replace(".fits","")), gui=True)
 
-# convert_sim_to_healpix file:LCO_2023_5.fits target_file:targets.yaml nside:1024
+# convert_sim_to_healpix file:LCO_2023_5.fits target_file:targets.yaml
 if __name__ == "__main__":
     "provide the schedule fits file, and target list"
     params = {"file":None, "target_file":"None", "nside":1024}
